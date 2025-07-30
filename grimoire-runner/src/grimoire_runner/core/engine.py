@@ -280,69 +280,86 @@ class GrimoireEngine:
         action_type = list(action.keys())[0]
         action_data = action[action_type]
         
-        if action_type == 'set_value':
-            path = action_data['path']
-            value = action_data['value']
+        # Temporarily add step_data to context for template resolution
+        original_values = {}
+        if step_data:
+            for key, value in step_data.items():
+                original_values[key] = context.get_variable(key)
+                context.set_variable(key, value)
+        
+        try:
+            if action_type == 'set_value':
+                path = action_data['path']
+                value = action_data['value']
+                
+                # Resolve template in value
+                resolved_value = context.resolve_template(str(value))
+                
+                # Determine target context
+                if path.startswith('outputs.'):
+                    context.set_output(path[8:], resolved_value)
+                elif path.startswith('variables.'):
+                    context.set_variable(path[10:], resolved_value)
+                else:
+                    # Default to outputs
+                    context.set_output(path, resolved_value)
             
-            # Resolve template in value
-            resolved_value = context.resolve_template(str(value))
+            elif action_type == 'get_value':
+                # This is typically used in templates, not as a standalone action
+                pass
             
-            # Determine target context
-            if path.startswith('outputs.'):
-                context.set_output(path[8:], resolved_value)
-            elif path.startswith('variables.'):
-                context.set_variable(path[10:], resolved_value)
+            elif action_type == 'display_value':
+                # For now, just log the value
+                path = action_data if isinstance(action_data, str) else action_data.get('path', '')
+                try:
+                    value = context.resolve_path_value(path)
+                    logger.info(f"Display: {path} = {value}")
+                except Exception as e:
+                    logger.warning(f"Could not display value at path {path}: {e}")
+            
+            elif action_type == 'validate_value':
+                # TODO: Implement validation
+                pass
+            
+            elif action_type == 'log_event':
+                event_type = action_data.get('type', 'unknown')
+                event_data = action_data.get('data', {})
+                logger.info(f"Event: {event_type} - {event_data}")
+            
+            elif action_type == 'swap_values':
+                # Swap values between two paths
+                path1 = action_data.get('path1', '')
+                path2 = action_data.get('path2', '')
+                
+                # Resolve templates in the paths
+                path1 = context.resolve_template(path1)
+                path2 = context.resolve_template(path2)
+                
+                try:
+                    # Get values from both paths
+                    value1 = context.resolve_path_value(path1)
+                    value2 = context.resolve_path_value(path2)
+                    
+                    # Swap them
+                    self._set_value_at_path(context, path1, value2)
+                    self._set_value_at_path(context, path2, value1)
+                    
+                    logger.info(f"Swapped values: {path1} <-> {path2}")
+                    
+                except Exception as e:
+                    logger.error(f"Error swapping values between {path1} and {path2}: {e}")
+            
             else:
-                # Default to outputs
-                context.set_output(path, resolved_value)
+                logger.warning(f"Unknown action type: {action_type}")
         
-        elif action_type == 'get_value':
-            # This is typically used in templates, not as a standalone action
-            pass
-        
-        elif action_type == 'display_value':
-            # For now, just log the value
-            path = action_data if isinstance(action_data, str) else action_data.get('path', '')
-            try:
-                value = context.resolve_path_value(path)
-                logger.info(f"Display: {path} = {value}")
-            except Exception as e:
-                logger.warning(f"Could not display value at path {path}: {e}")
-        
-        elif action_type == 'validate_value':
-            # TODO: Implement validation
-            pass
-        
-        elif action_type == 'log_event':
-            event_type = action_data.get('type', 'unknown')
-            event_data = action_data.get('data', {})
-            logger.info(f"Event: {event_type} - {event_data}")
-        
-        elif action_type == 'swap_values':
-            # Swap values between two paths
-            path1 = action_data.get('path1', '')
-            path2 = action_data.get('path2', '')
-            
-            # Resolve templates in the paths
-            path1 = context.resolve_template(path1)
-            path2 = context.resolve_template(path2)
-            
-            try:
-                # Get values from both paths
-                value1 = context.resolve_path_value(path1)
-                value2 = context.resolve_path_value(path2)
-                
-                # Swap them
-                self._set_value_at_path(context, path1, value2)
-                self._set_value_at_path(context, path2, value1)
-                
-                logger.info(f"Swapped values: {path1} <-> {path2}")
-                
-            except Exception as e:
-                logger.error(f"Error swapping values between {path1} and {path2}: {e}")
-        
-        else:
-            logger.warning(f"Unknown action type: {action_type}")
+        finally:
+            # Restore original values
+            if step_data:
+                for key in step_data.keys():
+                    if original_values[key] is not None:
+                        context.set_variable(key, original_values[key])
+                    else:
+                        context.variables.pop(key, None)
     
     def _set_value_at_path(self, context: "ExecutionContext", path: str, value: Any) -> None:
         """Set a value at a specific path in the context."""
