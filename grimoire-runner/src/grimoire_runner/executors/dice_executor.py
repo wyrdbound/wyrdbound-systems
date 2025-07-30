@@ -190,13 +190,13 @@ class DiceExecutor(BaseStepExecutor):
                 resolved_path = context.resolve_template(str(path))
                 resolved_value = context.resolve_template(str(value))
                 
-                # Set the value
+                # Set the value using the observable system
                 if str(resolved_path).startswith('outputs.'):
-                    context.set_output(str(resolved_path)[8:], resolved_value)
+                    context.set_observable_output(str(resolved_path)[8:], resolved_value)
                 elif str(resolved_path).startswith('variables.'):
                     context.set_variable(str(resolved_path)[10:], resolved_value)
                 else:
-                    context.set_output(str(resolved_path), resolved_value)
+                    context.set_observable_output(str(resolved_path), resolved_value)
         
         finally:
             # Restore original values

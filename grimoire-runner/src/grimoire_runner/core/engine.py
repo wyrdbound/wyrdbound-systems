@@ -87,6 +87,12 @@ class GrimoireEngine:
         for var_name, var_value in flow.variables.items():
             context.set_variable(var_name, var_value)
         
+        # Initialize observable derived fields from output models
+        for output_def in flow.outputs:
+            if output_def.type in system.models:
+                model = system.models[output_def.type]
+                context.initialize_model_observables(model, output_def.id)
+        
         # Execute all steps
         step_results = []
         current_step_id = flow.steps[0].id if flow.steps else None
@@ -140,6 +146,10 @@ class GrimoireEngine:
                     step_results=step_results,
                     completed_at_step=current_step_id
                 )
+        
+        # Compute all derived fields before extracting outputs
+        logger.debug("Computing derived fields after flow execution")
+        context.compute_derived_fields()
         
         # Extract outputs based on flow definition
         outputs = {}

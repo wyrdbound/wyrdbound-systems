@@ -1,11 +1,18 @@
 """Execution context models for managing runtime state."""
 
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional, Any, Union
+from typing import Dict, List, Optional, Any, Union, TYPE_CHECKING
 from datetime import datetime
 import json
 import copy
+import logging
 from jinja2 import Template, Environment, StrictUndefined
+
+if TYPE_CHECKING:
+    from .model import ModelDefinition
+    from .observable import DerivedFieldManager
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -35,12 +42,19 @@ class ExecutionContext:
     # Template environment
     _jinja_env: Environment = field(default_factory=lambda: Environment(undefined=StrictUndefined), init=False, repr=False)
     
+    # Observable system for derived fields
+    _derived_field_manager: Optional['DerivedFieldManager'] = field(default=None, init=False, repr=False)
+    
     def __post_init__(self) -> None:
         """Initialize the template environment with custom functions."""
         self._jinja_env.globals.update({
             'get_value': self.get_variable,
             'has_value': self.has_variable,
         })
+        
+        # Initialize the derived field manager
+        from .observable import DerivedFieldManager
+        self._derived_field_manager = DerivedFieldManager(self, self.resolve_template)
     
     def set_variable(self, path: str, value: Any) -> None:
         """Set a variable at the specified path."""
@@ -64,6 +78,14 @@ class ExecutionContext:
     def set_output(self, path: str, value: Any) -> None:
         """Set an output at the specified path."""
         self._set_nested_value(self.outputs, path, value)
+    
+    def set_output_with_observables(self, path: str, value: Any) -> None:
+        """Set an output and trigger observable updates."""
+        self.set_output(path, value)
+        
+        # If we have a derived field manager, also update the observable system
+        if self._derived_field_manager:
+            self._derived_field_manager.set_field_value(path, value)
     
     def get_output(self, path: str, default: Any = None) -> Any:
         """Get an output at the specified path."""
@@ -98,8 +120,10 @@ class ExecutionContext:
                 'variables': self.variables,
                 'outputs': self.outputs,
                 'inputs': self.inputs,
-                **self.variables  # Make variables available at top level too
+                **self.variables,  # Make variables available at top level too
+                **self.outputs     # Make outputs available at top level too
             }
+            logger.debug(f"Template context for '{template_str}': {context}")
             result = template.render(context)
             
             # Try to parse as JSON if it looks like structured data
@@ -186,6 +210,23 @@ class ExecutionContext:
             'step_history': self.step_history.copy(),
             'timestamp': datetime.now().isoformat()
         }
+    
+    def initialize_model_observables(self, model_definition, instance_id: str = None) -> None:
+        """Initialize observable derived fields from a model definition."""
+        if self._derived_field_manager:
+            self._derived_field_manager.initialize_from_model(model_definition, instance_id)
+    
+    def compute_derived_fields(self) -> None:
+        """Compute all derived fields in the model."""
+        if self._derived_field_manager:
+            self._derived_field_manager.compute_all_derived_fields()
+    
+    def set_observable_output(self, path: str, value: Any) -> None:
+        """Set an output value that will trigger derived field recalculation."""
+        if self._derived_field_manager:
+            self._derived_field_manager.set_field_value(path, value)
+        else:
+            self.set_output(path, value)
     
     def _get_nested_value(self, obj: Dict[str, Any], path: str) -> Any:
         """Get a nested value by dot-separated path."""
