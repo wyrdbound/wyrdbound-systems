@@ -1,6 +1,6 @@
 id: "character_creation"
 type: "flow"
-name: "Knave Creation"
+name: "Character Creation"
 description: "Character creation process for {{ system.name }}"
 version: "1.0"
 
@@ -106,14 +106,14 @@ steps:
           - flow_call:
               flow: "add_item_to_character"
               inputs:
-                character_path: "outputs.knave"
+                character: "outputs.knave"
                 item: "{{ result }}"
       - table: "helmets_and_shields"
         actions:
           - flow_call:
               flow: "add_item_to_character"
               inputs:
-                character_path: "outputs.knave"
+                character: "outputs.knave"
                 item: "{{ result }}"
       - table: "dungeoneering_gear"
         count: 2
@@ -121,27 +121,27 @@ steps:
           - flow_call:
               flow: "add_items_to_character"
               inputs:
-                character_path: "outputs.knave"
+                character: "outputs.knave"
                 items: "{{ results }}"
       - table: "general_gear_1"
         actions:
           - flow_call:
               flow: "add_item_to_character"
               inputs:
-                character_path: "outputs.knave"
+                character: "outputs.knave"
                 item: "{{ result }}"
       - table: "general_gear_2"
         actions:
           - flow_call:
               flow: "add_item_to_character"
               inputs:
-                character_path: "outputs.knave"
+                character: "outputs.knave"
                 item: "{{ result }}"
     additional_actions:
       - flow_call:
           flow: "add_item_to_character"
           inputs:
-            character_path: "outputs.knave"
+            character: "outputs.knave"
             item: "rations"
             quantity: 2
 
@@ -150,12 +150,12 @@ steps:
     type: "player_choice"
     prompt: "Choose one weapon to start with:"
     choice_source:
-      table: "knave_starting_weapons"
+      table: "weapons"
     actions:
       - flow_call:
           flow: "add_item_to_character"
           inputs:
-            character_path: "outputs.knave"
+            character: "outputs.knave"
             item: "{{ selected_item }}"
 
   - id: "generate_traits"
@@ -164,52 +164,52 @@ steps:
     prompt: "Rolling for your character's physical and personality traits..."
     parallel: true
     tables:
-      - table: "knave_physique_table"
+      - table: "physique"
         actions:
           - set_value:
               path: "outputs.knave.traits.physique"
               value: "{{ result }}"
-      - table: "knave_face_table"
+      - table: "face"
         actions:
           - set_value:
               path: "outputs.knave.traits.face"
               value: "{{ result }}"
-      - table: "knave_skin_table"
+      - table: "skin"
         actions:
           - set_value:
               path: "outputs.knave.traits.skin"
               value: "{{ result }}"
-      - table: "knave_hair_table"
+      - table: "hair"
         actions:
           - set_value:
               path: "outputs.knave.traits.hair"
               value: "{{ result }}"
-      - table: "knave_clothing_table"
+      - table: "clothing"
         actions:
           - set_value:
               path: "outputs.knave.traits.clothing"
               value: "{{ result }}"
-      - table: "knave_virtue_table"
+      - table: "virtue"
         actions:
           - set_value:
               path: "outputs.knave.traits.virtue"
               value: "{{ result }}"
-      - table: "knave_vice_table"
+      - table: "vice"
         actions:
           - set_value:
               path: "outputs.knave.traits.vice"
               value: "{{ result }}"
-      - table: "knave_speech_table"
+      - table: "speech"
         actions:
           - set_value:
               path: "outputs.knave.traits.speech"
               value: "{{ result }}"
-      - table: "knave_background_table"
+      - table: "background"
         actions:
           - set_value:
               path: "outputs.knave.traits.background"
               value: "{{ result }}"
-      - table: "knave_alignment_table"
+      - table: "alignment"
         actions:
           - set_value:
               path: "outputs.knave.alignment"

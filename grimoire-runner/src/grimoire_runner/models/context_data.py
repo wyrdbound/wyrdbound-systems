@@ -34,6 +34,9 @@ class ExecutionContext:
     outputs: Dict[str, Any] = field(default_factory=dict)
     inputs: Dict[str, Any] = field(default_factory=dict)
     
+    # System metadata for templating
+    system_metadata: Dict[str, Any] = field(default_factory=dict)
+    
     # Execution tracking
     current_step: Optional[str] = None
     step_history: List[str] = field(default_factory=list)
@@ -120,6 +123,7 @@ class ExecutionContext:
                 'variables': self.variables,
                 'outputs': self.outputs,
                 'inputs': self.inputs,
+                'system': self.system_metadata,  # Make system metadata available
                 **self.variables,  # Make variables available at top level too
                 **self.outputs     # Make outputs available at top level too
             }

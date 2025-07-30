@@ -148,6 +148,27 @@ class FlowDefinition:
         # Check if step has explicit next_step
         if current_step.next_step:
             return current_step.next_step
+        
+        # If no explicit next_step, go to the next step in sequence
+        try:
+            current_index = next(i for i, step in enumerate(self.steps) if step.id == current_step_id)
+            if current_index + 1 < len(self.steps):
+                return self.steps[current_index + 1].id
+        except (StopIteration, IndexError):
+            pass
+        
+        return None
+    
+    def resolve_description(self, context) -> str:
+        """Resolve the flow description using the provided context."""
+        if not self.description:
+            return ""
+        
+        try:
+            return context.resolve_template(self.description)
+        except Exception:
+            # If template resolution fails, return the original description
+            return self.description
             
         # Otherwise, get next step in sequence
         current_index = self.get_step_index(current_step_id)

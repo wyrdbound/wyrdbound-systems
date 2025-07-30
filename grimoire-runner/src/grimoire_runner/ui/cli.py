@@ -100,10 +100,35 @@ def execute(
     flow: str = typer.Option(..., "--flow", "-f", help="Flow ID to execute"),
     output: Optional[Path] = typer.Option(None, "--output", "-o", help="Save results to file"),
     verbose: bool = typer.Option(False, "--verbose", "-v", help="Enable verbose output"),
-    interactive: bool = typer.Option(False, "--interactive", "-i", help="Enable interactive mode for user choices"),
-    no_progress: bool = typer.Option(False, "--no-progress", help="Disable step-by-step progress display")
+    interactive: bool = typer.Option(True, "--interactive/--no-interactive", "-i", help="Enable interactive mode for user choices"),
+    use_textual: bool = typer.Option(True, "--textual/--no-textual", help="Use Textual interface (default) or fallback to Rich console"),
+    no_progress: bool = typer.Option(False, "--no-progress", help="Disable step-by-step progress display (Rich mode only)")
 ):
     """Execute a complete flow with enhanced visual output."""
+    if verbose:
+        logging.basicConfig(level=logging.DEBUG)
+    else:
+        logging.basicConfig(level=logging.INFO)
+
+    # Use Textual interface by default
+    if use_textual:
+        try:
+            from .simple_textual import run_simple_textual_executor
+            run_simple_textual_executor(system_path, flow)
+            return
+        except ImportError as e:
+            console.print(f"[yellow]Textual interface not available: {e}[/yellow]")
+            console.print("[yellow]Falling back to Rich console interface...[/yellow]")
+        except Exception as e:
+            console.print(f"[red]Textual interface error: {e}[/red]")
+            console.print("[yellow]Falling back to Rich console interface...[/yellow]")
+
+    # Fallback to Rich console interface
+    _execute_with_rich_console(system_path, flow, output, verbose, interactive, no_progress)
+
+
+def _execute_with_rich_console(system_path: Path, flow: str, output: Optional[Path], verbose: bool, interactive: bool, no_progress: bool):
+    """Execute flow using the Rich console interface (original implementation)."""
     if verbose:
         logging.basicConfig(level=logging.DEBUG)
     else:
@@ -137,10 +162,21 @@ def execute(
             raise typer.Exit(1)
 
         # Display system and flow information
+        # Create a temporary context to resolve templates in flow description
+        temp_context = engine.create_execution_context()
+        temp_context.system_metadata = {
+            'id': system.id,
+            'name': system.name,
+            'description': system.description,
+            'version': system.version,
+            'currency': getattr(system, 'currency', {}),
+            'credits': getattr(system, 'credits', {})
+        }
+        
         info_table = Table(show_header=False, box=None, padding=(0, 2))
         info_table.add_row("[bold]System:[/bold]", system.name)
         info_table.add_row("[bold]Flow:[/bold]", flow_obj.name)
-        info_table.add_row("[bold]Description:[/bold]", flow_obj.description or "[dim]No description[/dim]")
+        info_table.add_row("[bold]Description:[/bold]", flow_obj.resolve_description(temp_context) or "[dim]No description[/dim]")
         info_table.add_row("[bold]Steps:[/bold]", str(len(flow_obj.steps)))
         
         console.print(Panel(info_table, title="Execution Details", border_style="blue"))
@@ -246,8 +282,28 @@ def _execute_flow_with_progress(engine, flow_id, context, system, interactive_mo
     # Create a FlowResult-like object
     from ..models.flow import FlowResult
     
-    # Check if all steps completed successfully
-    success = all(sr.success for sr in step_results) and current_step_num >= total_steps
+    # Determine success and error conditions
+    all_completed_steps_successful = all(sr.success for sr in step_results)
+    completed_all_steps = current_step_num >= total_steps
+    
+    # Check if we stopped due to user input requirement
+    stopped_for_input = (step_results and 
+                        step_results[-1].success and 
+                        step_results[-1].requires_input and 
+                        not interactive_mode)
+    
+    # Success if either all steps completed successfully OR we stopped for user input
+    success = all_completed_steps_successful and (completed_all_steps or stopped_for_input)
+    
+    # Error message
+    error = None
+    if not success:
+        if not all_completed_steps_successful:
+            # Find the first failed step
+            failed_step = next((sr for sr in step_results if not sr.success), None)
+            error = failed_step.error if failed_step else "Step execution failed"
+        elif not completed_all_steps and not stopped_for_input:
+            error = f"Flow incomplete: {current_step_num}/{total_steps} steps completed"
     
     # Extract outputs
     outputs = {}
@@ -262,7 +318,7 @@ def _execute_flow_with_progress(engine, flow_id, context, system, interactive_mo
         outputs=outputs,
         variables=context.variables.copy(),
         step_results=step_results,
-        error=step_results[-1].error if step_results and not step_results[-1].success else None,
+        error=error,
         completed_at_step=step_results[-1].step_id if step_results and not step_results[-1].success else None
     )
 
@@ -411,18 +467,29 @@ def _display_success_results(result, system, flow_obj):
         console.print()
         
         for output_id, output_value in result.outputs.items():
-            # Try to format the output nicely
-            if isinstance(output_value, dict):
-                # Create a tree view for complex objects
-                tree = Tree(f"[bold]{output_id}[/bold]")
-                _add_dict_to_tree(tree, output_value)
-                console.print(Panel(tree, border_style="cyan"))
-            else:
-                # Simple value display
+            # Debug the output value type
+            try:
+                # Try to format the output nicely
+                if isinstance(output_value, dict):
+                    # Create a tree view for complex objects
+                    tree = Tree(f"[bold]{output_id}[/bold]")
+                    _add_dict_to_tree(tree, output_value)
+                    console.print(Panel(tree, border_style="cyan"))
+                else:
+                    # Simple value display
+                    console.print(Panel(
+                        str(output_value),
+                        title=f"[bold]{output_id}[/bold]",
+                        border_style="cyan"
+                    ))
+            except Exception as e:
+                # Fallback display for problematic outputs
                 console.print(Panel(
-                    str(output_value),
-                    title=f"[bold]{output_id}[/bold]",
-                    border_style="cyan"
+                    f"[red]Error displaying output: {str(e)}[/red]\n"
+                    f"Output type: {type(output_value)}\n"
+                    f"Output repr: {repr(output_value)}",
+                    title=f"[bold]{output_id}[/bold] [red](Error)[/red]",
+                    border_style="red"
                 ))
             console.print()
     else:
@@ -430,22 +497,26 @@ def _display_success_results(result, system, flow_obj):
         console.print()
     
     # Show step details if there were any interesting results
-    interesting_steps = [sr for sr in result.step_results if sr.data and sr.data != {}]
-    if interesting_steps:
+    if result.step_results:
         console.print("[bold cyan]Step Details:[/bold cyan]")
         step_table = Table(show_header=True, header_style="bold cyan")
         step_table.add_column("Step", style="yellow")
         step_table.add_column("Result", style="green")
         step_table.add_column("Details", style="dim")
         
-        for sr in interesting_steps[:5]:  # Show first 5 interesting steps
+        for sr in result.step_results:
+            if sr.success:
+                result_status = "[green]✓ Success[/green]"
+            else:
+                result_status = "[red]✗ Failed[/red]"
+            
             details = ""
             if sr.data:
                 details = ", ".join([f"{k}: {v}" for k, v in sr.data.items() if k not in ['skipped']])
             
             step_table.add_row(
                 sr.step_id,
-                "✓ Success" if sr.success else "✗ Failed",
+                result_status,
                 details[:50] + "..." if len(details) > 50 else details
             )
         
@@ -471,22 +542,24 @@ def _display_failure_results(result):
     console.print(Panel(error_table, title="Error Details", border_style="red"))
     console.print()
     
-    # Show last few steps for debugging
+    # Show all executed steps
     if result.step_results:
-        console.print("[bold red]Recent Steps:[/bold red]")
-        recent_steps = result.step_results[-3:]  # Last 3 steps
+        console.print("[bold cyan]Executed Steps:[/bold cyan]")
         
-        step_table = Table(show_header=True, header_style="bold red")
+        step_table = Table(show_header=True, header_style="bold cyan")
         step_table.add_column("Step", style="yellow")
-        step_table.add_column("Status", style="red")
+        step_table.add_column("Status", style="green")
         step_table.add_column("Error", style="dim")
         
-        for sr in recent_steps:
-            status = "✓ Success" if sr.success else "✗ Failed"
+        for sr in result.step_results:
+            if sr.success:
+                status = "[green]✓ Success[/green]"
+            else:
+                status = "[red]✗ Failed[/red]"
             error = sr.error or ""
             step_table.add_row(sr.step_id, status, error[:50] + "..." if len(error) > 50 else error)
         
-        console.print(Panel(step_table, title="Recent Steps", border_style="red"))
+        console.print(Panel(step_table, title="Execution Steps", border_style="cyan"))
 
 
 def _save_results_to_file(result, output_path):
@@ -535,21 +608,32 @@ def _add_dict_to_tree(tree, data, max_depth=3, current_depth=0):
         return
     
     for key, value in data.items():
-        if isinstance(value, dict):
-            branch = tree.add(f"[bold]{key}[/bold]")
-            _add_dict_to_tree(branch, value, max_depth, current_depth + 1)
-        elif isinstance(value, list):
-            branch = tree.add(f"[bold]{key}[/bold] [dim](list)[/dim]")
-            for i, item in enumerate(value[:5]):  # Show first 5 items
-                if isinstance(item, dict):
-                    item_branch = branch.add(f"[dim]{i}:[/dim]")
-                    _add_dict_to_tree(item_branch, item, max_depth, current_depth + 2)
-                else:
-                    branch.add(f"[dim]{i}:[/dim] {str(item)}")
-            if len(value) > 5:
-                branch.add(f"[dim]... and {len(value) - 5} more items[/dim]")
-        else:
-            tree.add(f"[bold]{key}:[/bold] {str(value)}")
+        try:
+            # Use duck typing instead of isinstance to avoid type checking issues
+            if hasattr(value, 'items'):  # Dictionary-like
+                branch = tree.add(f"[bold]{key}[/bold]")
+                _add_dict_to_tree(branch, value, max_depth, current_depth + 1)
+            elif hasattr(value, '__iter__') and not isinstance(value, str):  # List-like but not string
+                branch = tree.add(f"[bold]{key}[/bold] [dim](list)[/dim]")
+                try:
+                    items = list(value)[:5]  # Convert to list and take first 5
+                    for i, item in enumerate(items):
+                        try:
+                            if hasattr(item, 'items'):  # Dictionary-like
+                                item_branch = branch.add(f"[dim]{i}:[/dim]")
+                                _add_dict_to_tree(item_branch, item, max_depth, current_depth + 2)
+                            else:
+                                branch.add(f"[dim]{i}:[/dim] {str(item)}")
+                        except Exception as e:
+                            branch.add(f"[dim]{i}:[/dim] [red]Error: {str(e)}[/red]")
+                    if len(items) > 5:
+                        branch.add(f"[dim]... and {len(items) - 5} more items[/dim]")
+                except Exception as e:
+                    branch.add(f"[red]Error iterating: {str(e)}[/red]")
+            else:
+                tree.add(f"[bold]{key}:[/bold] {str(value)}")
+        except Exception as e:
+            tree.add(f"[bold]{key}:[/bold] [red]Error: {str(e)}[/red]")
 
 
 @app.command()

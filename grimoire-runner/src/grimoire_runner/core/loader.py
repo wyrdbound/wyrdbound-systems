@@ -222,8 +222,8 @@ class SystemLoader:
                     data = yaml.safe_load(f)
                 
                 table = TableDefinition(**data)
-                system.tables[table.name] = table
-                logger.debug(f"Loaded table: {table.name} ({len(table.entries)} entries)")
+                system.tables[table.id] = table
+                logger.debug(f"Loaded table: {table.name} (ID: {table.id}) ({len(table.entries)} entries)")
                 
             except Exception as e:
                 logger.error(f"Failed to load table {table_file}: {e}")

@@ -83,6 +83,16 @@ class GrimoireEngine:
         
         logger.info(f"Executing flow: {flow.name} ({flow_id})")
         
+        # Set system metadata in context for templating
+        context.system_metadata = {
+            'id': system.id,
+            'name': system.name,
+            'description': system.description,
+            'version': system.version,
+            'currency': getattr(system, 'currency', {}),
+            'credits': getattr(system, 'credits', {})
+        }
+        
         # Initialize flow variables
         for var_name, var_value in flow.variables.items():
             context.set_variable(var_name, var_value)
@@ -178,6 +188,16 @@ class GrimoireEngine:
         flow = system.get_flow(flow_id)
         if not flow:
             raise ValueError(f"Flow '{flow_id}' not found in system")
+        
+        # Set system metadata in context for templating
+        context.system_metadata = {
+            'id': system.id,
+            'name': system.name,
+            'description': system.description,
+            'version': system.version,
+            'currency': getattr(system, 'currency', {}),
+            'credits': getattr(system, 'credits', {})
+        }
         
         # Initialize flow variables
         for var_name, var_value in flow.variables.items():
