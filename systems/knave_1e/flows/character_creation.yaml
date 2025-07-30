@@ -101,21 +101,21 @@ steps:
     prompt: "Rolling for your starting equipment..."
     parallel: true
     tables:
-      - table: "knave_armor_table"
+      - table: "armor"
         actions:
           - flow_call:
               flow: "add_item_to_character"
               inputs:
                 character_path: "outputs.knave"
                 item: "{{ result }}"
-      - table: "knave_helmet_shield_table"
+      - table: "helmets_and_shields"
         actions:
           - flow_call:
               flow: "add_item_to_character"
               inputs:
                 character_path: "outputs.knave"
                 item: "{{ result }}"
-      - table: "knave_dungeoneering_gear"
+      - table: "dungeoneering_gear"
         count: 2
         actions:
           - flow_call:
@@ -123,14 +123,14 @@ steps:
               inputs:
                 character_path: "outputs.knave"
                 items: "{{ results }}"
-      - table: "knave_general_gear_1"
+      - table: "general_gear_1"
         actions:
           - flow_call:
               flow: "add_item_to_character"
               inputs:
                 character_path: "outputs.knave"
                 item: "{{ result }}"
-      - table: "knave_general_gear_2"
+      - table: "general_gear_2"
         actions:
           - flow_call:
               flow: "add_item_to_character"

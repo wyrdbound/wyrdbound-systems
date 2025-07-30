@@ -221,7 +221,10 @@ def _execute_flow_with_progress(engine, flow_id, context, system, interactive_mo
                 # Handle user input if needed and interactive mode is enabled
                 if step_result.requires_input and interactive_mode:
                     progress.stop()
-                    _handle_interactive_choice(step_result, context, engine, step)
+                    choice_result = _handle_interactive_choice(step_result, context, engine, step)
+                    # Update step_result with the choice result's next_step_id if available
+                    if choice_result and choice_result.next_step_id:
+                        step_result.next_step_id = choice_result.next_step_id
                     progress.start()
                 elif step_result.requires_input and not interactive_mode:
                     # In non-interactive mode, show what input was needed
@@ -336,6 +339,8 @@ def _handle_interactive_choice(step_result, context, engine, step):
                 if step.actions:
                     for action in step.actions:
                         engine._execute_single_action(action, context, {'selected_items': selected_ids})
+                
+                return None  # Multiple selections don't override next_step
             
             except Exception as e:
                 console.print(f"[red]Error during selection: {e}[/red]")
@@ -343,6 +348,7 @@ def _handle_interactive_choice(step_result, context, engine, step):
                 # Fall back to empty selection
                 context.set_variable('selected_items', [])
                 context.set_variable('user_choices', [])
+                return None
         
         else:
             # Single selection (original logic)
@@ -367,7 +373,7 @@ def _handle_interactive_choice(step_result, context, engine, step):
                         choice_executor = ChoiceExecutor()
                         choice_result = choice_executor.process_choice(selected_choice.id, step, context)
                         console.print(f"[green]✓ Selected: {selected_choice.label}[/green]")
-                        break
+                        return choice_result  # Return the choice result
                     else:
                         console.print("[red]Invalid choice number. Please try again.[/red]")
                 except (ValueError, typer.Abort):
@@ -378,6 +384,7 @@ def _handle_interactive_choice(step_result, context, engine, step):
         context.set_variable('user_input', user_input)
     
     console.print()
+    return None  # Return None if no choice was made
 
 
 def _display_success_results(result, system, flow_obj):
