@@ -30,9 +30,12 @@ class ChoiceExecutor(BaseStepExecutor):
             
             # Resolve choice source if specified
             choices = step.choices
+            selection_count = 1  # Default to single selection
             if step.choice_source:
-                # TODO: Load choices from compendium or table
-                logger.warning(f"Choice source '{step.choice_source}' not yet implemented")
+                choices = self._generate_choices_from_source(step.choice_source, context, system)
+                # Extract selection count from choice source
+                if isinstance(step.choice_source, dict):
+                    selection_count = step.choice_source.get('selection_count', 1)
             
             # Resolve template strings in choices
             resolved_choices = []
@@ -54,6 +57,7 @@ class ChoiceExecutor(BaseStepExecutor):
                 choices=resolved_choices,
                 data={
                     'choice_count': len(resolved_choices),
+                    'selection_count': selection_count,
                     'has_choice_source': bool(step.choice_source)
                 }
             )
@@ -86,6 +90,95 @@ class ChoiceExecutor(BaseStepExecutor):
                 
             except Exception as e:
                 logger.error(f"Error executing pre-action {action}: {e}")
+    
+    def _generate_choices_from_source(self, choice_source, context: "ExecutionContext", system: "System"):
+        """Generate choices from a choice source specification."""
+        try:
+            if isinstance(choice_source, dict):
+                if 'table_from_values' in choice_source:
+                    # Generate choices from a values table like abilities
+                    path = choice_source['table_from_values']
+                    selection_count = choice_source.get('selection_count', 1)
+                    display_format = choice_source.get('display_format', '{{ key }}: {{ value }}')
+                    
+                    # Get the data from context
+                    data = context.resolve_path_value(path)
+                    if isinstance(data, dict):
+                        from ..models.flow import ChoiceDefinition
+                        choices = []
+                        
+                        for key, value in data.items():
+                            # Create template context for formatting
+                            template_context = {
+                                'variables': context.variables,
+                                'outputs': context.outputs,
+                                'inputs': context.inputs,
+                                'key': key, 
+                                'value': value,
+                                **context.variables,
+                                **context.outputs
+                            }
+                            
+                            # Use Jinja2 directly for more control
+                            from jinja2 import Template
+                            template = Template(display_format)
+                            label = template.render(template_context)
+                            
+                            choice = ChoiceDefinition(
+                                id=key,
+                                label=label,
+                                actions=[{
+                                    'set_value': {
+                                        'path': f'variables.selected_{path.split(".")[-1]}',
+                                        'value': key
+                                    }
+                                }]
+                            )
+                            choices.append(choice)
+                        
+                        logger.info(f"Generated {len(choices)} choices from {path}")
+                        return choices
+                    else:
+                        logger.warning(f"Data at path {path} is not a dict: {type(data)}")
+                        return []
+                
+                elif 'compendium' in choice_source:
+                    # Generate choices from compendium entries
+                    comp_name = choice_source['compendium']
+                    comp = system.get_compendium(comp_name)
+                    if comp:
+                        from ..models.flow import ChoiceDefinition
+                        choices = []
+                        
+                        for entry_id, entry_data in comp.entries.items():
+                            choice = ChoiceDefinition(
+                                id=entry_id,
+                                label=entry_data.get('name', entry_id),
+                                actions=[{
+                                    'set_value': {
+                                        'path': 'variables.selected_item',
+                                        'value': entry_id
+                                    }
+                                }]
+                            )
+                            choices.append(choice)
+                        
+                        logger.info(f"Generated {len(choices)} choices from compendium {comp_name}")
+                        return choices
+                    else:
+                        logger.warning(f"Compendium {comp_name} not found")
+                        return []
+                
+                else:
+                    logger.warning(f"Unknown choice source format: {choice_source}")
+                    return []
+            else:
+                logger.warning(f"Choice source must be a dict, got: {type(choice_source)}")
+                return []
+                
+        except Exception as e:
+            logger.error(f"Error generating choices from source {choice_source}: {e}")
+            return []
     
     def process_choice(self, choice_id: str, step: "StepDefinition", context: "ExecutionContext") -> "StepResult":
         """Process a user's choice selection."""

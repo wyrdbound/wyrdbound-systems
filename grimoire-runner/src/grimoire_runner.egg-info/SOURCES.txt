@@ -27,6 +27,7 @@ src/grimoire_runner/models/compendium.py
 src/grimoire_runner/models/context_data.py
 src/grimoire_runner/models/flow.py
 src/grimoire_runner/models/model.py
+src/grimoire_runner/models/observable.py
 src/grimoire_runner/models/source.py
 src/grimoire_runner/models/step.py
 src/grimoire_runner/models/system.py

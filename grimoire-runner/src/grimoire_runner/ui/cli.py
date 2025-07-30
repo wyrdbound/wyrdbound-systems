@@ -7,7 +7,16 @@ from typing import Optional, List
 from rich.console import Console
 from rich.table import Table
 from rich.panel import Panel
-from rich.progress import Progress, SpinnerColumn, TextColumn
+from rich.progress import Progress, SpinnerColumn, TextColumn, BarColumn, TimeElapsedColumn
+from rich.layout import Layout
+from rich.columns import Columns
+from rich.text import Text
+from rich.tree import Tree
+from rich.live import Live
+from rich.align import Align
+from rich.markup import escape
+import json
+import time
 
 from ..core.engine import GrimoireEngine
 from ..models.context_data import ExecutionContext
@@ -90,79 +99,450 @@ def execute(
     system_path: Path = typer.Argument(..., help="Path to GRIMOIRE system directory"),
     flow: str = typer.Option(..., "--flow", "-f", help="Flow ID to execute"),
     output: Optional[Path] = typer.Option(None, "--output", "-o", help="Save results to file"),
-    verbose: bool = typer.Option(False, "--verbose", "-v", help="Enable verbose output")
+    verbose: bool = typer.Option(False, "--verbose", "-v", help="Enable verbose output"),
+    interactive: bool = typer.Option(False, "--interactive", "-i", help="Enable interactive mode for user choices"),
+    no_progress: bool = typer.Option(False, "--no-progress", help="Disable step-by-step progress display")
 ):
-    """Execute a complete flow."""
+    """Execute a complete flow with enhanced visual output."""
     if verbose:
         logging.basicConfig(level=logging.DEBUG)
     else:
         logging.basicConfig(level=logging.INFO)
 
     try:
-        # Load system
-        console.print(f"[bold blue]Loading system:[/bold blue] {system_path}")
-        system = engine.load_system(system_path)
+        # Create a nice header
+        console.print()
+        console.print(Panel.fit(
+            f"[bold cyan]GRIMOIRE Flow Execution[/bold cyan]\n"
+            f"[dim]System: {system_path}[/dim]\n"
+            f"[dim]Flow: {flow}[/dim]",
+            border_style="cyan"
+        ))
+        console.print()
+
+        # Load system with spinner
+        with console.status("[bold blue]Loading system...", spinner="dots"):
+            system = engine.load_system(system_path)
         
-        # Check if flow exists
-        if not system.get_flow(flow):
-            console.print(f"[bold red]Error:[/bold red] Flow '{flow}' not found")
-            available_flows = system.list_flows()
-            if available_flows:
-                console.print(f"Available flows: {', '.join(available_flows)}")
+        # System info panel
+        flow_obj = system.get_flow(flow)
+        if not flow_obj:
+            console.print(Panel(
+                f"[bold red]Flow '{flow}' not found[/bold red]\n\n"
+                f"Available flows:\n" + 
+                "\n".join([f"  • {f}" for f in system.list_flows()]),
+                title="Error",
+                border_style="red"
+            ))
             raise typer.Exit(1)
+
+        # Display system and flow information
+        info_table = Table(show_header=False, box=None, padding=(0, 2))
+        info_table.add_row("[bold]System:[/bold]", system.name)
+        info_table.add_row("[bold]Flow:[/bold]", flow_obj.name)
+        info_table.add_row("[bold]Description:[/bold]", flow_obj.description or "[dim]No description[/dim]")
+        info_table.add_row("[bold]Steps:[/bold]", str(len(flow_obj.steps)))
         
-        # Execute flow
-        console.print(f"[bold blue]Executing flow:[/bold blue] {flow}")
+        console.print(Panel(info_table, title="Execution Details", border_style="blue"))
+        console.print()
+
+        # Execute flow with enhanced progress
         context = engine.create_execution_context()
         
-        with Progress(
-            SpinnerColumn(),
-            TextColumn("[progress.description]{task.description}"),
-            console=console,
-            transient=True
-        ) as progress:
-            task = progress.add_task("Executing flow...", total=None)
-            result = engine.execute_flow(flow, context, system)
+        if no_progress:
+            # Simple execution without step tracking
+            with console.status("[bold green]Executing flow...", spinner="aesthetic"):
+                result = engine.execute_flow(flow, context, system)
+        else:
+            # Step-by-step execution with visual progress
+            result = _execute_flow_with_progress(engine, flow, context, system, interactive)
         
-        # Display results
+        console.print()
+        
+        # Display results with enhanced formatting
         if result.success:
-            console.print(f"[bold green]✓ Flow execution completed[/bold green]")
-            
-            # Show outputs
-            if result.outputs:
-                console.print("\n[bold]Outputs:[/bold]")
-                for output_id, output_value in result.outputs.items():
-                    console.print(Panel(
-                        str(output_value),
-                        title=output_id,
-                        border_style="green"
-                    ))
-            
-            # Show step summary
-            console.print(f"\n[dim]Steps executed: {len(result.step_results)}[/dim]")
+            _display_success_results(result, system, flow_obj)
             
             # Save to file if requested
             if output:
-                import json
-                output_data = {
-                    'flow_id': result.flow_id,
-                    'success': result.success,
-                    'outputs': result.outputs,
-                    'variables': result.variables
-                }
-                with open(output, 'w') as f:
-                    json.dump(output_data, f, indent=2, default=str)
-                console.print(f"[dim]Results saved to: {output}[/dim]")
+                _save_results_to_file(result, output)
+                
         else:
-            console.print(f"[bold red]✗ Flow execution failed[/bold red]")
-            console.print(f"Error: {result.error}")
-            if result.completed_at_step:
-                console.print(f"Failed at step: {result.completed_at_step}")
+            _display_failure_results(result)
             raise typer.Exit(1)
             
     except Exception as e:
-        console.print(f"[bold red]Error:[/bold red] {e}")
+        console.print()
+        console.print(Panel(
+            f"[bold red]Execution Error[/bold red]\n\n{str(e)}",
+            border_style="red"
+        ))
+        if verbose:
+            console.print_exception()
         raise typer.Exit(1)
+
+
+def _execute_flow_with_progress(engine, flow_id, context, system, interactive_mode=False):
+    """Execute a flow with step-by-step progress visualization."""
+    flow_obj = system.get_flow(flow_id)
+    total_steps = len(flow_obj.steps)
+    
+    # Create progress tracking
+    progress = Progress(
+        SpinnerColumn(),
+        TextColumn("[progress.description]{task.description}"),
+        BarColumn(),
+        TextColumn("[progress.percentage]{task.percentage:>3.0f}%"),
+        TimeElapsedColumn(),
+        console=console
+    )
+    
+    step_results = []
+    current_step_num = 0
+    
+    with progress:
+        task = progress.add_task("Initializing...", total=total_steps)
+        
+        try:
+            # Use step-through execution for better control
+            for step_result in engine.step_through_flow(flow_id, context, system):
+                current_step_num += 1
+                step = flow_obj.get_step(step_result.step_id)
+                step_name = step.name if step else step_result.step_id
+                
+                # Update progress
+                progress.update(task, 
+                    description=f"[bold]Step {current_step_num}/{total_steps}:[/bold] {step_name}",
+                    completed=current_step_num
+                )
+                
+                step_results.append(step_result)
+                
+                # Handle user input if needed and interactive mode is enabled
+                if step_result.requires_input and interactive_mode:
+                    progress.stop()
+                    _handle_interactive_choice(step_result, context, engine, step)
+                    progress.start()
+                elif step_result.requires_input and not interactive_mode:
+                    # In non-interactive mode, show what input was needed
+                    console.print(f"[yellow]⚠ Step '{step_name}' requires user input (skipped in non-interactive mode)[/yellow]")
+                    break
+                
+                if not step_result.success:
+                    break
+                    
+                # Small delay for visual effect (can be removed for production)
+                time.sleep(0.1)
+            
+            progress.update(task, description="[bold green]Flow completed![/bold green]", completed=total_steps)
+            
+        except Exception as e:
+            progress.update(task, description=f"[bold red]Error: {str(e)}[/bold red]")
+            raise
+    
+    # Create a FlowResult-like object
+    from ..models.flow import FlowResult
+    
+    # Check if all steps completed successfully
+    success = all(sr.success for sr in step_results) and current_step_num >= total_steps
+    
+    # Extract outputs
+    outputs = {}
+    for output_def in flow_obj.outputs:
+        output_value = context.get_output(output_def.id)
+        if output_value is not None:
+            outputs[output_def.id] = output_value
+    
+    return FlowResult(
+        flow_id=flow_id,
+        success=success,
+        outputs=outputs,
+        variables=context.variables.copy(),
+        step_results=step_results,
+        error=step_results[-1].error if step_results and not step_results[-1].success else None,
+        completed_at_step=step_results[-1].step_id if step_results and not step_results[-1].success else None
+    )
+
+
+def _handle_interactive_choice(step_result, context, engine, step):
+    """Handle interactive user choice in execute mode."""
+    console.print()
+    console.print(Panel(
+        f"[bold yellow]User Input Required[/bold yellow]\n\n"
+        f"{step_result.prompt or 'Please make a choice:'}",
+        border_style="yellow"
+    ))
+    
+    if step_result.choices:
+        # Check if we need multiple selections
+        selection_count = step_result.data.get('selection_count', 1)
+        
+        if selection_count > 1:
+            # Multiple selections with separate prompts
+            selected_choices = []
+            selected_ids = []
+            available_choices = step_result.choices.copy()  # Make a copy
+            
+            try:
+                for selection_num in range(selection_count):
+                    console.print(f"\n[bold cyan]Selection {selection_num + 1} of {selection_count}:[/bold cyan]")
+                    
+                    # Show remaining choices
+                    choice_table = Table(show_header=True, header_style="bold magenta")
+                    choice_table.add_column("Option", style="cyan")
+                    choice_table.add_column("Description")
+                    
+                    for i, choice in enumerate(available_choices, 1):
+                        choice_table.add_row(str(i), choice.label or choice.id)
+                    
+                    console.print(choice_table)
+                    
+                    # Show previously selected items
+                    if selected_choices:
+                        console.print(f"\n[dim]Already selected: {', '.join(c.label for c in selected_choices)}[/dim]")
+                    
+                    console.print()
+                    
+                    while True:
+                        try:
+                            user_input = typer.prompt(f"Enter choice number for selection {selection_num + 1}")
+                            choice_num = int(user_input) - 1
+                            
+                            if 0 <= choice_num < len(available_choices):
+                                selected_choice = available_choices[choice_num]
+                                selected_choices.append(selected_choice)
+                                selected_ids.append(selected_choice.id)
+                                
+                                console.print(f"[green]✓ Selected: {selected_choice.label}[/green]")
+                                
+                                # Remove the selected choice from available choices
+                                available_choices.remove(selected_choice)
+                                break
+                            else:
+                                console.print("[red]Invalid choice number. Please try again.[/red]")
+                        except (ValueError, typer.Abort):
+                            console.print("[red]Please enter a valid number.[/red]")
+                
+                # Show final selection summary
+                console.print(f"\n[bold green]Final Selections:[/bold green]")
+                for i, choice in enumerate(selected_choices, 1):
+                    console.print(f"  {i}. {choice.label}")
+                
+                # Store the multiple selections in context
+                context.set_variable('selected_items', selected_ids)
+                context.set_variable('user_choices', selected_ids)  # Alternative name
+                
+                # Now execute the step's actions with the user selections
+                if step.actions:
+                    for action in step.actions:
+                        engine._execute_single_action(action, context, {'selected_items': selected_ids})
+            
+            except Exception as e:
+                console.print(f"[red]Error during selection: {e}[/red]")
+                console.print("[yellow]Continuing with default behavior...[/yellow]")
+                # Fall back to empty selection
+                context.set_variable('selected_items', [])
+                context.set_variable('user_choices', [])
+        
+        else:
+            # Single selection (original logic)
+            choice_table = Table(show_header=True, header_style="bold magenta")
+            choice_table.add_column("Option", style="cyan")
+            choice_table.add_column("Description")
+            
+            for i, choice in enumerate(step_result.choices, 1):
+                choice_table.add_row(str(i), choice.label or choice.id)
+            
+            console.print(choice_table)
+            console.print()
+            
+            while True:
+                try:
+                    user_input = typer.prompt("Enter your choice number")
+                    choice_num = int(user_input) - 1
+                    if 0 <= choice_num < len(step_result.choices):
+                        selected_choice = step_result.choices[choice_num]
+                        # Process the choice using the executor
+                        from ..executors.choice_executor import ChoiceExecutor
+                        choice_executor = ChoiceExecutor()
+                        choice_result = choice_executor.process_choice(selected_choice.id, step, context)
+                        console.print(f"[green]✓ Selected: {selected_choice.label}[/green]")
+                        break
+                    else:
+                        console.print("[red]Invalid choice number. Please try again.[/red]")
+                except (ValueError, typer.Abort):
+                    console.print("[red]Please enter a valid number.[/red]")
+    else:
+        # Simple text input
+        user_input = typer.prompt("Enter your input")
+        context.set_variable('user_input', user_input)
+    
+    console.print()
+
+
+def _display_success_results(result, system, flow_obj):
+    """Display successful execution results with enhanced formatting."""
+    # Success header
+    console.print(Panel.fit(
+        "[bold green]✓ Flow Execution Completed Successfully![/bold green]",
+        border_style="green"
+    ))
+    console.print()
+    
+    # Execution summary
+    summary_table = Table(show_header=False, box=None, padding=(0, 2))
+    summary_table.add_row("[bold]Flow:[/bold]", flow_obj.name)
+    summary_table.add_row("[bold]Steps Executed:[/bold]", str(len(result.step_results)))
+    summary_table.add_row("[bold]Success Rate:[/bold]", f"{sum(1 for sr in result.step_results if sr.success)}/{len(result.step_results)}")
+    
+    console.print(Panel(summary_table, title="Execution Summary", border_style="green"))
+    console.print()
+    
+    # Display outputs with better formatting
+    if result.outputs:
+        console.print("[bold cyan]Generated Outputs:[/bold cyan]")
+        console.print()
+        
+        for output_id, output_value in result.outputs.items():
+            # Try to format the output nicely
+            if isinstance(output_value, dict):
+                # Create a tree view for complex objects
+                tree = Tree(f"[bold]{output_id}[/bold]")
+                _add_dict_to_tree(tree, output_value)
+                console.print(Panel(tree, border_style="cyan"))
+            else:
+                # Simple value display
+                console.print(Panel(
+                    str(output_value),
+                    title=f"[bold]{output_id}[/bold]",
+                    border_style="cyan"
+                ))
+            console.print()
+    else:
+        console.print("[dim]No outputs generated[/dim]")
+        console.print()
+    
+    # Show step details if there were any interesting results
+    interesting_steps = [sr for sr in result.step_results if sr.data and sr.data != {}]
+    if interesting_steps:
+        console.print("[bold cyan]Step Details:[/bold cyan]")
+        step_table = Table(show_header=True, header_style="bold cyan")
+        step_table.add_column("Step", style="yellow")
+        step_table.add_column("Result", style="green")
+        step_table.add_column("Details", style="dim")
+        
+        for sr in interesting_steps[:5]:  # Show first 5 interesting steps
+            details = ""
+            if sr.data:
+                details = ", ".join([f"{k}: {v}" for k, v in sr.data.items() if k not in ['skipped']])
+            
+            step_table.add_row(
+                sr.step_id,
+                "✓ Success" if sr.success else "✗ Failed",
+                details[:50] + "..." if len(details) > 50 else details
+            )
+        
+        console.print(Panel(step_table, title="Step Results", border_style="cyan"))
+        console.print()
+
+
+def _display_failure_results(result):
+    """Display failure results with enhanced formatting."""
+    console.print(Panel.fit(
+        "[bold red]✗ Flow Execution Failed[/bold red]",
+        border_style="red"
+    ))
+    console.print()
+    
+    # Error details
+    error_table = Table(show_header=False, box=None, padding=(0, 2))
+    error_table.add_row("[bold]Error:[/bold]", result.error or "Unknown error")
+    if result.completed_at_step:
+        error_table.add_row("[bold]Failed at step:[/bold]", result.completed_at_step)
+    error_table.add_row("[bold]Steps completed:[/bold]", f"{len(result.step_results)}")
+    
+    console.print(Panel(error_table, title="Error Details", border_style="red"))
+    console.print()
+    
+    # Show last few steps for debugging
+    if result.step_results:
+        console.print("[bold red]Recent Steps:[/bold red]")
+        recent_steps = result.step_results[-3:]  # Last 3 steps
+        
+        step_table = Table(show_header=True, header_style="bold red")
+        step_table.add_column("Step", style="yellow")
+        step_table.add_column("Status", style="red")
+        step_table.add_column("Error", style="dim")
+        
+        for sr in recent_steps:
+            status = "✓ Success" if sr.success else "✗ Failed"
+            error = sr.error or ""
+            step_table.add_row(sr.step_id, status, error[:50] + "..." if len(error) > 50 else error)
+        
+        console.print(Panel(step_table, title="Recent Steps", border_style="red"))
+
+
+def _save_results_to_file(result, output_path):
+    """Save results to file with enhanced data."""
+    try:
+        output_data = {
+            'flow_id': result.flow_id,
+            'success': result.success,
+            'timestamp': time.strftime('%Y-%m-%d %H:%M:%S'),
+            'outputs': result.outputs,
+            'variables': result.variables,
+            'step_results': [
+                {
+                    'step_id': sr.step_id,
+                    'success': sr.success,
+                    'error': sr.error,
+                    'data': sr.data
+                }
+                for sr in result.step_results
+            ],
+            'execution_summary': {
+                'total_steps': len(result.step_results),
+                'successful_steps': sum(1 for sr in result.step_results if sr.success),
+                'failed_steps': sum(1 for sr in result.step_results if not sr.success)
+            }
+        }
+        
+        with open(output_path, 'w') as f:
+            json.dump(output_data, f, indent=2, default=str)
+        
+        console.print(Panel.fit(
+            f"[bold green]Results saved to:[/bold green] {output_path}",
+            border_style="green"
+        ))
+    except Exception as e:
+        console.print(Panel.fit(
+            f"[bold red]Failed to save results:[/bold red] {str(e)}",
+            border_style="red"
+        ))
+
+
+def _add_dict_to_tree(tree, data, max_depth=3, current_depth=0):
+    """Recursively add dictionary data to a Rich tree."""
+    if current_depth >= max_depth:
+        tree.add("[dim]...[/dim]")
+        return
+    
+    for key, value in data.items():
+        if isinstance(value, dict):
+            branch = tree.add(f"[bold]{key}[/bold]")
+            _add_dict_to_tree(branch, value, max_depth, current_depth + 1)
+        elif isinstance(value, list):
+            branch = tree.add(f"[bold]{key}[/bold] [dim](list)[/dim]")
+            for i, item in enumerate(value[:5]):  # Show first 5 items
+                if isinstance(item, dict):
+                    item_branch = branch.add(f"[dim]{i}:[/dim]")
+                    _add_dict_to_tree(item_branch, item, max_depth, current_depth + 2)
+                else:
+                    branch.add(f"[dim]{i}:[/dim] {str(item)}")
+            if len(value) > 5:
+                branch.add(f"[dim]... and {len(value) - 5} more items[/dim]")
+        else:
+            tree.add(f"[bold]{key}:[/bold] {str(value)}")
 
 
 @app.command()

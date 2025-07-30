@@ -100,7 +100,7 @@ mypy src/
 ## Integration with Wyrdbound Packages
 
 - **wyrdbound-dice**: All dice rolling operations
-- **wyrdbound-rng**: Name generation during character creation  
+- **wyrdbound-rng**: Name generation during character creation
 - **LangChain**: LLM-powered content generation and rule interpretation
 
 ## Usage Examples

@@ -252,8 +252,9 @@ class GrimoireEngine:
         try:
             result = executor.execute(step, context, system)
             
-            # Execute post-step actions
-            if step.actions:
+            # Execute post-step actions, but skip for choice steps that require user input
+            # Those will be handled after user interaction
+            if step.actions and not (result.requires_input and step_type == 'player_choice'):
                 self._execute_actions(step.actions, context, result.data)
             
             return result
@@ -317,8 +318,41 @@ class GrimoireEngine:
             event_data = action_data.get('data', {})
             logger.info(f"Event: {event_type} - {event_data}")
         
+        elif action_type == 'swap_values':
+            # Swap values between two paths
+            path1 = action_data.get('path1', '')
+            path2 = action_data.get('path2', '')
+            
+            # Resolve templates in the paths
+            path1 = context.resolve_template(path1)
+            path2 = context.resolve_template(path2)
+            
+            try:
+                # Get values from both paths
+                value1 = context.resolve_path_value(path1)
+                value2 = context.resolve_path_value(path2)
+                
+                # Swap them
+                self._set_value_at_path(context, path1, value2)
+                self._set_value_at_path(context, path2, value1)
+                
+                logger.info(f"Swapped values: {path1} <-> {path2}")
+                
+            except Exception as e:
+                logger.error(f"Error swapping values between {path1} and {path2}: {e}")
+        
         else:
             logger.warning(f"Unknown action type: {action_type}")
+    
+    def _set_value_at_path(self, context: "ExecutionContext", path: str, value: Any) -> None:
+        """Set a value at a specific path in the context."""
+        if path.startswith('outputs.'):
+            context.set_output(path[8:], value)
+        elif path.startswith('variables.'):
+            context.set_variable(path[10:], value)
+        else:
+            # Default to outputs
+            context.set_output(path, value)
     
     def set_breakpoint(self, flow_id: str, step_id: str) -> None:
         """Set a breakpoint on a specific step."""
