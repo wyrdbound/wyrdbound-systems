@@ -1,0 +1,223 @@
+"""Execution context models for managing runtime state."""
+
+from dataclasses import dataclass, field
+from typing import Dict, List, Optional, Any, Union
+from datetime import datetime
+import json
+import copy
+from jinja2 import Template, Environment, StrictUndefined
+
+
+@dataclass
+class Checkpoint:
+    """A saved state checkpoint for rollback."""
+    id: str
+    timestamp: datetime
+    variables: Dict[str, Any]
+    outputs: Dict[str, Any]
+    current_step: Optional[str] = None
+
+
+@dataclass
+class ExecutionContext:
+    """Runtime execution context for flows."""
+    
+    # Core state
+    variables: Dict[str, Any] = field(default_factory=dict)
+    outputs: Dict[str, Any] = field(default_factory=dict)
+    inputs: Dict[str, Any] = field(default_factory=dict)
+    
+    # Execution tracking
+    current_step: Optional[str] = None
+    step_history: List[str] = field(default_factory=list)
+    checkpoints: Dict[str, Checkpoint] = field(default_factory=dict)
+    
+    # Template environment
+    _jinja_env: Environment = field(default_factory=lambda: Environment(undefined=StrictUndefined), init=False, repr=False)
+    
+    def __post_init__(self) -> None:
+        """Initialize the template environment with custom functions."""
+        self._jinja_env.globals.update({
+            'get_value': self.get_variable,
+            'has_value': self.has_variable,
+        })
+    
+    def set_variable(self, path: str, value: Any) -> None:
+        """Set a variable at the specified path."""
+        self._set_nested_value(self.variables, path, value)
+    
+    def get_variable(self, path: str, default: Any = None) -> Any:
+        """Get a variable at the specified path."""
+        try:
+            return self._get_nested_value(self.variables, path)
+        except (KeyError, TypeError):
+            return default
+    
+    def has_variable(self, path: str) -> bool:
+        """Check if a variable exists at the specified path."""
+        try:
+            self._get_nested_value(self.variables, path)
+            return True
+        except (KeyError, TypeError):
+            return False
+    
+    def set_output(self, path: str, value: Any) -> None:
+        """Set an output at the specified path."""
+        self._set_nested_value(self.outputs, path, value)
+    
+    def get_output(self, path: str, default: Any = None) -> Any:
+        """Get an output at the specified path."""
+        try:
+            return self._get_nested_value(self.outputs, path)
+        except (KeyError, TypeError):
+            return default
+    
+    def set_input(self, path: str, value: Any) -> None:
+        """Set an input at the specified path."""
+        self._set_nested_value(self.inputs, path, value)
+    
+    def get_input(self, path: str, default: Any = None) -> Any:
+        """Get an input at the specified path."""
+        try:
+            return self._get_nested_value(self.inputs, path)
+        except (KeyError, TypeError):
+            return default
+    
+    def resolve_template(self, template_str: str) -> Any:
+        """Resolve a Jinja2 template string with current context."""
+        if not isinstance(template_str, str):
+            return template_str
+            
+        # Skip if no template syntax
+        if '{{' not in template_str and '{%' not in template_str:
+            return template_str
+        
+        try:
+            template = self._jinja_env.from_string(template_str)
+            context = {
+                'variables': self.variables,
+                'outputs': self.outputs,
+                'inputs': self.inputs,
+                **self.variables  # Make variables available at top level too
+            }
+            result = template.render(context)
+            
+            # Try to parse as JSON if it looks like structured data
+            result = result.strip()
+            if result.startswith(('{', '[', '"')) or result in ('true', 'false', 'null') or result.isdigit():
+                try:
+                    return json.loads(result)
+                except json.JSONDecodeError:
+                    pass
+            
+            # Try to parse as number
+            try:
+                if '.' in result:
+                    return float(result)
+                else:
+                    return int(result)
+            except ValueError:
+                pass
+            
+            return result
+            
+        except Exception as e:
+            raise ValueError(f"Template resolution failed: {e}")
+    
+    def resolve_path_value(self, path: str) -> Any:
+        """Resolve a path that might reference variables, outputs, or inputs."""
+        if path.startswith('variables.'):
+            return self.get_variable(path[10:])  # Remove 'variables.' prefix
+        elif path.startswith('outputs.'):
+            return self.get_output(path[8:])  # Remove 'outputs.' prefix
+        elif path.startswith('inputs.'):
+            return self.get_input(path[7:])  # Remove 'inputs.' prefix
+        else:
+            # Try all contexts
+            for context_name, context in [
+                ('variables', self.variables),
+                ('outputs', self.outputs), 
+                ('inputs', self.inputs)
+            ]:
+                try:
+                    return self._get_nested_value(context, path)
+                except (KeyError, TypeError):
+                    continue
+            
+            raise KeyError(f"Path '{path}' not found in any context")
+    
+    def create_checkpoint(self, checkpoint_id: Optional[str] = None) -> str:
+        """Create a checkpoint for rollback."""
+        if checkpoint_id is None:
+            checkpoint_id = f"checkpoint_{len(self.checkpoints)}"
+        
+        checkpoint = Checkpoint(
+            id=checkpoint_id,
+            timestamp=datetime.now(),
+            variables=copy.deepcopy(self.variables),
+            outputs=copy.deepcopy(self.outputs),
+            current_step=self.current_step
+        )
+        
+        self.checkpoints[checkpoint_id] = checkpoint
+        return checkpoint_id
+    
+    def restore_checkpoint(self, checkpoint_id: str) -> None:
+        """Restore state from a checkpoint."""
+        if checkpoint_id not in self.checkpoints:
+            raise KeyError(f"Checkpoint '{checkpoint_id}' not found")
+        
+        checkpoint = self.checkpoints[checkpoint_id]
+        self.variables = copy.deepcopy(checkpoint.variables)
+        self.outputs = copy.deepcopy(checkpoint.outputs)
+        self.current_step = checkpoint.current_step
+    
+    def list_checkpoints(self) -> List[str]:
+        """Get a list of available checkpoint IDs."""
+        return list(self.checkpoints.keys())
+    
+    def get_state_snapshot(self) -> Dict[str, Any]:
+        """Get a complete snapshot of the current state."""
+        return {
+            'variables': copy.deepcopy(self.variables),
+            'outputs': copy.deepcopy(self.outputs),
+            'inputs': copy.deepcopy(self.inputs),
+            'current_step': self.current_step,
+            'step_history': self.step_history.copy(),
+            'timestamp': datetime.now().isoformat()
+        }
+    
+    def _get_nested_value(self, obj: Dict[str, Any], path: str) -> Any:
+        """Get a nested value by dot-separated path."""
+        if not path:
+            return obj
+            
+        parts = path.split('.')
+        current = obj
+        
+        for part in parts:
+            if isinstance(current, dict) and part in current:
+                current = current[part]
+            else:
+                raise KeyError(f"Path '{path}' not found")
+        
+        return current
+    
+    def _set_nested_value(self, obj: Dict[str, Any], path: str, value: Any) -> None:
+        """Set a nested value by dot-separated path, creating intermediate dicts as needed."""
+        if not path:
+            raise ValueError("Path cannot be empty")
+            
+        parts = path.split('.')
+        current = obj
+        
+        # Navigate to parent of target
+        for part in parts[:-1]:
+            if part not in current:
+                current[part] = {}
+            elif not isinstance(current[part], dict):
+                raise ValueError(f"Cannot set nested value: '{part}' is not a dict")
+            current = current[part]
+        
+        # Set the final value
+        current[parts[-1]] = value
