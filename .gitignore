@@ -5,3 +5,4 @@
 *.pyc
 wyrdbound_systems.egg-info/
 __pycache__/
+.venv
