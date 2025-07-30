@@ -1,0 +1,22 @@
+kind: compendium
+name: helmets_and_shields
+model: armor
+entries:
+  shield:
+    {
+      display_name: "Shield",
+      armor_bonus: 1,
+      cost: 40,
+      quality: 1,
+      tags: [shield],
+      description: "A round or rectangular shield of wood and metal. Actively deflects blows and can be used to bash enemies in close combat.",
+    }
+  helmet:
+    {
+      display_name: "Helmet",
+      armor_bonus: 1,
+      cost: 40,
+      quality: 1,
+      tags: [helmet],
+      description: "A metal helm that protects the head from blows. Essential protection against crushing attacks and falling debris.",
+    }

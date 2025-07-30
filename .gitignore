@@ -1,0 +1,7 @@
+# asdf version manager
+.tool-versions
+
+# Python stuff
+*.pyc
+wyrdbound_systems.egg-info/
+__pycache__/

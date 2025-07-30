@@ -1,0 +1,271 @@
+id: "character_creation"
+type: "flow"
+name: "Knave Creation"
+description: "Character creation process for {{ system.name }}"
+version: "1.0"
+
+inputs: []
+outputs:
+  - type: "character"
+    id: "knave"
+    validate: true
+
+variables:
+  hp_dice_roll: ""
+
+steps:
+  - id: "roll_abilities"
+    name: "Roll Abilities"
+    type: "dice_sequence"
+    prompt: "Roll 3d6 for each ability. The lowest die becomes your bonus."
+    sequence:
+      items:
+        [
+          "strength",
+          "dexterity",
+          "constitution",
+          "intelligence",
+          "wisdom",
+          "charisma",
+        ]
+      roll: "3d6kl1"
+      actions:
+        - set_value:
+            path: "outputs.knave.abilities.{{ item }}.bonus"
+            value: "{{ result }}"
+      display_as: "{{ item|title }}: {{ result }} (bonus +{{ result }}, defense {{ result + 10 }})"
+
+  - id: "ability_swap_choice"
+    name: "Optional Ability Swap"
+    type: "player_choice"
+    prompt: "You may optionally swap the scores of two abilities."
+    choices:
+      - id: "no_swap"
+        label: "Keep abilities as rolled"
+        next_step: "hit_points_choice"
+      - id: "swap_abilities"
+        label: "Swap two ability scores"
+        next_step: "swap_values_step"
+
+  - id: "swap_values_step"
+    name: "Choose Abilities to Swap"
+    type: "player_choice"
+    prompt: "Choose two abilities to swap:"
+    choice_source:
+      table_from_values: "outputs.knave.abilities"
+      selection_count: 2
+      display_format: "{{ key|title }}: +{{ value.bonus }}"
+    actions:
+      - swap_values:
+          path1: "outputs.knave.abilities.{{ selected_items[0] }}.bonus"
+          path2: "outputs.knave.abilities.{{ selected_items[1] }}.bonus"
+    next_step: "hit_points_choice"
+
+  - id: "hit_points_choice"
+    name: "Hit Points Rolling Method"
+    type: "player_choice"
+    prompt: "Choose how to roll your starting hit points:"
+    choices:
+      - id: "standard_roll"
+        label: "Standard roll (1d8)"
+        actions:
+          - set_value:
+              path: "variables.hp_dice_roll"
+              value: "1d8"
+        next_step: "roll_hit_points"
+      - id: "house_rule"
+        label: "House rule: reroll results below 5"
+        actions:
+          - set_value:
+              path: "variables.hp_dice_roll"
+              value: "1d8r<5"
+        next_step: "roll_hit_points"
+
+  - id: "roll_hit_points"
+    name: "Roll Hit Points"
+    type: "dice_roll"
+    prompt: "Rolling for hit points..."
+    roll: "{{ variables.hp_dice_roll }}"
+    actions:
+      - set_value:
+          path: "outputs.knave.hit_points.max"
+          value: "{{ result }}"
+      - set_value:
+          path: "outputs.knave.hit_points.current"
+          value: "{{ result }}"
+    next_step: "roll_starting_gear"
+
+  - id: "roll_starting_gear"
+    name: "Determine Starting Equipment"
+    type: "table_roll"
+    prompt: "Rolling for your starting equipment..."
+    parallel: true
+    tables:
+      - table: "knave_armor_table"
+        actions:
+          - flow_call:
+              flow: "add_item_to_character"
+              inputs:
+                character_path: "outputs.knave"
+                item: "{{ result }}"
+      - table: "knave_helmet_shield_table"
+        actions:
+          - flow_call:
+              flow: "add_item_to_character"
+              inputs:
+                character_path: "outputs.knave"
+                item: "{{ result }}"
+      - table: "knave_dungeoneering_gear"
+        count: 2
+        actions:
+          - flow_call:
+              flow: "add_items_to_character"
+              inputs:
+                character_path: "outputs.knave"
+                items: "{{ results }}"
+      - table: "knave_general_gear_1"
+        actions:
+          - flow_call:
+              flow: "add_item_to_character"
+              inputs:
+                character_path: "outputs.knave"
+                item: "{{ result }}"
+      - table: "knave_general_gear_2"
+        actions:
+          - flow_call:
+              flow: "add_item_to_character"
+              inputs:
+                character_path: "outputs.knave"
+                item: "{{ result }}"
+    additional_actions:
+      - flow_call:
+          flow: "add_item_to_character"
+          inputs:
+            character_path: "outputs.knave"
+            item: "rations"
+            quantity: 2
+
+  - id: "choose_weapon"
+    name: "Choose Starting Weapon"
+    type: "player_choice"
+    prompt: "Choose one weapon to start with:"
+    choice_source:
+      table: "knave_starting_weapons"
+    actions:
+      - flow_call:
+          flow: "add_item_to_character"
+          inputs:
+            character_path: "outputs.knave"
+            item: "{{ selected_item }}"
+
+  - id: "generate_traits"
+    name: "Determine Character Traits"
+    type: "table_roll"
+    prompt: "Rolling for your character's physical and personality traits..."
+    parallel: true
+    tables:
+      - table: "knave_physique_table"
+        actions:
+          - set_value:
+              path: "outputs.knave.traits.physique"
+              value: "{{ result }}"
+      - table: "knave_face_table"
+        actions:
+          - set_value:
+              path: "outputs.knave.traits.face"
+              value: "{{ result }}"
+      - table: "knave_skin_table"
+        actions:
+          - set_value:
+              path: "outputs.knave.traits.skin"
+              value: "{{ result }}"
+      - table: "knave_hair_table"
+        actions:
+          - set_value:
+              path: "outputs.knave.traits.hair"
+              value: "{{ result }}"
+      - table: "knave_clothing_table"
+        actions:
+          - set_value:
+              path: "outputs.knave.traits.clothing"
+              value: "{{ result }}"
+      - table: "knave_virtue_table"
+        actions:
+          - set_value:
+              path: "outputs.knave.traits.virtue"
+              value: "{{ result }}"
+      - table: "knave_vice_table"
+        actions:
+          - set_value:
+              path: "outputs.knave.traits.vice"
+              value: "{{ result }}"
+      - table: "knave_speech_table"
+        actions:
+          - set_value:
+              path: "outputs.knave.traits.speech"
+              value: "{{ result }}"
+      - table: "knave_background_table"
+        actions:
+          - set_value:
+              path: "outputs.knave.traits.background"
+              value: "{{ result }}"
+      - table: "knave_alignment_table"
+        actions:
+          - set_value:
+              path: "outputs.knave.alignment"
+              value: "{{ result }}"
+
+  - id: "character_description"
+    name: "Generate Character Description"
+    type: "llm_generation"
+    condition: "llm_enabled"
+    prompt_id: "knave_character_description"
+    prompt_data:
+      traits: "{{ get_value('outputs.knave.traits') }}"
+      abilities: "{{ get_value('outputs.knave.abilities') }}"
+      background: "{{ get_value('outputs.knave.traits.background') }}"
+    llm_settings:
+      provider: "anthropic"
+      model: "claude-3-haiku"
+      max_tokens: 200
+    actions:
+      - set_value:
+          path: "outputs.knave.description"
+          value: "{{ llm_result }}"
+
+  - id: "review_character"
+    name: "Review and Confirm Character"
+    type: "player_choice"
+    prompt: "Here is your completed character:"
+    pre_actions:
+      - display_value: "outputs.knave"
+    choices:
+      - id: "accept"
+        label: "Accept this character"
+        next_step: "finalize_character"
+      - id: "reroll"
+        label: "Start over with a new character"
+        next_step: "roll_abilities"
+        reset_outputs: true
+
+  - id: "finalize_character"
+    name: "Character Creation Complete"
+    type: "completion"
+    prompt: "Your Knave is ready for adventure!"
+    actions:
+      - validate_value: "outputs.knave"
+      - set_value:
+          path: "outputs.knave.level"
+          value: 1
+      - log_event:
+          type: "character_created"
+          data: "{{ get_value('outputs.knave.name') || 'Unnamed Knave' }}"
+
+# Flow control
+resume_points:
+  [
+    "ability_swap_choice",
+    "choose_weapon",
+    "generate_traits",
+    "review_character",
+  ]

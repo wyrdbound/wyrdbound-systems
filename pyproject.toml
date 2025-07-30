@@ -1,0 +1,41 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "wyrdbound-systems"
+version = "0.1.0"
+description = "Generic Rule Implementation Model for Omniversal Interactive Roleplaying Engines (GRIMOIRE) and validation tools"
+authors = [
+    {name = "The Wyrd Ones", email = "wyrdbound@proton.me"}
+]
+readme = "README.md"
+requires-python = ">=3.9"
+dependencies = [
+    "pydantic>=2.0.0",
+    "PyYAML>=6.0.0"
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest",
+    "black",
+    "flake8"
+]
+
+[project.scripts]
+grimoire-validate = "tools.grimoire_validate:main"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["tools*", "systems*"]
+
+[tool.black]
+line-length = 88
+target-version = ['py39']
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = "test_*.py"
+python_classes = "Test*"
+python_functions = "test_*"

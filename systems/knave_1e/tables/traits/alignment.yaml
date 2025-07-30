@@ -1,0 +1,10 @@
+kind: table
+name: alignment
+display_name: "Alignment"
+version: "1.0"
+roll: 1d20
+description: "Moral and ethical perspectives of characters"
+entries:
+  1-5: Law
+  6-15: Neutrality
+  16-20: Chaos

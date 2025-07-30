@@ -1,0 +1,69 @@
+kind: model
+id: character
+name: "Knave"
+description: "Character model for Knave (1st Edition)"
+version: 1
+attributes:
+  name: { type: str }
+  gender: { type: str, enum: ["female", "male", "non-binary"] }
+
+  # --- abilities ---
+  abilities:
+    str:
+      bonus: { type: int, range: 1..10 }
+      defense: { type: int, derived: "10 + $abilities.str.bonus" }
+    dex:
+      bonus: { type: int, range: 1..10 }
+      defense: { type: int, derived: "10 + $abilities.dex.bonus" }
+    con:
+      bonus: { type: int, range: 1..10 }
+      defense: { type: int, derived: "10 + $abilities.con.bonus" }
+    int:
+      bonus: { type: int, range: 1..10 }
+      defense: { type: int, derived: "10 + $abilities.int.bonus" }
+    wis:
+      bonus: { type: int, range: 1..10 }
+      defense: { type: int, derived: "10 + $abilities.wis.bonus" }
+    cha:
+      bonus: { type: int, range: 1..10 }
+      defense: { type: int, derived: "10 + $abilities.cha.bonus" }
+
+  xp: { type: int, default: 0, range: "0..1000" }
+  level: { type: int, default: 1, range: "1..10" }
+
+  max_hp: { type: int }
+  current_hp: { type: int, range: "0..$max_hp" } # track current
+
+  armor:
+    bonus: { type: int, range: "0..10" }
+    defense: { type: int, derived: "10 + $armor.bonus" }
+
+  exploration_speed: { type: int, default: 120, range: "0..240" } # in feet
+  combat_speed: { type: int, default: 40, range: "0..160" } # in feet
+
+  copper: { type: int, default: 0, range: "0.." }
+
+  # --- traits ---
+  traits:
+    physique: { type: str }
+    face: { type: str }
+    skin: { type: str }
+    hair: { type: str }
+    clothing: { type: str }
+    virtue: { type: str }
+    vice: { type: str }
+    speech: { type: str }
+    background: { type: str }
+    misfortunes: { type: str }
+    alignment: { type: str }
+
+  # --- inventory system ---
+  inventory_capacity: { type: int, derived: "$constitution_defense" }
+  inventory: { type: list, of: Item }
+  slots_used: { type: int, derived: "$inventory | sum('slot_cost')" }
+
+validations:
+  # Ensure current HP does not exceed max HP
+  - "$current_hp <= $max_hp"
+  # Ensure item slots do not exceed inventory capacity
+  - "$slots_used <= $inventory_capacity"
