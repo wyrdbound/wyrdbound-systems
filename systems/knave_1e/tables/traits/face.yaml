@@ -1,6 +1,6 @@
 kind: table
-name: face
-display_name: "Face"
+id: face
+name: "Face"
 version: "1.0"
 roll: 1d20
 description: "Facial features and characteristics"

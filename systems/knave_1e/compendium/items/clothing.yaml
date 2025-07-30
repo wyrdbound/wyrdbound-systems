@@ -1,38 +1,39 @@
 kind: compendium
-name: clothing
+id: clothing
+name: "Clothing"
 model: item
 entries:
   poor:
     {
-      display_name: "Poor Clothes",
+      name: "Poor Clothes",
       cost: 10,
       tags: [clothing],
       description: "Rough-spun clothes of coarse wool and hemp. Patched and mended, suitable for laborers and peasants.",
     }
   standard:
     {
-      display_name: "Standard Clothes",
+      name: "Standard Clothes",
       cost: 50,
       tags: [clothing],
       description: "Well-made clothing of decent wool and linen. Appropriate for merchants, craftsmen, and middle-class citizens.",
     }
   noble:
     {
-      display_name: "Noble Clothes",
+      name: "Noble Clothes",
       cost: 3000,
       tags: [clothing],
       description: "Luxurious garments of silk and velvet with gold trim. Fine enough for royal courts and aristocratic gatherings.",
     }
   furs:
     {
-      display_name: "Furs",
+      name: "Furs",
       cost: 5000,
       tags: [clothing],
       description: "Exotic furs from rare beasts, expertly tailored. A symbol of extreme wealth and status among the elite.",
     }
   winter:
     {
-      display_name: "Winter Clothes",
+      name: "Winter Clothes",
       cost: 100,
       tags: [clothing],
       description: "Thick wool clothing lined with fur. Designed to keep the wearer warm in harsh winter conditions.",

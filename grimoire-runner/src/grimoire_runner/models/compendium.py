@@ -8,7 +8,8 @@ from typing import Dict, List, Optional, Any
 class CompendiumDefinition:
     """Compendium definition containing collections of game content."""
     kind: str
-    name: str
+    id: str  # Unique identifier for the compendium
+    name: str  # Human-readable name
     model: str  # The model type that entries conform to
     entries: Dict[str, Dict[str, Any]] = field(default_factory=dict)
     
@@ -68,6 +69,8 @@ class CompendiumDefinition:
         # Validate required fields
         if self.kind != "compendium":
             errors.append(f"Compendium kind must be 'compendium', got '{self.kind}'")
+        if not self.id:
+            errors.append("Compendium id is required")
         if not self.name:
             errors.append("Compendium name is required")
         if not self.model:

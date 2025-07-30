@@ -203,8 +203,8 @@ class SystemLoader:
                     data = yaml.safe_load(f)
                 
                 compendium = CompendiumDefinition(**data)
-                system.compendiums[compendium.name] = compendium
-                logger.debug(f"Loaded compendium: {compendium.name} ({len(compendium.entries)} entries)")
+                system.compendiums[compendium.id] = compendium
+                logger.debug(f"Loaded compendium: {compendium.name} (ID: {compendium.id}) ({len(compendium.entries)} entries)")
                 
             except Exception as e:
                 logger.error(f"Failed to load compendium {compendium_file}: {e}")

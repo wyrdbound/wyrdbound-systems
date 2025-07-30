@@ -12,7 +12,8 @@ All compendium definition files must follow this top-level structure:
 
 ```yaml
 kind: "compendium"
-name: "compendium_identifier"
+id: "compendium_identifier"
+name: "Compendium Name"
 model: "target_model_id"
 entries: {}
 ```
@@ -20,7 +21,8 @@ entries: {}
 ### Top-Level Fields
 
 - **`kind`** (required): Must be `"compendium"` to indicate this file defines a compendium
-- **`name`** (required): Identifier for this compendium, used for referencing
+- **`id`** (required): Identifier for this compendium, used for referencing
+- **`name`** (required): Human-readable name for the compendium, used in UI and documentation
 - **`model`** (required): The model ID that all entries in this compendium must conform to
 - **`entries`** (required): Map of entry instances, where keys are entry IDs and values are model instances
 
@@ -31,7 +33,7 @@ The entries section contains the actual game content. Each entry must be a valid
 ```yaml
 entries:
   longsword:
-    display_name: "Longsword"
+    name: "Longsword"
     description: "A versatile steel blade favored by knights"
     damage: "1d8"
     weight: 3.0
@@ -39,7 +41,7 @@ entries:
     weapon_type: "melee"
 
   shortbow:
-    display_name: "Shortbow"
+    name: "Shortbow"
     description: "A compact bow suitable for hunting"
     damage: "1d6"
     weight: 2.0
@@ -103,8 +105,8 @@ Entries can be written in different YAML styles for readability:
 
 ```yaml
 entries:
-  dagger: { display_name: "Dagger", damage: "1d4", cost: 200, weight: 1.0 }
-  club: { display_name: "Club", damage: "1d4", cost: 0, weight: 2.0 }
+  dagger: { name: "Dagger", damage: "1d4", cost: 200, weight: 1.0 }
+  club: { name: "Club", damage: "1d4", cost: 0, weight: 2.0 }
 ```
 
 #### Block Style (Readable)
@@ -112,14 +114,14 @@ entries:
 ```yaml
 entries:
   dagger:
-    display_name: "Dagger"
+    name: "Dagger"
     damage: "1d4"
     cost: 200
     weight: 1.0
     description: "A small, sharp blade perfect for close combat"
 
   club:
-    display_name: "Club"
+    name: "Club"
     damage: "1d4"
     cost: 0
     weight: 2.0
@@ -143,17 +145,17 @@ Entries can specify quantities and create variants:
 ```yaml
 entries:
   arrows:
-    display_name: "Arrows"
+    name: "Arrows"
     qty: 20 # Bundle of 20 arrows
     weight: 1.0 # Total weight for the bundle
     cost: 100 # Cost for entire bundle
 
   healing_potion_minor:
-    display_name: "Minor Healing Potion"
+    name: "Minor Healing Potion"
     effect: "heal 1d4+1"
 
   healing_potion_major:
-    display_name: "Major Healing Potion"
+    name: "Major Healing Potion"
     effect: "heal 2d4+2"
 ```
 
@@ -217,7 +219,7 @@ model: "weapon"
 
 entries:
   dagger:
-    display_name: "Dagger"
+    name: "Dagger"
     description: "A small, sharp blade suitable for close combat or throwing"
     damage: "1d4"
     weight: 1.0
@@ -226,7 +228,7 @@ entries:
     tags: ["light", "finesse", "thrown"]
 
   longsword:
-    display_name: "Longsword"
+    name: "Longsword"
     description: "A versatile straight blade, well-balanced for combat"
     damage: "1d8"
     weight: 3.0
@@ -236,7 +238,7 @@ entries:
     tags: ["versatile"]
 
   shortbow:
-    display_name: "Shortbow"
+    name: "Shortbow"
     description: "A compact hunting bow, easy to use and carry"
     damage: "1d6"
     weight: 2.0
@@ -250,7 +252,7 @@ entries:
 ## Validation Rules
 
 1. The `kind` field must exactly match `"compendium"`
-2. The `name` field must be unique within the system
+2. The `id` field must be unique within the system
 3. The `model` field must reference an existing model definition
 4. All entries must be valid instances of the specified model
 5. Entry IDs must be unique within the compendium

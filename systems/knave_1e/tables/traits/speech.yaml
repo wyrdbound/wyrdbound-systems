@@ -1,6 +1,6 @@
 kind: table
-name: speech
-display_name: "Speech"
+id: speech
+name: "Speech"
 version: "1.0"
 roll: 1d20
 description: "Speech patterns and styles"

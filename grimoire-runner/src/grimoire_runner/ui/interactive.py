@@ -8,8 +8,24 @@ from rich.panel import Panel
 from rich.table import Table
 from rich.text import Text
 
+from ..core.engine import GrimoireEngine
+
 logger = logging.getLogger(__name__)
 console = Console()
+
+
+def create_template_context(engine, system):
+    """Create a temporary context for resolving templates with system metadata."""
+    temp_context = engine.create_execution_context()
+    temp_context.system_metadata = {
+        'id': system.id,
+        'name': system.name,
+        'description': system.description,
+        'version': system.version,
+        'currency': getattr(system, 'currency', {}),
+        'credits': getattr(system, 'credits', {})
+    }
+    return temp_context
 
 
 class InteractiveREPL:
@@ -250,16 +266,20 @@ class InteractiveREPL:
             table = Table(title="Available Flows")
             table.add_column("ID", style="cyan")
             table.add_column("Name", style="magenta")
+            table.add_column("Description", style="yellow")
             table.add_column("Steps", style="green")
-            table.add_column("Description", style="dim")
+            
+            # Create template context for resolving descriptions
+            temp_context = create_template_context(self.engine, self.system)
             
             for flow_id in flows:
                 flow = self.system.get_flow(flow_id)
+                resolved_description = flow.resolve_description(temp_context) if flow.description else "-"
                 table.add_row(
                     flow_id,
                     flow.name,
-                    str(len(flow.steps)),
-                    flow.description or ""
+                    resolved_description,
+                    str(len(flow.steps))
                 )
             
             console.print(table)
@@ -273,12 +293,32 @@ class InteractiveREPL:
             table = Table(title="Available Models")
             table.add_column("ID", style="cyan")
             table.add_column("Name", style="magenta")
+            table.add_column("Description", style="yellow")
+            table.add_column("Extends", style="blue")
             table.add_column("Attributes", style="green")
             
             for model_id in models:
                 model = self.system.get_model(model_id)
                 attr_count = len(model.get_all_attributes())
-                table.add_row(model_id, model.name, str(attr_count))
+                
+                # Get extended model names
+                extended_names = []
+                for extend_id in model.extends:
+                    extended_model = self.system.get_model(extend_id)
+                    if extended_model:
+                        extended_names.append(extended_model.name)
+                    else:
+                        extended_names.append(extend_id)  # fallback to ID if model not found
+                
+                extends_display = ", ".join(extended_names) if extended_names else "-"
+                
+                table.add_row(
+                    model_id, 
+                    model.name, 
+                    model.description or "-", 
+                    extends_display,
+                    str(attr_count)
+                )
             
             console.print(table)
         else:
@@ -289,13 +329,16 @@ class InteractiveREPL:
         compendiums = self.system.list_compendiums()
         if compendiums:
             table = Table(title="Available Compendiums")
-            table.add_column("Name", style="cyan")
-            table.add_column("Model", style="magenta")
+            table.add_column("ID", style="cyan")
+            table.add_column("Name", style="magenta")
+            table.add_column("Model Name", style="yellow")
             table.add_column("Entries", style="green")
             
             for comp_id in compendiums:
                 comp = self.system.get_compendium(comp_id)
-                table.add_row(comp.name, comp.model, str(len(comp.entries)))
+                model = self.system.get_model(comp.model)
+                model_name = model.name if model else comp.model
+                table.add_row(comp.id, comp.name, model_name, str(len(comp.entries)))
             
             console.print(table)
         else:
@@ -306,16 +349,18 @@ class InteractiveREPL:
         tables = self.system.list_tables()
         if tables:
             table = Table(title="Available Tables")
-            table.add_column("Name", style="cyan")
-            table.add_column("Display Name", style="magenta")
+            table.add_column("ID", style="cyan")
+            table.add_column("Name", style="magenta")
+            table.add_column("Description", style="yellow")
             table.add_column("Entries", style="green")
             table.add_column("Roll", style="blue")
             
             for table_id in tables:
                 tbl = self.system.get_table(table_id)
                 table.add_row(
-                    tbl.name,
-                    tbl.display_name or "-",
+                    tbl.id or table_id,
+                    tbl.name or "-",
+                    tbl.description or "-",
                     str(len(tbl.entries)),
                     tbl.roll or "-"
                 )

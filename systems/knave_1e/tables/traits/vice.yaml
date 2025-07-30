@@ -1,6 +1,6 @@
 kind: table
-name: vice
-display_name: "Vice"
+id: vice
+name: "Vice"
 version: "1.0"
 roll: 1d20
 description: "Vices and immoral qualities"

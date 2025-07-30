@@ -1,10 +1,11 @@
 kind: compendium
-name: ranged
+id: ranged
+name: "Ranged Weapons"
 model: weapon
 entries:
   sling:
     {
-      display_name: "Sling",
+      name: "Sling",
       damage: "1d4",
       type: "ranged",
       quality: 3,
@@ -13,7 +14,7 @@ entries:
     }
   bow:
     {
-      display_name: "Bow",
+      name: "Bow",
       damage: "1d6",
       type: "ranged",
       slot_cost: 2,
@@ -25,7 +26,7 @@ entries:
     }
   crossbow:
     {
-      display_name: "Crossbow",
+      name: "Crossbow",
       damage: "1d8",
       type: "ranged",
       slot_cost: 3,
