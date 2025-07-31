@@ -1,5 +1,7 @@
 # wyrdbound-systems
 
+[![Test and Coverage](https://github.com/wyrdbound/wyrdbound-systems/actions/workflows/test-and-coverage.yml/badge.svg)](https://github.com/wyrdbound/wyrdbound-systems/actions/workflows/test-and-coverage.yml)
+
 This repository contains the **GRIMOIRE** specification and reference system implementations for public tabletop RPG rule definitions. GRIMOIRE (Generic Rule Implementation Model for Omniversal Interactive Roleplaying Engines) is designed to encode tabletop RPG systems in structured, machine-readable files that can be interpreted by AI Game Masters and automated tools.
 
 ## Repository Purpose
@@ -89,6 +91,55 @@ Systems can be distributed via:
 - Public URLs pointing to GRIMOIRE system definitions
 - Cloud storage services (e.g., S3 buckets) with appropriate access controls
 
+## Development
+
+### Testing and Coverage
+
+The GRIMOIRE runner includes comprehensive test coverage to ensure reliability:
+
+```bash
+# Run tests with coverage
+cd grimoire-runner
+python -m pytest tests/ --cov=grimoire_runner --cov-report=html
+
+# View HTML coverage report
+open htmlcov/index.html
+```
+
+For detailed coverage information, testing strategies, and contribution guidelines, see [COVERAGE.md](COVERAGE.md).
+
+### Key Testing Areas
+
+- **Core Engine**: Template processing, flow execution, system loading
+- **Executors**: Dice rolling, choice handling, LLM integration, table lookups
+- **Models**: System validation, data structures, observable patterns
+- **UI Components**: Modal interactions, browser functionality, CLI interface
+- **Integration**: End-to-end system loading and execution
+
+Current coverage areas to improve:
+
+- UI modules (browser, CLI, interactive components)
+- Integration modules (LLM, RNG integrations)
+- Serialization utilities
+- Logging and utility functions
+
+### Running Tests Locally
+
+```bash
+# Install development dependencies
+cd grimoire-runner
+pip install -e ".[dev]"
+
+# Run all tests
+python -m pytest tests/
+
+# Run tests with coverage and generate HTML report
+python -m pytest tests/ --cov=grimoire_runner --cov-report=html --cov-report=xml
+
+# Run specific test files
+python -m pytest tests/test_templates.py -v
+```
+
 ## Contributing
 
 This repository welcomes contributions in several areas:
@@ -97,6 +148,7 @@ This repository welcomes contributions in several areas:
 - **Specification Development**: Help refine and extend the GRIMOIRE format itself
 - **Tools and Utilities**: Build better validation, conversion, or authoring tools
 - **Documentation**: Improve examples, tutorials, and guides
+- **Test Coverage**: Help improve test coverage in underrepresented areas
 
 Please see our contribution guidelines and join the discussion in our community forums.
 

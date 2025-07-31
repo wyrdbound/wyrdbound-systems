@@ -1,0 +1,65 @@
+# Coverage configuration file
+# This supplements the configuration in pyproject.toml
+
+[run]
+# Source directories to measure
+source = src/grimoire_runner
+
+# Files to omit from coverage
+omit = 
+    */tests/*
+    */__pycache__/*
+    */.*
+    setup.py
+    */venv/*
+    */.venv/*
+
+# Enable branch coverage
+branch = true
+
+[report]
+# Fail if coverage falls below this percentage
+fail_under = 25
+
+# Show missing lines in reports
+show_missing = true
+
+# Skip covered lines for cleaner reports
+skip_covered = false
+
+# Sort by coverage percentage
+sort = Cover
+
+# Lines to exclude from coverage
+exclude_lines =
+    # Have to re-enable the standard pragma
+    pragma: no cover
+
+    # Don't complain about missing debug-only code:
+    def __repr__
+    if self\.debug
+
+    # Don't complain if tests don't hit defensive assertion code:
+    raise AssertionError
+    raise NotImplementedError
+
+    # Don't complain if non-runnable code isn't run:
+    if 0:
+    if __name__ == .__main__.:
+
+    # Don't complain about abstract methods, they aren't run:
+    @(abc\.)?abstractmethod
+
+    # Don't complain about protocol methods
+    \.\.\.
+
+[html]
+# Directory for HTML output
+directory = htmlcov
+
+# Show contexts (which tests hit which lines)
+show_contexts = true
+
+[xml]
+# Output file for XML coverage
+output = coverage.xml
