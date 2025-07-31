@@ -2,7 +2,7 @@
 
 __all__ = [
     "System",
-    "FlowDefinition", 
+    "FlowDefinition",
     "FlowResult",
     "StepDefinition",
     "StepResult",

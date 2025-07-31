@@ -1,7 +1,3 @@
 """User interface components."""
 
-__all__ = [
-    "CLI",
-    "InteractiveREPL",
-    "CompendiumBrowser"
-]
+__all__ = ["CLI", "InteractiveREPL", "CompendiumBrowser"]

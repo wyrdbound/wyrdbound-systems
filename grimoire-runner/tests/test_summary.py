@@ -2,17 +2,18 @@
 Summary test runner for key UI functionality.
 """
 
-import pytest
-from pathlib import Path
 import os
+from pathlib import Path
+
+import pytest
 
 
 def test_summary():
     """Run a curated set of UI tests to validate core functionality."""
-    
+
     # Get the directory of this test file to construct proper paths
     test_dir = Path(__file__).parent
-    
+
     # Define the tests we want to run for our summary (using absolute paths)
     test_files = [
         f"{test_dir}/test_basic_modal.py::TestBasicModal::test_basic_modal",
@@ -22,20 +23,24 @@ def test_summary():
         f"{test_dir}/test_textual_ui.py::TestSimpleFlowApp::test_app_creation",
         f"{test_dir}/test_textual_ui.py::TestSimpleFlowApp::test_app_ui_structure",
     ]
-    
+
     # Change to the grimoire-runner directory for the test execution
     original_cwd = os.getcwd()
     grimoire_runner_dir = test_dir.parent
     os.chdir(grimoire_runner_dir)
-    
+
     try:
         # Run the tests with plugin disabled and warning filters
-        exit_code = pytest.main([
-            "-v", 
-            "-p", "no:textual-snapshot",
-            "--disable-warnings",  # Suppress warnings to avoid deprecation warnings affecting exit code
-        ] + test_files)
-        
+        exit_code = pytest.main(
+            [
+                "-v",
+                "-p",
+                "no:textual-snapshot",
+                "--disable-warnings",  # Suppress warnings to avoid deprecation warnings affecting exit code
+            ]
+            + test_files
+        )
+
         # Should return 0 for success
         assert exit_code == 0, f"Some summary tests failed with exit code {exit_code}"
     finally:
