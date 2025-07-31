@@ -11,6 +11,7 @@ from ..models.model import ModelDefinition, AttributeDefinition, ValidationRule
 from ..models.compendium import CompendiumDefinition
 from ..models.table import TableDefinition
 from ..models.source import SourceDefinition
+from ..utils.templates import TemplateHelpers
 
 logger = logging.getLogger(__name__)
 
@@ -20,6 +21,7 @@ class SystemLoader:
     
     def __init__(self):
         self._loaded_systems: Dict[str, System] = {}
+        self._template_helpers = TemplateHelpers()
     
     def load_system(self, system_path: Union[str, Path]) -> System:
         """Load a complete GRIMOIRE system from a directory."""
@@ -234,20 +236,26 @@ class SystemLoader:
         if not flows_dir.exists():
             return
         
-        for flow_file in flows_dir.glob("*.yaml"):
+        # Load flows recursively from flows directory and subdirectories
+        for flow_file in flows_dir.rglob("*.yaml"):
             try:
                 with open(flow_file, 'r', encoding='utf-8') as f:
                     data = yaml.safe_load(f)
                 
-                flow = self._parse_flow_definition(data)
+                flow = self._parse_flow_definition(data, system)
                 system.flows[flow.id] = flow
                 logger.debug(f"Loaded flow: {flow.id} ({len(flow.steps)} steps)")
                 
             except Exception as e:
                 logger.error(f"Failed to load flow {flow_file}: {e}")
     
-    def _parse_flow_definition(self, data: Dict[str, Any]) -> FlowDefinition:
+    def _parse_flow_definition(self, data: Dict[str, Any], system: Optional[System] = None) -> FlowDefinition:
         """Parse a flow definition from YAML data."""
+        # Resolve templates if system context is available
+        if system:
+            context = {'system': system}
+            data = self._resolve_templates_in_dict(data, context)
+        
         # Parse inputs
         inputs = []
         if 'inputs' in data:
@@ -314,6 +322,7 @@ class SystemLoader:
             parallel=data.get('parallel', False),
             actions=data.get('actions', []),
             next_step=data.get('next_step'),
+            output=data.get('output'),
             roll=data.get('roll'),
             modifiers=data.get('modifiers'),
             sequence=sequence,
@@ -338,6 +347,30 @@ class SystemLoader:
             return self.load_system(system._system_path)
         
         return None
+    
+    def _resolve_templates_in_dict(self, data: Dict[str, Any], context: Dict[str, Any]) -> Dict[str, Any]:
+        """Recursively resolve templates in dictionary values."""
+        resolved = {}
+        for key, value in data.items():
+            resolved[key] = self._resolve_templates_in_value(value, context)
+        return resolved
+    
+    def _resolve_templates_in_value(self, value: Any, context: Dict[str, Any]) -> Any:
+        """Resolve templates in a single value."""
+        if isinstance(value, str):
+            if self._template_helpers.is_template(value):
+                try:
+                    return self._template_helpers.render_template(value, context)
+                except Exception as e:
+                    logger.warning(f"Failed to resolve template '{value}': {e}")
+                    return value
+            return value
+        elif isinstance(value, dict):
+            return self._resolve_templates_in_dict(value, context)
+        elif isinstance(value, list):
+            return [self._resolve_templates_in_value(item, context) for item in value]
+        else:
+            return value
     
     def list_loaded_systems(self) -> List[str]:
         """Get a list of loaded system IDs."""

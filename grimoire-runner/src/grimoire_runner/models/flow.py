@@ -13,6 +13,7 @@ class StepType(Enum):
     TABLE_ROLL = "table_roll"
     LLM_GENERATION = "llm_generation"
     COMPLETION = "completion"
+    FLOW_CALL = "flow_call"
 
 
 @dataclass
@@ -87,6 +88,7 @@ class StepDefinition:
     parallel: bool = False
     actions: List[Dict[str, Any]] = field(default_factory=list)
     next_step: Optional[str] = None
+    output: Optional[str] = None  # Variable name to store step result
     
     # Step-specific fields
     # For dice_roll

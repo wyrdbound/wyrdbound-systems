@@ -147,6 +147,9 @@ class GrimoireEngine:
                 else:
                     current_step_id = flow.get_next_step_id(current_step_id)
                 
+            except ValueError as e:
+                # Re-raise ValueError exceptions (like missing executors) as they indicate configuration issues
+                raise
             except Exception as e:
                 logger.error(f"Error executing step {current_step_id}: {e}")
                 return FlowResult(
@@ -262,15 +265,22 @@ class GrimoireEngine:
         # Get the appropriate executor
         executor = self.executors.get(step_type)
         if not executor:
-            return StepResult(
-                step_id=step.id,
-                success=False,
-                error=f"No executor found for step type: {step_type}"
-            )
+            error_msg = f"No executor found for step type: {step_type}"
+            logger.error(error_msg)
+            raise ValueError(error_msg)
         
         # Execute the step
         try:
             result = executor.execute(step, context, system)
+            
+            # Handle output variable setting
+            if result.success and step.output and result.data:
+                if 'result' in result.data:
+                    context.set_variable(step.output, result.data['result'])
+                elif result.data:
+                    # Use the first available data value if no 'result' key
+                    first_value = next(iter(result.data.values()))
+                    context.set_variable(step.output, first_value)
             
             # Execute post-step actions, but skip for choice steps that require user input
             # Those will be handled after user interaction
@@ -410,7 +420,8 @@ class GrimoireEngine:
     def clear_breakpoints(self, flow_id: Optional[str] = None) -> None:
         """Clear breakpoints for a flow or all flows."""
         if flow_id:
-            self.breakpoints[flow_id] = []
+            if flow_id in self.breakpoints:
+                del self.breakpoints[flow_id]
         else:
             self.breakpoints.clear()
         logger.info(f"Breakpoints cleared for {flow_id or 'all flows'}")
@@ -418,6 +429,14 @@ class GrimoireEngine:
     def _has_breakpoint(self, flow_id: str, step_id: str) -> bool:
         """Check if there's a breakpoint on a specific step."""
         return flow_id in self.breakpoints and step_id in self.breakpoints[flow_id]
+    
+    def has_breakpoint(self, flow_id: str, step_id: str) -> bool:
+        """Public method to check if there's a breakpoint set for a specific step."""
+        return self._has_breakpoint(flow_id, step_id)
+    
+    def execute_flow_steps(self, flow_id: str, context: ExecutionContext, system: Optional[System] = None) -> Iterator[StepResult]:
+        """Execute flow steps one by one, yielding each step result. Alias for step_through_flow."""
+        return self.step_through_flow(flow_id, context, system)
     
     def enable_debug_mode(self) -> None:
         """Enable debug mode with breakpoint support."""
@@ -428,6 +447,20 @@ class GrimoireEngine:
         """Disable debug mode."""
         self._debug_mode = False
         logger.info("Debug mode disabled")
+    
+    def set_debug_mode(self, enabled: bool) -> None:
+        """Set debug mode on or off."""
+        if enabled:
+            self.enable_debug_mode()
+        else:
+            self.disable_debug_mode()
+    
+    def set_breakpoints(self, flow_id: str, step_ids: List[str]) -> None:
+        """Set multiple breakpoints for a flow."""
+        if flow_id not in self.breakpoints:
+            self.breakpoints[flow_id] = []
+        self.breakpoints[flow_id] = step_ids.copy()
+        logger.debug(f"Set breakpoints for flow {flow_id}: {step_ids}")
     
     def get_available_flows(self, system: Optional[System] = None) -> List[FlowDefinition]:
         """Get all available flows from a system."""
