@@ -360,9 +360,25 @@ class SystemLoader:
         if isinstance(value, str):
             if self._template_helpers.is_template(value):
                 try:
+                    # Check if template contains execution-time variables or functions
+                    variables = self._template_helpers.extract_variables(value)
+                    execution_vars = {
+                        'result', 'results', 'item', 'selected_item', 'selected_items', 
+                        'variables', 'llm_result', 'key', 'value'
+                    }
+                    
+                    # Also check for execution-time function calls
+                    execution_functions = ['get_value']
+                    has_execution_functions = any(func in value for func in execution_functions)
+                    
+                    # If template contains execution-time variables or functions, don't resolve during loading
+                    if any(var in execution_vars for var in variables) or has_execution_functions:
+                        logger.debug(f"Skipping template resolution during loading for: {value}")
+                        return value
+                    
                     return self._template_helpers.render_template(value, context)
                 except Exception as e:
-                    logger.warning(f"Failed to resolve template '{value}': {e}")
+                    logger.debug(f"Failed to resolve template '{value}': {e}")
                     return value
             return value
         elif isinstance(value, dict):
