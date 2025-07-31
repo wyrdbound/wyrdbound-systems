@@ -3,26 +3,44 @@ Summary test runner for key UI functionality.
 """
 
 import pytest
+from pathlib import Path
+import os
 
 
 def test_summary():
     """Run a curated set of UI tests to validate core functionality."""
     
-    # Define the tests we want to run for our summary
+    # Get the directory of this test file to construct proper paths
+    test_dir = Path(__file__).parent
+    
+    # Define the tests we want to run for our summary (using absolute paths)
     test_files = [
-        "tests/test_basic_modal.py::TestBasicModal::test_basic_modal",
-        "tests/test_basic_modal.py::TestBasicModal::test_basic_modal_cancel",
-        "tests/test_textual_ui.py::TestSimpleChoiceModal::test_modal_creation",
-        "tests/test_textual_ui.py::TestSimpleChoiceModal::test_modal_confirm_with_selection",
-        "tests/test_textual_ui.py::TestSimpleFlowApp::test_app_creation",
-        "tests/test_textual_ui.py::TestSimpleFlowApp::test_app_ui_structure",
+        f"{test_dir}/test_basic_modal.py::TestBasicModal::test_basic_modal",
+        f"{test_dir}/test_basic_modal.py::TestBasicModal::test_basic_modal_cancel",
+        f"{test_dir}/test_textual_ui.py::TestSimpleChoiceModal::test_modal_creation",
+        f"{test_dir}/test_textual_ui.py::TestSimpleChoiceModal::test_modal_confirm_with_selection",
+        f"{test_dir}/test_textual_ui.py::TestSimpleFlowApp::test_app_creation",
+        f"{test_dir}/test_textual_ui.py::TestSimpleFlowApp::test_app_ui_structure",
     ]
     
-    # Run the tests
-    exit_code = pytest.main(["-v"] + test_files)
+    # Change to the grimoire-runner directory for the test execution
+    original_cwd = os.getcwd()
+    grimoire_runner_dir = test_dir.parent
+    os.chdir(grimoire_runner_dir)
     
-    # Should return 0 for success
-    assert exit_code == 0, f"Some summary tests failed with exit code {exit_code}"
+    try:
+        # Run the tests with plugin disabled and warning filters
+        exit_code = pytest.main([
+            "-v", 
+            "-p", "no:textual-snapshot",
+            "--disable-warnings",  # Suppress warnings to avoid deprecation warnings affecting exit code
+        ] + test_files)
+        
+        # Should return 0 for success
+        assert exit_code == 0, f"Some summary tests failed with exit code {exit_code}"
+    finally:
+        # Always restore the original working directory
+        os.chdir(original_cwd)
 
 
 if __name__ == "__main__":
