@@ -50,6 +50,7 @@ class SimpleChoiceModal(ModalScreen[Optional[str]]):
         super().__init__()
         self.prompt = prompt
         self.choices = choices
+        print(f"[DEBUG] Modal created with {len(choices)} choices: {[str(c) for c in choices]}")
     
     def compose(self) -> ComposeResult:
         with Container(classes="modal-container"):
@@ -57,24 +58,40 @@ class SimpleChoiceModal(ModalScreen[Optional[str]]):
             yield Label(self.prompt)
             
             with RadioSet(id="choice-set"):
-                for choice in self.choices:
+                for i, choice in enumerate(self.choices):
                     label = choice.label if hasattr(choice, 'label') else str(choice)
-                    value = choice.id if hasattr(choice, 'id') else str(choice)
-                    yield RadioButton(label, value=value)
+                    choice_id = choice.id if hasattr(choice, 'id') else str(choice)
+                    print(f"[DEBUG] Adding radio button {i}: label='{label}', id='{choice_id}'")
+                    yield RadioButton(label, id=f"choice-{choice_id}")
             
             with Horizontal(classes="modal-buttons"):
                 yield Button("Confirm", variant="primary", id="confirm")
                 yield Button("Cancel", variant="error", id="cancel")
     
     def on_button_pressed(self, event: Button.Pressed) -> None:
+        print(f"[DEBUG] Button pressed: {event.button.id}")
         if event.button.id == "confirm":
             radio_set = self.query_one("#choice-set", RadioSet)
+            print(f"[DEBUG] Radio set pressed_button: {radio_set.pressed_button}")
             if radio_set.pressed_button:
-                self.dismiss(radio_set.pressed_button.value)
+                # Extract choice ID from button ID (format: "choice-{choice_id}")
+                button_id = radio_set.pressed_button.id
+                if button_id and button_id.startswith("choice-"):
+                    selected_value = button_id[7:]  # Remove "choice-" prefix
+                    print(f"[DEBUG] Dismissing with value: {selected_value}")
+                    self.dismiss(selected_value)
+                else:
+                    print(f"[DEBUG] Invalid button ID format: {button_id}")
             else:
-                self.dismiss(None)
+                print("[DEBUG] No radio button selected, staying open")
+                # User clicked confirm without selecting anything - keep modal open
+                pass
         elif event.button.id == "cancel":
+            print("[DEBUG] Dismissing with None (cancelled)")
             self.dismiss(None)
+    
+    def on_unmount(self) -> None:
+        print("[DEBUG] Modal unmounted")
 
 
 class SimpleFlowApp(App):
@@ -152,14 +169,14 @@ class SimpleFlowApp(App):
     async def start_execution(self) -> None:
         """Start the flow execution."""
         try:
-            self.log("Loading system...")
+            self.write_log("Loading system...")
             
             # Load system
             self.system = self.engine.load_system(self.system_path)
             self.flow_obj = self.system.get_flow(self.flow_id)
             
             if not self.flow_obj:
-                self.log("ERROR: Flow not found!")
+                self.write_log("ERROR: Flow not found!")
                 return
             
             # Update UI
@@ -178,7 +195,7 @@ class SimpleFlowApp(App):
             await self.execute_flow_steps()
             
         except Exception as e:
-            self.log(f"ERROR: {str(e)}")
+            self.write_log(f"ERROR: {str(e)}")
     
     async def execute_flow_steps(self) -> None:
         """Execute flow steps one by one."""
@@ -188,7 +205,7 @@ class SimpleFlowApp(App):
         while current_step_id:
             step = self.flow_obj.get_step(current_step_id)
             if not step:
-                self.log(f"ERROR: Step not found: {current_step_id}")
+                self.write_log(f"ERROR: Step not found: {current_step_id}")
                 break
             
             step_num += 1
@@ -198,7 +215,7 @@ class SimpleFlowApp(App):
             self.query_one("#progress").update(progress=progress)
             self.query_one("#status").update(f"Step {step_num}/{self.total_steps}: {step.name or step.id}")
             
-            self.log(f"▶ Starting step {step_num}: {step.name or step.id}")
+            self.write_log(f"▶ Starting step {step_num}: {step.name or step.id}")
             
             # Update context
             self.context.current_step = current_step_id
@@ -209,7 +226,7 @@ class SimpleFlowApp(App):
                 success, next_step_id = await self.execute_single_step(step, step_num)
                 
                 if not success:
-                    self.log("❌ Flow execution stopped due to step failure")
+                    self.write_log("❌ Flow execution stopped due to step failure")
                     break
                 
                 # Determine next step
@@ -219,13 +236,13 @@ class SimpleFlowApp(App):
                     current_step_id = self.flow_obj.get_next_step_id(current_step_id)
             
             except Exception as e:
-                self.log(f"ERROR in step {current_step_id}: {str(e)}")
+                self.write_log(f"ERROR in step {current_step_id}: {str(e)}")
                 break
             
             # Small delay
             await asyncio.sleep(0.5)
         
-        self.log("✅ Flow execution completed!")
+        self.write_log("✅ Flow execution completed!")
         self.query_one("#status").update("Flow completed")
     
     async def execute_single_step(self, step, step_num: int) -> tuple[bool, Optional[str]]:
@@ -233,26 +250,30 @@ class SimpleFlowApp(App):
         # Execute the step through the engine
         step_result = self.engine._execute_step(step, self.context, self.system)
         
-        self.log(f"Step result: requires_input={step_result.requires_input}, success={step_result.success}")
+        self.write_log(f"Step result: requires_input={step_result.requires_input}, success={step_result.success}")
         
         # Handle user input if needed
         if step_result.requires_input:
-            self.log("⏳ Step requires user input...")
+            self.write_log("⏳ Step requires user input...")
             
             if step_result.choices:
                 # Show choice modal
                 prompt = step_result.prompt or "Please make a choice:"
                 modal = SimpleChoiceModal(prompt, step_result.choices)
                 
-                # This will block until user makes a choice
-                selected_choice = await self.push_screen(modal)
+                self.write_log(f"Showing modal with {len(step_result.choices)} choices")
+                
+                # Use callback pattern with asyncio.Event for synchronization
+                selected_choice = await self._show_modal_and_wait(modal)
+                
+                self.write_log(f"Modal returned: {selected_choice}")
                 
                 if selected_choice is None:
-                    self.log("❌ User cancelled input")
+                    self.write_log("❌ User cancelled input")
                     step_result.success = False
                     step_result.error = "User cancelled input"
                 else:
-                    self.log(f"✅ User selected: {selected_choice}")
+                    self.write_log(f"✅ User selected: {selected_choice}")
                     
                     # Process the choice
                     from ..executors.choice_executor import ChoiceExecutor
@@ -266,14 +287,33 @@ class SimpleFlowApp(App):
         
         # Log completion
         if step_result.success:
-            self.log(f"✅ Completed step {step_num}")
+            self.write_log(f"✅ Completed step {step_num}")
         else:
-            self.log(f"❌ Failed step {step_num}: {step_result.error}")
+            self.write_log(f"❌ Failed step {step_num}: {step_result.error}")
         
         self.step_results.append(step_result)
         return step_result.success, step_result.next_step_id
     
-    def log(self, message: str) -> None:
+    async def _show_modal_and_wait(self, modal: SimpleChoiceModal) -> Optional[str]:
+        """Show modal and wait for result using callback pattern."""
+        # Create an asyncio Event to wait for the result
+        result_event = asyncio.Event()
+        modal_result = None
+        
+        def handle_modal_result(result):
+            nonlocal modal_result
+            modal_result = result
+            result_event.set()
+        
+        # Show modal with callback
+        self.push_screen(modal, handle_modal_result)
+        
+        # Wait for the result
+        await result_event.wait()
+        
+        return modal_result
+    
+    def write_log(self, message: str) -> None:
         """Add message to log."""
         try:
             log_widget = self.query_one("#log", Log)

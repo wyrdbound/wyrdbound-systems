@@ -49,27 +49,92 @@ class FlowExecutionScreen(Screen):
         self.execute_flow()
     
     def execute_flow(self) -> None:
-        """Execute the selected flow."""
+        """Execute the selected flow with step-by-step execution."""
         log = self.query_one("#execution-log", Log)
         progress = self.query_one("#flow-progress", ProgressBar)
         results = self.query_one("#results", Static)
         
         log.write_line(f"Starting execution of flow: {self.flow_id}")
-        progress.update(progress=10)
+        progress.update(progress=5)
         
         try:
-            result = self.engine.execute_flow(self.flow_id, self.context, self.system)
-            progress.update(progress=100)
+            # Get the flow object for step information
+            flow_obj = self.system.get_flow(self.flow_id)
+            if not flow_obj:
+                log.write_line(f"✗ Flow '{self.flow_id}' not found in system")
+                return
             
-            if result.success:
+            total_steps = len(flow_obj.steps)
+            log.write_line(f"Flow has {total_steps} steps")
+            progress.update(progress=10)
+            
+            # Initialize flow variables
+            for var_name, var_value in flow_obj.variables.items():
+                self.context.set_variable(var_name, var_value)
+            
+            # Execute flow step by step using the engine's step iterator
+            step_results = []
+            step_num = 0
+            
+            for step_result in self.engine.step_through_flow(self.flow_id, self.context, self.system):
+                step_num += 1
+                step = flow_obj.get_step(step_result.step_id)
+                step_name = step.name if step else step_result.step_id
+                
+                # Update progress
+                progress_value = 10 + ((step_num / total_steps) * 80)  # 10-90% for steps
+                progress.update(progress=progress_value)
+                
+                # Log step execution
+                log.write_line(f"[{step_num}/{total_steps}] {step_name}")
+                
+                if step_result.success:
+                    log.write_line(f"  ✓ Completed successfully")
+                    if step_result.data:
+                        # Show relevant step data
+                        if 'result' in step_result.data:
+                            log.write_line(f"  Result: {step_result.data['result']}")
+                        if 'breakdown' in step_result.data:
+                            log.write_line(f"  Breakdown: {step_result.data['breakdown']}")
+                else:
+                    log.write_line(f"  ✗ Failed: {step_result.error}")
+                    break
+                
+                step_results.append(step_result)
+            
+            progress.update(progress=95)
+            
+            # Check overall success
+            all_successful = all(sr.success for sr in step_results)
+            completed_all = step_num >= total_steps
+            
+            if all_successful and completed_all:
                 log.write_line("✓ Flow executed successfully!")
-                if result.outputs:
-                    results.update(f"Results: {result.outputs}")
+                progress.update(progress=100)
+                
+                # Extract and display outputs
+                outputs = {}
+                for output_def in flow_obj.outputs:
+                    output_value = self.context.get_output(output_def.id)
+                    if output_value is not None:
+                        outputs[output_def.id] = output_value
+                
+                if outputs:
+                    results.update(f"Outputs: {outputs}")
+                    log.write_line(f"Generated outputs: {list(outputs.keys())}")
+                else:
+                    results.update("Flow completed (no outputs)")
             else:
-                log.write_line(f"✗ Flow execution failed: {result.error}")
+                log.write_line("✗ Flow execution failed or incomplete")
+                if not all_successful:
+                    failed_step = next((sr for sr in step_results if not sr.success), None)
+                    if failed_step:
+                        results.update(f"Failed at step: {failed_step.step_id}")
+                progress.update(progress=100)
                 
         except Exception as e:
             log.write_line(f"✗ Error executing flow: {e}")
+            results.update(f"Error: {str(e)}")
             progress.update(progress=100)
 
 
@@ -239,9 +304,10 @@ class GrimoireApp(App):
         Binding("s", "screenshot", "Screenshot"),
     ]
     
-    def __init__(self, system_path: Optional[Path] = None):
+    def __init__(self, system_path: Optional[Path] = None, auto_flow: Optional[str] = None):
         super().__init__()
         self.system_path = system_path
+        self.auto_flow = auto_flow
         self.engine = GrimoireEngine()
         self.system: Optional[System] = None
     
@@ -292,7 +358,15 @@ class GrimoireApp(App):
     def _show_system_explorer(self) -> None:
         """Show the system explorer screen."""
         if self.system:
-            self.push_screen(SystemExplorerScreen(self.system, self.engine))
+            if self.auto_flow:
+                # Auto-start the specified flow
+                if self.auto_flow in self.system.flows:
+                    self.push_screen(FlowExecutionScreen(self.system, self.auto_flow, self.engine))
+                else:
+                    self.notify(f"Flow '{self.auto_flow}' not found in system")
+                    self.push_screen(SystemExplorerScreen(self.system, self.engine))
+            else:
+                self.push_screen(SystemExplorerScreen(self.system, self.engine))
     
     def action_toggle_dark(self) -> None:
         """Toggle dark mode."""
@@ -304,9 +378,9 @@ class GrimoireApp(App):
         self.notify("Screenshot saved!")
 
 
-def run_textual_app(system_path: Optional[Path] = None) -> None:
+def run_textual_app(system_path: Optional[Path] = None, auto_flow: Optional[str] = None) -> None:
     """Run the Textual GRIMOIRE application."""
-    app = GrimoireApp(system_path)
+    app = GrimoireApp(system_path, auto_flow)
     app.run()
 
 

@@ -674,8 +674,14 @@ def interactive(
 ):
     """Start interactive REPL mode."""
     try:
-        # Load system and start Textual app
-        run_textual_app(system_path)
+        if flow:
+            # If a specific flow is requested, use the same execution engine as the execute command
+            # This provides full step-by-step execution with user interaction
+            from .simple_textual import run_simple_textual_executor
+            run_simple_textual_executor(system_path, flow)
+        else:
+            # If no flow specified, show the system explorer for browsing
+            run_textual_app(system_path, flow)
             
     except Exception as e:
         console.print(f"[bold red]Error:[/bold red] {e}")
