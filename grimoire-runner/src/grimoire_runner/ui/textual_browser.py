@@ -6,7 +6,7 @@ from textual.app import App, ComposeResult
 from textual.containers import Horizontal, Vertical, Container
 from textual.widgets import (
     Header, Footer, Static, Button, Input, DataTable, 
-    SelectionList, Tree, Label, Rule, Collapsible,
+    Tree, Label, Rule, Collapsible,
     TabbedContent, TabPane, TextArea
 )
 from textual.binding import Binding
@@ -78,17 +78,12 @@ class CompendiumBrowserApp(App):
     }
     
     .category-tree {
-        width: 30%;
+        width: 50%;
         border: solid $primary;
     }
     
-    .entry-list {
-        width: 40%;
-        border: solid $accent;
-    }
-    
     .entry-preview {
-        width: 30%;
+        width: 50%;
         border: solid $success;
         padding: 1;
     }
@@ -125,9 +120,6 @@ class CompendiumBrowserApp(App):
         super().__init__()
         self.system = system
         self.compendiums = system.compendiums
-        self.current_compendium: Optional[CompendiumDefinition] = None
-        self.current_category: Optional[str] = None
-        self.current_entries: List[str] = []
     
     def compose(self) -> ComposeResult:
         """Create the browser layout."""
@@ -143,7 +135,6 @@ class CompendiumBrowserApp(App):
             yield Container(
                 Horizontal(
                     self._create_category_tree(),
-                    self._create_entry_list(),
                     self._create_entry_preview(),
                 ),
                 classes="browser-container"
@@ -184,12 +175,6 @@ class CompendiumBrowserApp(App):
         
         return tree
     
-    def _create_entry_list(self) -> SelectionList:
-        """Create the entry list widget."""
-        selection_list = SelectionList(classes="entry-list")
-        selection_list.border_title = "Entries"
-        return selection_list
-    
     def _create_entry_preview(self) -> Static:
         """Create the entry preview widget."""
         preview = Static("Select an entry to view details", classes="entry-preview")
@@ -203,31 +188,8 @@ class CompendiumBrowserApp(App):
         if not node_data:
             return
         
-        if node_data["type"] == "category":
-            self._load_category_entries(node_data["compendium"], node_data["category"])
-        elif node_data["type"] == "entry":
+        if node_data["type"] == "entry":
             self._preview_entry(node_data["compendium"], node_data["entry"])
-    
-    def _load_category_entries(self, comp_id: str, category: str) -> None:
-        """Load entries for a specific category."""
-        compendium = self.compendiums[comp_id]
-        entry_list = self.query_one(SelectionList)
-        
-        # Clear current entries
-        entry_list.clear_options()
-        
-        # Add entries for this category
-        if hasattr(compendium, 'entries') and compendium.entries:
-            for entry_id, entry_data in compendium.entries.items():
-                entry_category = "General"
-                if isinstance(entry_data, dict) and 'category' in entry_data:
-                    entry_category = entry_data['category']
-                
-                if entry_category == category:
-                    entry_list.add_option((entry_id, entry_id))
-        
-        self.current_compendium = compendium
-        self.current_category = category
     
     def _preview_entry(self, comp_id: str, entry_id: str) -> None:
         """Preview an entry in the preview pane."""
@@ -236,49 +198,123 @@ class CompendiumBrowserApp(App):
         
         if hasattr(compendium, 'entries') and entry_id in compendium.entries:
             entry_data = compendium.entries[entry_id]
-            preview_text = self._format_entry_preview(entry_id, entry_data)
+            # Try to get resolved entry data with model defaults
+            resolved_data = self._resolve_entry_with_model(compendium, entry_data)
+            preview_text = self._format_entry_preview(entry_id, resolved_data)
             preview.update(preview_text)
         else:
             preview.update(f"Entry '{entry_id}' not found")
+    
+    def _resolve_entry_with_model(self, compendium: CompendiumDefinition, entry_data: Dict[str, Any]) -> Dict[str, Any]:
+        """Resolve entry data with model defaults and inherited attributes."""
+        # Start with the original entry data
+        resolved_data = entry_data.copy()
+        
+        # Try to get the model definition for this compendium
+        if hasattr(compendium, 'model') and compendium.model in self.system.models:
+            # Get all inherited attributes by resolving the model hierarchy
+            all_attributes = self._resolve_model_attributes(compendium.model)
+            
+            # Add any default values from the model hierarchy that aren't in the entry
+            for attr_name, attr_def in all_attributes.items():
+                if attr_name not in resolved_data:
+                    # Handle both AttributeDefinition objects and dict representations
+                    if hasattr(attr_def, 'default') and attr_def.default is not None:
+                        resolved_data[attr_name] = attr_def.default
+                    elif isinstance(attr_def, dict) and 'default' in attr_def and attr_def['default'] is not None:
+                        resolved_data[attr_name] = attr_def['default']
+        
+        return resolved_data
+    
+    def _resolve_model_attributes(self, model_id: str, visited: set = None) -> Dict[str, Any]:
+        """Resolve model attributes including inheritance hierarchy."""
+        if visited is None:
+            visited = set()
+        
+        # Prevent infinite recursion
+        if model_id in visited:
+            return {}
+        visited.add(model_id)
+        
+        if model_id not in self.system.models:
+            return {}
+        
+        model = self.system.models[model_id]
+        all_attributes = {}
+        
+        # First, resolve parent models (depth-first)
+        if hasattr(model, 'extends') and model.extends:
+            for parent_model in model.extends:
+                parent_attributes = self._resolve_model_attributes(parent_model, visited)
+                all_attributes.update(parent_attributes)
+        
+        # Then add/override with this model's attributes
+        all_attributes.update(model.attributes)
+        
+        return all_attributes
     
     def _format_entry_preview(self, entry_id: str, entry_data: Any) -> str:
         """Format entry data for preview."""
         lines = [f"[bold]{entry_id}[/bold]", ""]
         
         if isinstance(entry_data, dict):
-            for key, value in list(entry_data.items())[:5]:  # Show first 5 fields
+            for key, value in entry_data.items():  # Show all fields
                 if isinstance(value, (str, int, float, bool)):
                     lines.append(f"[dim]{key}:[/dim] {value}")
+                elif isinstance(value, list):
+                    # Special handling for tags - show as sorted, comma-separated
+                    if key.lower() == 'tags':
+                        if len(value) == 0:
+                            lines.append(f"[dim]{key}:[/dim] (none)")
+                        else:
+                            # Sort tags and join with commas
+                            sorted_tags = sorted(str(tag) for tag in value)
+                            tags_str = ", ".join(sorted_tags)
+                            lines.append(f"[dim]{key}:[/dim] {tags_str}")
+                    else:
+                        # Show actual list contents for other lists
+                        if len(value) == 0:
+                            lines.append(f"[dim]{key}:[/dim] []")
+                        elif len(value) <= 3:
+                            # Show short lists in full
+                            list_str = ", ".join(str(item) for item in value)
+                            lines.append(f"[dim]{key}:[/dim] [{list_str}]")
+                        else:
+                            # Show first few items for longer lists
+                            preview_items = ", ".join(str(item) for item in value[:3])
+                            lines.append(f"[dim]{key}:[/dim] [{preview_items}, ...{len(value)-3} more]")
+                elif isinstance(value, dict):
+                    if len(value) == 0:
+                        lines.append(f"[dim]{key}:[/dim] {{}}")
+                    else:
+                        # Show first key-value pair as preview
+                        first_key = next(iter(value))
+                        preview = f"{first_key}: {value[first_key]}"
+                        if len(value) > 1:
+                            lines.append(f"[dim]{key}:[/dim] {{{preview}, ...{len(value)-1} more}}")
+                        else:
+                            lines.append(f"[dim]{key}:[/dim] {{{preview}}}")
                 else:
                     lines.append(f"[dim]{key}:[/dim] {type(value).__name__}")
-            
-            if len(entry_data) > 5:
-                lines.append(f"... and {len(entry_data) - 5} more fields")
         else:
             lines.append(str(entry_data))
         
         return "\n".join(lines)
     
-    def on_selection_list_option_selected(self, event: SelectionList.OptionSelected) -> None:
-        """Handle entry selection."""
-        if self.current_compendium:
-            entry_id = event.option_id
-            if hasattr(self.current_compendium, 'entries') and entry_id in self.current_compendium.entries:
-                entry_data = self.current_compendium.entries[entry_id]
-                self._preview_entry(
-                    next(k for k, v in self.compendiums.items() if v == self.current_compendium),
-                    entry_id
-                )
-    
     def action_view_entry(self) -> None:
         """View the selected entry in detail."""
-        entry_list = self.query_one(SelectionList)
+        tree = self.query_one(Tree)
         
-        if entry_list.selected and self.current_compendium:
-            entry_id = entry_list.selected[0]
-            if hasattr(self.current_compendium, 'entries') and entry_id in self.current_compendium.entries:
-                entry_data = self.current_compendium.entries[entry_id]
-                self.push_screen(CompendiumDetailScreen(entry_id, entry_data))
+        if tree.cursor_node and tree.cursor_node.data:
+            node_data = tree.cursor_node.data
+            if node_data["type"] == "entry":
+                comp_id = node_data["compendium"]
+                entry_id = node_data["entry"]
+                compendium = self.compendiums[comp_id]
+                
+                if hasattr(compendium, 'entries') and entry_id in compendium.entries:
+                    entry_data = compendium.entries[entry_id]
+                    self.push_screen(CompendiumDetailScreen(entry_id, entry_data))
     
     def on_button_pressed(self, event: Button.Pressed) -> None:
         """Handle button presses."""
@@ -287,7 +323,7 @@ class CompendiumBrowserApp(App):
     
     def action_toggle_dark(self) -> None:
         """Toggle dark mode."""
-        self.theme = "dark" if self.theme == "light" else "light"
+        self.theme = "textual-light" if self.theme == "textual-dark" else "textual-dark"
 
 
 def run_compendium_browser(system: System) -> None:
