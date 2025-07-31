@@ -97,14 +97,14 @@ jobs:
           cat codecov_report.txt >> coverage_summary.md 2>/dev/null || echo "Detailed analysis unavailable" >> coverage_summary.md
 
       - name: Upload HTML coverage report
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: coverage-report-python-${{ matrix.python-version }}
           path: grimoire-runner/htmlcov/
           retention-days: 30
 
       - name: Upload codecov analysis reports
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: codecov-analysis-python-${{ matrix.python-version }}
           path: |
@@ -114,7 +114,7 @@ jobs:
           retention-days: 30
 
       - name: Upload coverage XML for future use
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: coverage-xml-python-${{ matrix.python-version }}
           path: grimoire-runner/coverage.xml
@@ -284,7 +284,7 @@ jobs:
           done
 
       - name: Upload spec files as artifact
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: specifications
           path: spec/
