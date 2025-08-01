@@ -96,10 +96,10 @@ class TemplateHelpers:
             return template.render(context)
         except TemplateError as e:
             logger.error(f"Template rendering error: {e}")
-            raise ValueError(f"Template error: {e}")
+            raise ValueError(f"Template error: {e}") from e
         except Exception as e:
             logger.error(f"Unexpected template error: {e}")
-            raise ValueError(f"Template processing failed: {e}")
+            raise ValueError(f"Template processing failed: {e}") from e
 
     def add_template(self, name: str, template_str: str) -> None:
         """Add a named template that can be referenced later."""
@@ -112,7 +112,7 @@ class TemplateHelpers:
             return template.render(context)
         except TemplateError as e:
             logger.error(f"Named template rendering error: {e}")
-            raise ValueError(f"Template '{template_name}' error: {e}")
+            raise ValueError(f"Template '{template_name}' error: {e}") from e
 
     def validate_template(self, template_str: str) -> str | None:
         """Validate a template string and return error message if invalid."""

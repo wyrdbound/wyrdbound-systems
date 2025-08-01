@@ -111,20 +111,20 @@ class LLMIntegration:
         """Specialized character description generation."""
         template = """
         Create a brief character description based on these traits:
-        
+
         Physical traits:
         - Physique: {physique}
         - Face: {face}
         - Skin: {skin}
         - Hair: {hair}
         - Clothing: {clothing}
-        
+
         Personality traits:
         - Background: {background}
         - Virtue: {virtue}
         - Vice: {vice}
         - Speech: {speech}
-        
+
         Write 2-3 sentences describing this character in a way that brings them to life.
         """
 

@@ -106,7 +106,7 @@ class ChoiceExecutor(BaseStepExecutor):
                 if "table_from_values" in choice_source:
                     # Generate choices from a values table like abilities
                     path = choice_source["table_from_values"]
-                    selection_count = choice_source.get("selection_count", 1)
+                    choice_source.get("selection_count", 1)
                     display_format = choice_source.get(
                         "display_format", "{{ key }}: {{ value }}"
                     )

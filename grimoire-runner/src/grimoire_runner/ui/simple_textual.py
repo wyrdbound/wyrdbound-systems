@@ -2,7 +2,7 @@
 
 import asyncio
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 from textual.app import App, ComposeResult
 from textual.binding import Binding
@@ -23,14 +23,14 @@ from textual.widgets import (
 from ..core.engine import GrimoireEngine
 
 
-class SimpleChoiceModal(ModalScreen[Optional[str]]):
+class SimpleChoiceModal(ModalScreen[str | None]):
     """Simple modal for user choices."""
 
     DEFAULT_CSS = """
     SimpleChoiceModal {
         align: center middle;
     }
-    
+
     .modal-container {
         width: 70%;
         height: auto;
@@ -38,12 +38,12 @@ class SimpleChoiceModal(ModalScreen[Optional[str]]):
         border: thick $primary;
         padding: 2;
     }
-    
+
     .modal-title {
         text-style: bold;
         margin-bottom: 1;
     }
-    
+
     .modal-buttons {
         margin-top: 2;
         height: auto;
@@ -110,19 +110,19 @@ class SimpleFlowApp(App):
         padding: 1;
         margin: 1;
     }
-    
+
     .info-box {
         border: round cyan;
         padding: 1;
         margin-bottom: 1;
     }
-    
+
     .progress-box {
         border: round yellow;
         padding: 1;
         margin-bottom: 1;
     }
-    
+
     .log-box {
         border: round green;
         height: 20;

@@ -164,7 +164,7 @@ class ExecutionContext:
             return result
 
         except Exception as e:
-            raise ValueError(f"Template resolution failed: {e}")
+            raise ValueError(f"Template resolution failed: {e}") from e
 
     def resolve_path_value(self, path: str) -> Any:
         """Resolve a path that might reference variables, outputs, or inputs."""
@@ -176,7 +176,7 @@ class ExecutionContext:
             return self.get_input(path[7:])  # Remove 'inputs.' prefix
         else:
             # Try all contexts
-            for context_name, context in [
+            for _context_name, context in [
                 ("variables", self.variables),
                 ("outputs", self.outputs),
                 ("inputs", self.inputs),

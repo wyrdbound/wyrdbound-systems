@@ -108,7 +108,7 @@ def validate(
 
     except Exception as e:
         console.print(f"[bold red]Error loading system:[/bold red] {e}")
-        raise typer.Exit(1)
+        raise typer.Exit(1) from None
 
 
 @app.command()
@@ -269,7 +269,7 @@ def _execute_with_rich_console(
         )
         if verbose:
             console.print_exception()
-        raise typer.Exit(1)
+        raise typer.Exit(1) from None
 
 
 def _execute_flow_with_progress(
@@ -764,7 +764,7 @@ def browse(
 
     except Exception as e:
         console.print(f"[bold red]Error:[/bold red] {e}")
-        raise typer.Exit(1)
+        raise typer.Exit(1) from None
 
 
 @app.command()
@@ -786,7 +786,7 @@ def interactive(
 
     except Exception as e:
         console.print(f"[bold red]Error:[/bold red] {e}")
-        raise typer.Exit(1)
+        raise typer.Exit(1) from None
 
 
 @app.command()
@@ -800,7 +800,7 @@ def debug(
     """Debug a flow with breakpoints."""
     try:
         # Load system
-        system = engine.load_system(system_path)
+        engine.load_system(system_path)
 
         # Enable debug mode
         engine.enable_debug_mode()
@@ -816,7 +816,7 @@ def debug(
 
     except Exception as e:
         console.print(f"[bold red]Error:[/bold red] {e}")
-        raise typer.Exit(1)
+        raise typer.Exit(1) from None
 
 
 @app.command()
@@ -957,7 +957,7 @@ def list(
 
     except Exception as e:
         console.print(f"[bold red]Error:[/bold red] {e}")
-        raise typer.Exit(1)
+        raise typer.Exit(1) from None
 
 
 def main():

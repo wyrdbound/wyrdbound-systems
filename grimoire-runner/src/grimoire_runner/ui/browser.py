@@ -76,7 +76,7 @@ class CompendiumBrowser:
             return
 
         # Get model to understand structure
-        model = self.system.get_model(compendium.model)
+        self.system.get_model(compendium.model)
 
         # Create table with dynamic columns based on common attributes
         table = Table()
@@ -96,7 +96,7 @@ class CompendiumBrowser:
 
             for attr in common_attrs[:5]:
                 value = entry_data.get(attr, "")
-                if isinstance(value, (dict, list)):
+                if isinstance(value, dict | list):
                     value = (
                         str(value)[:30] + "..." if len(str(value)) > 30 else str(value)
                     )
@@ -283,7 +283,7 @@ class CompendiumBrowser:
             for entry_data in entries.values():
                 if attr in entry_data:
                     value = entry_data[attr]
-                    if isinstance(value, (int, float)):
+                    if isinstance(value, int | float):
                         values.append(value)
 
             if values:

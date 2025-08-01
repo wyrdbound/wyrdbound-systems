@@ -455,7 +455,7 @@ class TestGrimoireEngine:
             mock_executor = MockStepExecutor()
             self.engine.register_executor("dice_roll", mock_executor)
 
-            result = self.engine.execute_flow("simple_flow", context, system)
+            self.engine.execute_flow("simple_flow", context, system)
 
             assert hasattr(context, "system_metadata")
             assert context.system_metadata["id"] == "engine_test_system"
@@ -634,7 +634,7 @@ class TestGrimoireEnginePerformance:
             # Execute flow multiple times
             for i in range(100):
                 context = self.engine.create_execution_context()
-                result = self.engine.execute_flow("memory_flow", context, system)
+                self.engine.execute_flow("memory_flow", context, system)
 
                 if i % 20 == 0:
                     gc.collect()  # Force garbage collection

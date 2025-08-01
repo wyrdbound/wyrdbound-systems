@@ -146,13 +146,13 @@ class ModelDefinition:
             errors.append(f"Attribute '{attr_path}' must be an integer")
         elif expected_type == "str" and not isinstance(value, str):
             errors.append(f"Attribute '{attr_path}' must be a string")
-        elif expected_type == "float" and not isinstance(value, (int, float)):
+        elif expected_type == "float" and not isinstance(value, int | float):
             errors.append(f"Attribute '{attr_path}' must be a number")
         elif expected_type == "bool" and not isinstance(value, bool):
             errors.append(f"Attribute '{attr_path}' must be a boolean")
 
         # Range validation
-        if attr_def.range and isinstance(value, (int, float)):
+        if attr_def.range and isinstance(value, int | float):
             range_errors = self._validate_range(attr_path, value, attr_def.range)
             errors.extend(range_errors)
 

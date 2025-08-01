@@ -286,26 +286,26 @@ class GrimoireApp(App):
         color: $accent;
         margin: 1;
     }
-    
+
     .tab-container {
         padding: 1;
     }
-    
+
     .empty-state {
         text-align: center;
         color: $text-muted;
         margin: 2;
     }
-    
+
     .flow-container {
         padding: 1;
     }
-    
+
     #execution-log {
         height: 1fr;
         border: solid $primary;
     }
-    
+
     #results {
         height: 4;
         border: solid $success;

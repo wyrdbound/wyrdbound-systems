@@ -78,33 +78,33 @@ class CompendiumBrowserApp(App):
     .browser-container {
         padding: 1;
     }
-    
+
     .category-tree {
         width: 50%;
         border: solid $primary;
     }
-    
+
     .entry-preview {
         width: 50%;
         border: solid $success;
         padding: 1;
     }
-    
+
     .detail-container {
         padding: 1;
     }
-    
+
     .detail-title {
         text-align: center;
         text-style: bold;
         color: $accent;
         margin: 1;
     }
-    
+
     #entry-content {
         height: 1fr;
     }
-    
+
     .empty-state {
         text-align: center;
         color: $text-muted;
@@ -281,7 +281,7 @@ class CompendiumBrowserApp(App):
 
         if isinstance(entry_data, dict):
             for key, value in entry_data.items():  # Show all fields
-                if isinstance(value, (str, int, float, bool)):
+                if isinstance(value, str | int | float | bool):
                     lines.append(f"[dim]{key}:[/dim] {value}")
                 elif isinstance(value, list):
                     # Special handling for tags - show as sorted, comma-separated

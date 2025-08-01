@@ -184,13 +184,6 @@ class FlowDefinition:
             # If template resolution fails, return the original description
             return self.description
 
-        # Otherwise, get next step in sequence
-        current_index = self.get_step_index(current_step_id)
-        if current_index is not None and current_index + 1 < len(self.steps):
-            return self.steps[current_index + 1].id
-
-        return None
-
     def validate(self) -> list[str]:
         """Validate the flow definition and return any errors."""
         errors = []

@@ -246,7 +246,7 @@ class TestUIPerformance:
 
                 # Generate many log entries
                 start_time = time.time()
-                log_widget = app.query_one("#log")
+                app.query_one("#log")
 
                 for i in range(1000):
                     app.write_log(f"Performance test log entry {i}: " + "A" * 100)
@@ -372,7 +372,7 @@ class TestUIResponseTimes:
             await pilot.pause()
 
             # Test multiple button clicks and measure response time
-            for i in range(10):
+            for _i in range(10):
                 start_time = time.time()
                 await pilot.click("RadioButton")
                 await pilot.pause(0.01)
@@ -421,7 +421,7 @@ class TestUIResponseTimes:
             await pilot.pause()
 
             # Test keyboard navigation speed
-            for i in range(5):
+            for _i in range(5):
                 start_time = time.time()
                 await pilot.press("tab")
                 await pilot.pause(0.01)

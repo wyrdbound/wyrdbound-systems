@@ -62,7 +62,7 @@ class ChoiceModal(ModalScreen):
     ChoiceModal {
         align: center middle;
     }
-    
+
     .choice-container {
         width: 60%;
         max-width: 80;
@@ -71,18 +71,18 @@ class ChoiceModal(ModalScreen):
         border: thick white;
         padding: 2;
     }
-    
+
     .choice-title {
         color: white;
         text-style: bold;
         margin-bottom: 1;
     }
-    
+
     .choice-prompt {
         margin-bottom: 1;
         color: white;
     }
-    
+
     .choice-buttons {
         margin-top: 1;
         height: auto;
@@ -175,41 +175,41 @@ class FlowExecutionApp(App):
         text-style: bold;
         margin: 1;
     }
-    
+
     .info-panel {
         border: round cyan;
         padding: 1;
         margin: 1;
         height: auto;
     }
-    
+
     .progress-container {
         margin: 1;
         height: auto;
     }
-    
+
     .step-info {
         color: white;
         margin-bottom: 1;
     }
-    
+
     .success {
         color: green;
         text-style: bold;
     }
-    
+
     .error {
         color: red;
         text-style: bold;
     }
-    
+
     .results-container {
         border: round green;
         padding: 1;
         margin: 1;
         display: none;
     }
-    
+
     .log-container {
         border: round blue;
         max-height: 20;
@@ -649,7 +649,7 @@ class FlowExecutionApp(App):
                 outputs_container = Vertical()
                 for output_id, output_value in self.current_result.outputs.items():
                     outputs_container.mount(Label(f"{output_id}:", classes="title"))
-                    if isinstance(output_value, (dict, list)):
+                    if isinstance(output_value, dict | list):
                         outputs_container.mount(Pretty(output_value))
                     else:
                         outputs_container.mount(Static(str(output_value)))

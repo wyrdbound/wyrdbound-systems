@@ -169,10 +169,10 @@ class DerivedFieldManager:
         ordered_fields = self._topological_sort(dependent_fields)
         logger.debug(f"Ordered dependent fields: {ordered_fields}")
 
-        for field in ordered_fields:
-            if field not in self._computing:  # Prevent circular dependencies
-                logger.debug(f"Recomputing dependent field: {field}")
-                self._recompute_field(field)
+        for field_name in ordered_fields:
+            if field_name not in self._computing:  # Prevent circular dependencies
+                logger.debug(f"Recomputing dependent field: {field_name}")
+                self._recompute_field(field_name)
 
     def _recompute_field(self, field: str) -> None:
         """Recompute a specific field."""
@@ -260,9 +260,9 @@ class DerivedFieldManager:
             visited.add(field)
             result.append(field)
 
-        for field in fields:
-            if field not in visited:
-                visit(field)
+        for field_name in fields:
+            if field_name not in visited:
+                visit(field_name)
 
         return result
 
@@ -299,10 +299,10 @@ class DerivedFieldManager:
         ordered_fields = self._topological_sort(all_derived_fields)
         logger.debug(f"Computing derived fields in order: {ordered_fields}")
 
-        for field in ordered_fields:
-            if field not in self._computing:  # Prevent circular dependencies
-                logger.debug(f"Computing derived field: {field}")
-                self._recompute_field(field)
+        for field_name in ordered_fields:
+            if field_name not in self._computing:  # Prevent circular dependencies
+                logger.debug(f"Computing derived field: {field_name}")
+                self._recompute_field(field_name)
 
     def _register_attributes_recursive(
         self, attributes: dict[str, Any], path_prefix: str

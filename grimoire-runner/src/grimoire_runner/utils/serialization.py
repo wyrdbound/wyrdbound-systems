@@ -23,7 +23,7 @@ class SerializationHelpers:
                 return json.dumps(data, default=str, ensure_ascii=False)
         except Exception as e:
             logger.error(f"JSON serialization error: {e}")
-            raise ValueError(f"Failed to serialize to JSON: {e}")
+            raise ValueError(f"Failed to serialize to JSON: {e}") from e
 
     @staticmethod
     def from_json(json_str: str) -> Any:
@@ -32,7 +32,7 @@ class SerializationHelpers:
             return json.loads(json_str)
         except json.JSONDecodeError as e:
             logger.error(f"JSON parsing error: {e}")
-            raise ValueError(f"Failed to parse JSON: {e}")
+            raise ValueError(f"Failed to parse JSON: {e}") from e
 
     @staticmethod
     def to_yaml(data: Any, pretty: bool = True) -> str:
@@ -50,7 +50,7 @@ class SerializationHelpers:
                 return yaml.dump(data, allow_unicode=True)
         except Exception as e:
             logger.error(f"YAML serialization error: {e}")
-            raise ValueError(f"Failed to serialize to YAML: {e}")
+            raise ValueError(f"Failed to serialize to YAML: {e}") from e
 
     @staticmethod
     def from_yaml(yaml_str: str) -> Any:
@@ -59,7 +59,7 @@ class SerializationHelpers:
             return yaml.safe_load(yaml_str)
         except yaml.YAMLError as e:
             logger.error(f"YAML parsing error: {e}")
-            raise ValueError(f"Failed to parse YAML: {e}")
+            raise ValueError(f"Failed to parse YAML: {e}") from e
 
     @staticmethod
     def load_from_file(file_path: str | Path) -> Any:
@@ -87,7 +87,7 @@ class SerializationHelpers:
 
         except Exception as e:
             logger.error(f"Error loading file {file_path}: {e}")
-            raise ValueError(f"Failed to load file {file_path}: {e}")
+            raise ValueError(f"Failed to load file {file_path}: {e}") from e
 
     @staticmethod
     def save_to_file(
@@ -120,7 +120,7 @@ class SerializationHelpers:
 
         except Exception as e:
             logger.error(f"Error saving file {file_path}: {e}")
-            raise ValueError(f"Failed to save file {file_path}: {e}")
+            raise ValueError(f"Failed to save file {file_path}: {e}") from e
 
     @staticmethod
     def deep_merge(base: dict[str, Any], update: dict[str, Any]) -> dict[str, Any]:

@@ -381,7 +381,7 @@ class TestSystemLoader:
             system_path = self.create_minimal_system(temp_dir)
 
             # Load system
-            system = self.loader.load_system(system_path)
+            self.loader.load_system(system_path)
 
             # Check that it's in the loaded systems list
             loaded_systems = self.loader.list_loaded_systems()

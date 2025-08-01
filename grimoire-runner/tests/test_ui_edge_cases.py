@@ -296,7 +296,7 @@ class TestFlowAppEdgeCases:
                 await pilot.pause(0.5)
 
                 # Rapid restarts
-                for i in range(5):
+                for _i in range(5):
                     await pilot.press("r")
                     await pilot.pause(0.1)
 
