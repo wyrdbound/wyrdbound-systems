@@ -8,6 +8,7 @@ from pathlib import Path
 import pytest
 
 
+@pytest.mark.no_cover
 def test_summary():
     """Run a curated set of UI tests to validate core functionality."""
 
@@ -37,6 +38,7 @@ def test_summary():
                 "-p",
                 "no:textual-snapshot",
                 "--disable-warnings",  # Suppress warnings to avoid deprecation warnings affecting exit code
+                "--no-cov",  # Disable coverage for the nested pytest run
             ]
             + test_files
         )

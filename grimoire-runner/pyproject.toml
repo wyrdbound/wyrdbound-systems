@@ -91,19 +91,36 @@ disallow_untyped_defs = true
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-python_files = ["test_*.py"]
-addopts = "--cov=grimoire_runner --cov-report=term-missing --cov-report=html --cov-report=xml"
+python_files = ["test_*.py", "*_test.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = "-v --tb=short"
+minversion = "6.0"
+asyncio_mode = "strict"
+asyncio_default_fixture_loop_scope = "function"
+markers = [
+    "asyncio: marks tests as requiring asyncio support",
+    "no_cover: marks tests that should be excluded from coverage requirements",
+]
 
 [tool.coverage.run]
 source = ["src/grimoire_runner"]
+branch = true
 omit = [
     "*/tests/*",
     "*/__pycache__/*",
     "*/.*",
     "setup.py",
+    "*/venv/*",
+    "*/.venv/*",
+    "tests/test_summary.py",  # Meta-test that doesn't directly exercise code
 ]
 
 [tool.coverage.report]
+fail_under = 25
+show_missing = true
+skip_covered = false
+sort = "Cover"
 exclude_lines = [
     "pragma: no cover",
     "def __repr__",
@@ -115,7 +132,12 @@ exclude_lines = [
     "if __name__ == .__main__.:",
     "class .*\\bProtocol\\):",
     "@(abc\\.)?abstractmethod",
+    "\\.\\.\\.",
 ]
 
 [tool.coverage.html]
 directory = "htmlcov"
+show_contexts = true
+
+[tool.coverage.xml]
+output = "coverage.xml"
