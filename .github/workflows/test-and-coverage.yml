@@ -147,7 +147,7 @@ jobs:
         uses: actions/github-script@v6
         with:
           script: |
-            const { exec } = require('@actions/exec');
+            const { exec: execCommand } = require('@actions/exec');
             const fs = require('fs');
 
             try {
@@ -163,7 +163,7 @@ jobs:
                 }
               };
               
-              await exec('python', ['-c', 'import coverage; cov = coverage.Coverage(); cov.load(); print(f"{cov.report():.1f}")'], options);
+              await execCommand('python', ['-c', 'import coverage; cov = coverage.Coverage(); cov.load(); print(f"{cov.report():.1f}")'], options);
               const coverage = parseFloat(coverageOutput.trim());
               
               // Determine badge color
@@ -187,7 +187,7 @@ jobs:
                     }
                   }
                 };
-                await exec('codecov', ['--file', 'coverage.xml', '--dump', '--verbose'], codecovOptions);
+                await execCommand('codecov', ['--file', 'coverage.xml', '--dump', '--verbose'], codecovOptions);
               } catch (codecovError) {
                 codecovSummary = 'Codecov analysis not available';
               }
@@ -229,7 +229,7 @@ jobs:
                   }
                 };
                 
-                await exec('python', ['-c', 'import coverage; cov = coverage.Coverage(); cov.load(); print(f"{cov.report():.1f}")'], fallbackOptions);
+                await execCommand('python', ['-c', 'import coverage; cov = coverage.Coverage(); cov.load(); print(f"{cov.report():.1f}")'], fallbackOptions);
                 const coverage = parseFloat(coverageOutput.trim());
                 
                 let color = 'red';
