@@ -1,6 +1,6 @@
 kind: table
-name: clothing
-display_name: "Clothing"
+id: clothing
+name: "Clothing"
 version: "1.0"
 roll: 1d20
 description: "Types and styles of clothing"

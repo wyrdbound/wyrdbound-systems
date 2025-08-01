@@ -1,10 +1,11 @@
 kind: compendium
-name: munitions
+id: munitions
+name: "Munitions"
 model: item
 entries:
   arrows_20:
     {
-      display_name: "Arrows",
+      name: "Arrows",
       qty: 20,
       cost: 5,
       tags: [munition],
@@ -12,7 +13,7 @@ entries:
     }
   bolts_20:
     {
-      display_name: "Bolts",
+      name: "Bolts",
       qty: 20,
       cost: 5,
       tags: [munition],
@@ -20,7 +21,7 @@ entries:
     }
   stones_20:
     {
-      display_name: "Stones",
+      name: "Stones",
       qty: 20,
       cost: 2,
       tags: [munition],

@@ -1,6 +1,6 @@
 kind: table
-name: background
-display_name: "Background"
+id: background
+name: "Background"
 version: "1.0"
 roll: 1d20
 description: "Backgrounds and origins of characters"

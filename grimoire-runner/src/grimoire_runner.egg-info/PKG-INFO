@@ -1,0 +1,140 @@
+Metadata-Version: 2.4
+Name: grimoire-runner
+Version: 0.1.0
+Summary: Interactive testing and development tool for GRIMOIRE tabletop RPG systems
+Author-email: Wyrdbound Systems <contact@wyrdbound.com>
+License: MIT
+Project-URL: Homepage, https://github.com/wyrdbound/wyrdbound-systems
+Project-URL: Repository, https://github.com/wyrdbound/wyrdbound-systems
+Project-URL: Issues, https://github.com/wyrdbound/wyrdbound-systems/issues
+Classifier: Development Status :: 3 - Alpha
+Classifier: Intended Audience :: Developers
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Classifier: Topic :: Games/Entertainment :: Role-Playing
+Requires-Python: >=3.11
+Description-Content-Type: text/markdown
+Requires-Dist: pydantic>=2.0
+Requires-Dist: pyyaml>=6.0
+Requires-Dist: jinja2>=3.1
+Requires-Dist: textual>=0.85.0
+Requires-Dist: typer[all]>=0.9
+Requires-Dist: langchain>=0.1
+Requires-Dist: langchain-anthropic>=0.1
+Requires-Dist: wyrdbound-dice>=0.0.1
+Requires-Dist: wyrdbound-rng>=0.0.1
+Provides-Extra: dev
+Requires-Dist: pytest>=7.0; extra == "dev"
+Requires-Dist: pytest-cov>=4.0; extra == "dev"
+Requires-Dist: pytest-asyncio>=0.21.0; extra == "dev"
+Requires-Dist: ruff>=0.1.0; extra == "dev"
+Requires-Dist: mypy>=1.0; extra == "dev"
+Requires-Dist: pre-commit>=3.0; extra == "dev"
+
+# GRIMOIRE Runner
+
+An interactive system testing and development tool for GRIMOIRE tabletop RPG systems. This tool allows designers to execute flows, browse compendiums, test dice mechanics, and debug GRIMOIRE system definitions.
+
+## Features
+
+- **Flow Execution**: Run complete flows like character creation with step-by-step execution
+- **Dice Integration**: Seamless integration with wyrdbound-dice for all rolling mechanics
+- **Interactive Debugging**: Set breakpoints, step through flows, and inspect variables
+- **Compendium Browser**: Explore and search system content with filtering
+- **LLM Integration**: Use AI for content generation and rule interpretation
+- **Validation**: Enhanced validation beyond basic schema checking
+
+## Installation
+
+```bash
+pip install -e .
+```
+
+## Quick Start
+
+```bash
+# Validate a system
+grimoire-runner validate systems/knave_1e/
+
+# Run a complete flow
+grimoire-runner execute systems/knave_1e/ --flow character_creation
+
+# Browse compendium content
+grimoire-runner browse systems/knave_1e/ --compendium equipment
+
+# Start interactive mode
+grimoire-runner interactive systems/knave_1e/
+
+# Debug with breakpoints
+grimoire-runner debug systems/knave_1e/ --flow character_creation --breakpoint choose_weapon
+```
+
+## Architecture
+
+The runner is built with a modular architecture:
+
+- **Core Engine**: Orchestrates system loading and flow execution
+- **Step Executors**: Specialized handlers for different step types (dice, choices, tables, LLM)
+- **Integrations**: Clean abstractions around wyrdbound-dice, wyrdbound-rng, and LangChain
+- **UI Layer**: CLI, interactive REPL, debugger, and compendium browser
+
+## Development
+
+```bash
+# Install development dependencies
+pip install -e ".[dev]"
+
+# Run tests
+pytest
+
+# Format code
+black src/ tests/
+isort src/ tests/
+
+# Type checking
+mypy src/
+```
+
+## Integration with Wyrdbound Packages
+
+- **wyrdbound-dice**: All dice rolling operations
+- **wyrdbound-rng**: Name generation during character creation
+- **LangChain**: LLM-powered content generation and rule interpretation
+
+## Usage Examples
+
+### Programmatic Usage
+
+```python
+from grimoire_runner import GrimoireEngine
+
+# Load system
+engine = GrimoireEngine()
+system = engine.load_system("systems/knave_1e/")
+
+# Create context and run character creation
+context = engine.create_execution_context()
+result = engine.execute_flow("character_creation", context)
+
+print(f"Created character: {result.outputs['knave']['name']}")
+```
+
+### Interactive Debugging
+
+```python
+# Enable debug mode with breakpoints
+engine.set_breakpoint("character_creation", "choose_weapon")
+
+# Step through flow
+for step_result in engine.step_through_flow("character_creation", context):
+    print(f"Completed step: {step_result.step_id}")
+    if step_result.requires_input:
+        user_choice = input(f"Choose: {step_result.prompt}")
+        context.set_variable("user_input", user_choice)
+```
+
+## License
+
+MIT License - see LICENSE file for details.

@@ -9,24 +9,24 @@ attributes:
 
   # --- abilities ---
   abilities:
-    str:
+    strength:
       bonus: { type: int, range: 1..10 }
-      defense: { type: int, derived: "10 + $abilities.str.bonus" }
-    dex:
+      defense: { type: int, derived: "10 + $.abilities.strength.bonus" }
+    dexterity:
       bonus: { type: int, range: 1..10 }
-      defense: { type: int, derived: "10 + $abilities.dex.bonus" }
-    con:
+      defense: { type: int, derived: "10 + $.abilities.dexterity.bonus" }
+    constitution:
       bonus: { type: int, range: 1..10 }
-      defense: { type: int, derived: "10 + $abilities.con.bonus" }
-    int:
+      defense: { type: int, derived: "10 + $.abilities.constitution.bonus" }
+    intelligence:
       bonus: { type: int, range: 1..10 }
-      defense: { type: int, derived: "10 + $abilities.int.bonus" }
-    wis:
+      defense: { type: int, derived: "10 + $.abilities.intelligence.bonus" }
+    wisdom:
       bonus: { type: int, range: 1..10 }
-      defense: { type: int, derived: "10 + $abilities.wis.bonus" }
-    cha:
+      defense: { type: int, derived: "10 + $.abilities.wisdom.bonus" }
+    charisma:
       bonus: { type: int, range: 1..10 }
-      defense: { type: int, derived: "10 + $abilities.cha.bonus" }
+      defense: { type: int, derived: "10 + $.abilities.charisma.bonus" }
 
   xp: { type: int, default: 0, range: "0..1000" }
   level: { type: int, default: 1, range: "1..10" }
@@ -36,7 +36,7 @@ attributes:
 
   armor:
     bonus: { type: int, range: "0..10" }
-    defense: { type: int, derived: "10 + $armor.bonus" }
+    defense: { type: int, derived: "10 + $.armor.bonus" }
 
   exploration_speed: { type: int, default: 120, range: "0..240" } # in feet
   combat_speed: { type: int, default: 40, range: "0..160" } # in feet
@@ -58,9 +58,9 @@ attributes:
     alignment: { type: str }
 
   # --- inventory system ---
-  inventory_capacity: { type: int, derived: "$constitution_defense" }
+  inventory_capacity: { type: int, derived: "$.abilities.constitution.defense" }
   inventory: { type: list, of: Item }
-  slots_used: { type: int, derived: "$inventory | sum('slot_cost')" }
+  slots_used: { type: int, derived: "$.inventory | sum('slot_cost')" }
 
 validations:
   # Ensure current HP does not exceed max HP

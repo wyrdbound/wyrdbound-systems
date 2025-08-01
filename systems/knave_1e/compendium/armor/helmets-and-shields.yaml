@@ -1,10 +1,11 @@
 kind: compendium
-name: helmets_and_shields
+id: helmets_and_shields
+name: "Helmets and Shields"
 model: armor
 entries:
   shield:
     {
-      display_name: "Shield",
+      name: "Shield",
       armor_bonus: 1,
       cost: 40,
       quality: 1,
@@ -13,7 +14,7 @@ entries:
     }
   helmet:
     {
-      display_name: "Helmet",
+      name: "Helmet",
       armor_bonus: 1,
       cost: 40,
       quality: 1,

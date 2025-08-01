@@ -1,6 +1,6 @@
 kind: table
-name: misfortunes
-display_name: "Misfortunes"
+id: misfortunes
+name: "Misfortunes"
 version: "1.0"
 roll: 1d20
 description: "Misfortunes and hardships faced by characters"

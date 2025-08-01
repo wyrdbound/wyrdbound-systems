@@ -1,6 +1,6 @@
 kind: table
-name: alignment
-display_name: "Alignment"
+id: alignment
+name: "Alignment"
 version: "1.0"
 roll: 1d20
 description: "Moral and ethical perspectives of characters"

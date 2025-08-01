@@ -1,6 +1,6 @@
 kind: table
-name: hair
-display_name: "Hair"
+id: hair
+name: "Hair"
 version: "1.0"
 roll: 1d20
 description: "Types and styles of hair"

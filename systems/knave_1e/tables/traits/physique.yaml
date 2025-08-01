@@ -1,6 +1,6 @@
 kind: table
-name: physique
-display_name: "Physique"
+id: physique
+name: "Physique"
 version: "1.0"
 roll: 1d20
 description: "Physical build and characteristics"

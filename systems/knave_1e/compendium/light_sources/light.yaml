@@ -1,10 +1,11 @@
 kind: compendium
-name: light
+id: light
+name: "Light Sources"
 model: item
 entries:
   candle:
     {
-      display_name: "Candle",
+      name: "Candle",
       weight: 1,
       cost: 1,
       tags: [light],
@@ -12,7 +13,7 @@ entries:
     }
   candles_5:
     {
-      display_name: "Candle",
+      name: "Candle",
       qty: 5,
       cost: 5,
       tags: [light],
@@ -20,28 +21,28 @@ entries:
     }
   lantern:
     {
-      display_name: "Lantern",
+      name: "Lantern",
       cost: 30,
       tags: [light],
       description: "A sturdy metal lantern with glass panels. Requires oil to function but provides bright, steady light resistant to wind.",
     }
   lamp_oil:
     {
-      display_name: "Lamp Oil",
+      name: "Lamp Oil",
       cost: 5,
       tags: [light],
       description: "A flask of combustible oil for lanterns and lamps. Burns cleanly with minimal smoke. One flask provides hours of light.",
     }
   tinderbox:
     {
-      display_name: "Tinderbox",
+      name: "Tinderbox",
       cost: 10,
       tags: [light],
       description: "A metal box containing flint, steel, and tinder. Essential for starting fires and lighting torches, candles, or lanterns.",
     }
   torch:
     {
-      display_name: "Torch",
+      name: "Torch",
       weight: 1,
       cost: 1,
       tags: [light],
@@ -49,7 +50,7 @@ entries:
     }
   torches_5:
     {
-      display_name: "Torch",
+      name: "Torch",
       qty: 5,
       cost: 5,
       tags: [light],

@@ -12,19 +12,20 @@ All table definition files must follow this top-level structure:
 
 ```yaml
 kind: "table"
-name: "table_identifier"
-display_name: "Human Readable Table Name"
+id: "table_identifier"
+name: "Human Readable Table Name"
 version: "1.0"
 roll: "dice_expression"
 description: "Description of what this table generates"
+entry_type: "armor" # Optional, specifies the type of entries (e.g., "armor", "weapon", "trait")
 entries: {}
 ```
 
 ### Top-Level Fields
 
 - **`kind`** (required): Must be `"table"` to indicate this file defines a table
-- **`name`** (required): Unique identifier for the table within the system
-- **`display_name`** (optional): Human-readable name for display purposes
+- **`id`** (required): Unique identifier for the table within the system
+- **`name`** (optional): Human-readable name for display purposes
 - **`version`** (optional): Version number for the table definition
 - **`roll`** (required): Dice expression that determines how to roll on this table
 - **`description`** (optional): Description of what the table generates or represents
@@ -46,8 +47,9 @@ roll: "1d6+3"      # Roll 1d6 and add 3
 roll: "2d4-1"      # Roll 2d4 and subtract 1
 
 # Percentile dice
-roll: "1d100"      # Roll percentile dice (1-100)
-roll: "d%"         # Alternative percentile notation
+roll: "1d100"      # Roll 1d100 (1-100)
+roll: "d%"         # Alternative percentile notation (rolls 2d10 and interprets as 1-100)
+roll: "PERC"       # Alias for percentile roll
 ```
 
 ### Supported Dice Types
@@ -143,8 +145,8 @@ Generate character traits, personality aspects, or physical descriptions:
 
 ```yaml
 kind: "table"
-name: "personality"
-display_name: "Personality Traits"
+id: "personality"
+name: "Personality Traits"
 roll: "1d20"
 description: "Random personality traits for characters"
 entries:
@@ -160,8 +162,8 @@ Generate random equipment, treasure, or loot:
 
 ```yaml
 kind: "table"
-name: "starting-gear"
-display_name: "Starting Equipment"
+id: "starting-gear"
+name: "Starting Equipment"
 roll: "1d6"
 description: "Random starting equipment for new characters"
 entries:
@@ -177,8 +179,8 @@ Generate random encounters, weather, or story events:
 
 ```yaml
 kind: "table"
-name: "random-encounters"
-display_name: "Wilderness Encounters"
+id: "random-encounters"
+name: "Wilderness Encounters"
 roll: "1d12"
 description: "Random encounters while traveling"
 entries:
@@ -194,8 +196,8 @@ Tables can reference other tables for complex generation:
 
 ```yaml
 kind: "table"
-name: "magic-item"
-display_name: "Magic Item Generator"
+id: "magic-item"
+name: "Magic Item Generator"
 roll: "1d4"
 entries:
   1:
@@ -219,7 +221,8 @@ For non-uniform probability distributions, use different dice or multiple entrie
 ```yaml
 # Using d100 for fine-grained probability
 kind: "table"
-name: "treasure-rarity"
+id: "treasure-rarity"
+name: "Treasure Rarity"
 roll: "1d100"
 entries:
   1-50: "Common" # 50% chance
@@ -253,8 +256,8 @@ entries:
 
 ```yaml
 kind: "table"
-name: "character-background"
-display_name: "Character Background"
+id: "character-background"
+name: "Character Background"
 version: "1.0"
 roll: "1d10"
 description: "Random backgrounds for character creation"
@@ -319,7 +322,7 @@ entries:
 ## Validation Rules
 
 1. The `kind` field must exactly match `"table"`
-2. The `name` field must be unique within the system
+2. The `id` field must be unique within the system
 3. The `roll` field must be a valid dice expression
 4. All entry keys must be valid results for the specified dice roll
 5. Entry keys must cover all possible roll results (no gaps)

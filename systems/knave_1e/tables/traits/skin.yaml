@@ -1,6 +1,6 @@
 kind: table
-name: skin
-display_name: "Skin"
+id: skin
+name: "Skin"
 version: "1.0"
 roll: 1d20
 description: "Skin types and conditions"

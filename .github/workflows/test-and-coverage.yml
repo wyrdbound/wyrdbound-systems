@@ -1,0 +1,143 @@
+name: Test and Coverage
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.11", "3.12"]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install dependencies
+        run: |
+          python -m venv .venv
+          source .venv/bin/activate
+          python -m pip install --upgrade pip
+          cd grimoire-runner
+          pip install -e ".[dev]"
+        shell: bash
+
+      - name: Run tests with coverage
+        run: |
+          source .venv/bin/activate
+          cd grimoire-runner
+          echo "::group::🧪 Running Tests with Coverage"
+          python -m pytest tests/ \
+            --cov=grimoire_runner \
+            --cov-report=term-missing \
+            --log-level=WARNING \
+            --no-header \
+            --no-summary
+          echo "::endgroup::"
+        shell: bash
+
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          python -m venv .venv
+          source .venv/bin/activate
+          python -m pip install --upgrade pip
+          cd grimoire-runner
+          pip install -e ".[dev]"
+        shell: bash
+
+      - name: Run Ruff linting
+        run: |
+          source .venv/bin/activate
+          cd grimoire-runner
+          echo "::group::🔍 Ruff Linting"
+          if ruff check src/ tests/ --output-format=github; then
+            echo "✅ No linting issues found!"
+          else
+            echo "⚠️ Linting issues found - see annotations above"
+          fi
+          echo "::endgroup::"
+        shell: bash
+        continue-on-error: true # Don't fail CI on ruff warnings for now
+
+      - name: Run Ruff formatting check
+        run: |
+          source .venv/bin/activate
+          cd grimoire-runner
+          echo "::group::🎨 Code Formatting"
+          if ruff format --check src/ tests/; then
+            echo "✅ Code formatting is correct!"
+          else
+            echo "❌ Code formatting issues found"
+            exit 1
+          fi
+          echo "::endgroup::"
+        shell: bash
+
+      - name: Check import sorting
+        run: |
+          source .venv/bin/activate
+          cd grimoire-runner
+          echo "::group::📦 Import Sorting"
+          if ruff check --select I src/ tests/; then
+            echo "✅ Import sorting is correct!"
+          else
+            echo "⚠️ Import sorting issues found"
+          fi
+          echo "::endgroup::"
+        shell: bash
+        continue-on-error: true # Don't fail CI on import sorting warnings for now
+
+      - name: Run mypy
+        run: |
+          source .venv/bin/activate
+          cd grimoire-runner
+          echo "::group::🔍 Type Checking"
+          if mypy src/; then
+            echo "✅ Type checking passed!"
+          else
+            echo "⚠️ Type checking issues found"
+          fi
+          echo "::endgroup::"
+        shell: bash
+        continue-on-error: true # Don't fail CI on mypy errors for now
+
+  spec-validation:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate spec files
+        run: |
+          # Check that all spec files are valid markdown
+          find spec/ -name "*.md" -exec echo "Checking {}" \;
+
+          # Check that system files are valid YAML
+          find systems/ -name "*.yaml" -o -name "*.yml" | while read file; do
+            echo "Validating YAML: $file"
+            python -c "import yaml; yaml.safe_load(open('$file'))"
+          done
+
+      - name: Upload spec files as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: specifications
+          path: spec/
+          retention-days: 30

@@ -1,6 +1,6 @@
 kind: table
-name: virtue
-display_name: "Virtue"
+id: virtue
+name: "Virtue"
 version: "1.0"
 roll: 1d20
 description: "Virtues and moral qualities"
