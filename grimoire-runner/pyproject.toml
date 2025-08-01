@@ -114,6 +114,7 @@ omit = [
     "*/venv/*",
     "*/.venv/*",
     "tests/test_summary.py",  # Meta-test that doesn't directly exercise code
+    "*/__init__.py",  # Package initialization files typically contain only imports
 ]
 
 [tool.coverage.report]
