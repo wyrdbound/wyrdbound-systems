@@ -45,7 +45,10 @@ jobs:
             --cov-branch \
             --tb=short \
             --quiet \
-            --disable-warnings; then
+            --disable-warnings \
+            --log-level=WARNING \
+            --no-header \
+            --no-summary; then
             echo "✅ All tests passed!"
           else
             echo "❌ Some tests failed - check details above"
