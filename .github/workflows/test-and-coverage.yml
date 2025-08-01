@@ -34,13 +34,24 @@ jobs:
         run: |
           source .venv/bin/activate
           cd grimoire-runner
-          python -m pytest tests/ \
+          echo "::group::🧪 Running Tests"
+
+          # Run tests and capture results
+          if python -m pytest tests/ \
             --cov=grimoire_runner \
             --cov-report=term-missing \
             --cov-report=html \
             --cov-report=xml \
             --cov-branch \
-            --tb=short
+            --tb=short \
+            --quiet \
+            --disable-warnings; then
+            echo "✅ All tests passed!"
+          else
+            echo "❌ Some tests failed - check details above"
+            exit 1
+          fi
+          echo "::endgroup::"
         shell: bash
 
       - name: Install codecov for local reporting
@@ -271,8 +282,12 @@ jobs:
         run: |
           source .venv/bin/activate
           cd grimoire-runner
-          echo "::group::Ruff Check"
-          ruff check src/ tests/ --output-format=github
+          echo "::group::🔍 Ruff Linting"
+          if ruff check src/ tests/ --output-format=github; then
+            echo "✅ No linting issues found!"
+          else
+            echo "⚠️ Linting issues found - see annotations above"
+          fi
           echo "::endgroup::"
         shell: bash
         continue-on-error: true # Don't fail CI on ruff warnings for now
@@ -281,8 +296,13 @@ jobs:
         run: |
           source .venv/bin/activate
           cd grimoire-runner
-          echo "::group::Ruff Format Check"
-          ruff format --check src/ tests/
+          echo "::group::🎨 Code Formatting"
+          if ruff format --check src/ tests/; then
+            echo "✅ Code formatting is correct!"
+          else
+            echo "❌ Code formatting issues found"
+            exit 1
+          fi
           echo "::endgroup::"
         shell: bash
 
@@ -290,8 +310,12 @@ jobs:
         run: |
           source .venv/bin/activate
           cd grimoire-runner
-          echo "::group::Import Sorting Check"
-          ruff check --select I src/ tests/
+          echo "::group::📦 Import Sorting"
+          if ruff check --select I src/ tests/; then
+            echo "✅ Import sorting is correct!"
+          else
+            echo "⚠️ Import sorting issues found"
+          fi
           echo "::endgroup::"
         shell: bash
         continue-on-error: true # Don't fail CI on import sorting warnings for now
@@ -300,8 +324,12 @@ jobs:
         run: |
           source .venv/bin/activate
           cd grimoire-runner
-          echo "::group::Type Checking"
-          mypy src/
+          echo "::group::🔍 Type Checking"
+          if mypy src/; then
+            echo "✅ Type checking passed!"
+          else
+            echo "⚠️ Type checking issues found"
+          fi
           echo "::endgroup::"
         shell: bash
         continue-on-error: true # Don't fail CI on mypy errors for now
