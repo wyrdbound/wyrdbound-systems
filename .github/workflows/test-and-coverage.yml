@@ -42,13 +42,7 @@ jobs:
             --cov-report=term-missing \
             --cov-report=html \
             --cov-report=xml \
-            --cov-branch \
-            --tb=short \
-            --quiet \
-            --disable-warnings \
-            --log-level=WARNING \
-            --no-header \
-            --no-summary; then
+            --cov-branch; then
             echo "✅ All tests passed!"
           else
             echo "❌ Some tests failed - check details above"
