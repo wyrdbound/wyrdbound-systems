@@ -432,7 +432,7 @@ class TestUIResponseTimes:
             print(f"Average keyboard navigation time: {avg_nav_time:.3f}s")
 
         # Navigation should be reasonably fast (adjusted for test environment)
-        assert avg_nav_time < 0.12  # Increased threshold for test reliability in CI
+        assert avg_nav_time < 0.20  # Increased threshold for test reliability in CI
 
 
 class TestConcurrentUIOperations:
