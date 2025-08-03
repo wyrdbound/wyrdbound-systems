@@ -372,9 +372,9 @@ class TestTemplateIntegration:
 
         for template, context, expected in test_cases:
             result = helpers.render_template(template, context)
-            assert result == expected, (
-                f"Template: {template}, Expected: {expected}, Got: {result}"
-            )
+            assert (
+                result == expected
+            ), f"Template: {template}, Expected: {expected}, Got: {result}"
 
     def test_problematic_template_patterns(self):
         """Test template patterns that might cause issues."""
