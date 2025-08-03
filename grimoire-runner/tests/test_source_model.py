@@ -18,7 +18,7 @@ class TestSourceDefinition:
     def test_source_initialization_minimal(self):
         """Test source initialization with minimal parameters."""
         source = SourceDefinition(kind="source", name="Test Source")
-        
+
         assert source.kind == "source"
         assert source.name == "Test Source"
         assert source.id is None
@@ -44,7 +44,7 @@ class TestSourceDefinition:
             source_url="https://example.com/phb",
             version="2.0"
         )
-        
+
         assert source.kind == "source"
         assert source.name == "Player's Handbook"
         assert source.id == "phb"
@@ -59,14 +59,14 @@ class TestSourceDefinition:
     def test_source_validate_valid(self):
         """Test validation of a valid source."""
         source = SourceDefinition(kind="source", name="Valid Source")
-        
+
         errors = source.validate()
         assert errors == []
 
     def test_source_validate_wrong_kind(self):
         """Test validation with wrong kind."""
         source = SourceDefinition(kind="wrong", name="Test Source")
-        
+
         errors = source.validate()
         assert len(errors) == 1
         assert "kind must be 'source'" in errors[0]
@@ -74,7 +74,7 @@ class TestSourceDefinition:
     def test_source_validate_missing_name(self):
         """Test validation with missing name."""
         source = SourceDefinition(kind="source", name="")
-        
+
         errors = source.validate()
         assert len(errors) == 1
         assert "name is required" in errors[0]
@@ -82,7 +82,7 @@ class TestSourceDefinition:
     def test_source_validate_multiple_errors(self):
         """Test validation with multiple errors."""
         source = SourceDefinition(kind="wrong", name="")
-        
+
         errors = source.validate()
         assert len(errors) == 2
         assert any("kind must be 'source'" in error for error in errors)
@@ -95,7 +95,7 @@ class TestSourceDefinition:
             name="Core Rules",
             default=True
         )
-        
+
         assert source.default is True
 
     def test_source_default_flag_false(self):
@@ -105,7 +105,7 @@ class TestSourceDefinition:
             name="Optional Rules",
             default=False
         )
-        
+
         assert source.default is False
 
     def test_source_with_url(self):
@@ -115,7 +115,7 @@ class TestSourceDefinition:
             name="Online Reference",
             source_url="https://example.com/rules"
         )
-        
+
         assert source.source_url == "https://example.com/rules"
 
     def test_source_with_publisher(self):
@@ -125,7 +125,7 @@ class TestSourceDefinition:
             name="Third Party Content",
             publisher="Indie Game Studio"
         )
-        
+
         assert source.publisher == "Indie Game Studio"
 
     def test_source_with_edition(self):
@@ -135,7 +135,7 @@ class TestSourceDefinition:
             name="Game Rules",
             edition="6th Edition"
         )
-        
+
         assert source.edition == "6th Edition"
 
     def test_source_with_description(self):
@@ -145,7 +145,7 @@ class TestSourceDefinition:
             name="Expansion Pack",
             description="Additional rules and content for advanced play"
         )
-        
+
         assert source.description == "Additional rules and content for advanced play"
 
     def test_source_custom_version(self):
@@ -155,7 +155,7 @@ class TestSourceDefinition:
             name="Beta Rules",
             version="0.5-beta"
         )
-        
+
         assert source.version == "0.5-beta"
 
 
@@ -176,10 +176,10 @@ class TestSourceDefinitionComplexScenarios:
             source_url="https://dnd.wizards.com/products/monster-manual",
             version="1.0"
         )
-        
+
         errors = source.validate()
         assert errors == []
-        
+
         assert source.name == "Monster Manual"
         assert source.id == "mm"
         assert source.default is False
@@ -196,10 +196,10 @@ class TestSourceDefinitionComplexScenarios:
             publisher="DM John Smith",
             description="House rules and custom content for the Shadowfall campaign"
         )
-        
+
         errors = source.validate()
         assert errors == []
-        
+
         assert source.publisher == "DM John Smith"
         assert "Shadowfall" in source.description
 
@@ -214,10 +214,10 @@ class TestSourceDefinitionComplexScenarios:
             description="Free online reference for core game rules",
             source_url="https://dnd5e.wikidot.com/srd"
         )
-        
+
         errors = source.validate()
         assert errors == []
-        
+
         assert source.default is True
         assert source.source_url.startswith("https://")
 
@@ -229,10 +229,10 @@ class TestSourceDefinitionComplexScenarios:
             publisher="Éditeur International",
             description="Règles de jeu en français avec caractères spéciaux: ñáéíóú 中文"
         )
-        
+
         errors = source.validate()
         assert errors == []
-        
+
         assert "Françaises" in source.name
         assert "中文" in source.description
 

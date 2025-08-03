@@ -27,7 +27,7 @@ class TestCompendiumDefinition:
             },
             "potion": {
                 "name": "Healing Potion",
-                "type": "consumable", 
+                "type": "consumable",
                 "effect": "Restores 2d4+2 hit points",
                 "description": "A red liquid that glows softly",
                 "rarity": "common",
@@ -63,7 +63,7 @@ class TestCompendiumDefinition:
             name="Test Compendium",
             model="TestModel"
         )
-        
+
         assert comp.kind == "compendium"
         assert comp.id == "test"
         assert comp.name == "Test Compendium"
@@ -80,13 +80,13 @@ class TestCompendiumDefinition:
             model="TestModel",
             entries=entries
         )
-        
+
         assert comp.entries == entries
 
     def test_get_entry_existing(self):
         """Test getting an existing entry."""
         entry = self.compendium.get_entry("sword")
-        
+
         assert entry is not None
         assert entry["name"] == "Iron Sword"
         assert entry["type"] == "weapon"
@@ -94,13 +94,13 @@ class TestCompendiumDefinition:
     def test_get_entry_nonexistent(self):
         """Test getting a non-existent entry."""
         entry = self.compendium.get_entry("nonexistent")
-        
+
         assert entry is None
 
     def test_list_entries(self):
         """Test listing all entry IDs."""
         entries = self.compendium.list_entries()
-        
+
         assert sorted(entries) == ["potion", "staff", "sword"]
 
     def test_list_entries_empty(self):
@@ -111,15 +111,16 @@ class TestCompendiumDefinition:
             name="Empty Compendium",
             model="TestModel"
         )
-        
+
         entries = empty_comp.list_entries()
         assert entries == []
 
     def test_filter_entries_by_type(self):
         """Test filtering entries by type."""
-        weapon_filter = lambda entry: entry.get("type") == "weapon"
+        def weapon_filter(entry):
+            return entry.get("type") == "weapon"
         weapons = self.compendium.filter_entries(weapon_filter)
-        
+
         assert len(weapons) == 2
         assert "sword" in weapons
         assert "staff" in weapons
@@ -127,9 +128,10 @@ class TestCompendiumDefinition:
 
     def test_filter_entries_by_tag(self):
         """Test filtering entries by tag."""
-        magic_filter = lambda entry: "magic" in entry.get("tags", [])
+        def magic_filter(entry):
+            return "magic" in entry.get("tags", [])
         magic_items = self.compendium.filter_entries(magic_filter)
-        
+
         assert len(magic_items) == 2
         assert "potion" in magic_items
         assert "staff" in magic_items
@@ -138,54 +140,56 @@ class TestCompendiumDefinition:
     def test_filter_entries_complex(self):
         """Test filtering with complex criteria."""
         # Items that are weapons AND have magic tags
-        complex_filter = lambda entry: (
-            entry.get("type") == "weapon" and 
-            "magic" in entry.get("tags", [])
-        )
+        def complex_filter(entry):
+            return (
+                    entry.get("type") == "weapon" and
+                    "magic" in entry.get("tags", [])
+                )
         filtered = self.compendium.filter_entries(complex_filter)
-        
+
         assert len(filtered) == 1
         assert "staff" in filtered
 
     def test_filter_entries_none_match(self):
         """Test filtering when no entries match."""
-        no_match_filter = lambda entry: entry.get("type") == "armor"
+        def no_match_filter(entry):
+            return entry.get("type") == "armor"
         filtered = self.compendium.filter_entries(no_match_filter)
-        
+
         assert filtered == {}
 
     def test_search_entries_simple_text(self):
         """Test searching for simple text."""
         results = self.compendium.search_entries("iron")
-        
+
         assert len(results) == 1
         assert "sword" in results
 
     def test_search_entries_case_insensitive(self):
         """Test that search is case insensitive."""
         results = self.compendium.search_entries("HEALING")
-        
+
         assert len(results) == 1
         assert "potion" in results
 
     def test_search_entries_in_description(self):
         """Test searching in description field."""
         results = self.compendium.search_entries("wooden")
-        
+
         assert len(results) == 1
         assert "staff" in results
 
     def test_search_entries_in_nested_dict(self):
         """Test searching in nested dictionary values."""
         results = self.compendium.search_entries("oak")
-        
+
         assert len(results) == 1
         assert "staff" in results
 
     def test_search_entries_in_list(self):
         """Test searching in list values."""
         results = self.compendium.search_entries("melee")
-        
+
         assert len(results) == 1
         assert "sword" in results
 
@@ -194,7 +198,7 @@ class TestCompendiumDefinition:
         # Search only in name field - should not find "wooden" from description
         results = self.compendium.search_entries("wooden", fields=["name"])
         assert len(results) == 0
-        
+
         # Search only in description field
         results = self.compendium.search_entries("wooden", fields=["description"])
         assert len(results) == 1
@@ -203,7 +207,7 @@ class TestCompendiumDefinition:
     def test_search_entries_multiple_fields(self):
         """Test searching in multiple specific fields."""
         results = self.compendium.search_entries("magic", fields=["description", "tags"])
-        
+
         # Should find both potion (tags) and staff (description mentions crystal, tags)
         assert len(results) == 2
         assert "potion" in results
@@ -212,26 +216,26 @@ class TestCompendiumDefinition:
     def test_search_entries_no_matches(self):
         """Test searching with no matches."""
         results = self.compendium.search_entries("nonexistent")
-        
+
         assert results == {}
 
     def test_search_entries_empty_search_term(self):
         """Test searching with empty search term."""
         results = self.compendium.search_entries("")
-        
+
         # Empty string should match everything
         assert len(results) == 3
 
     def test_search_entries_field_not_exists(self):
         """Test searching in fields that don't exist."""
         results = self.compendium.search_entries("anything", fields=["nonexistent_field"])
-        
+
         assert results == {}
 
     def test_validate_valid_compendium(self):
         """Test validation of a valid compendium."""
         errors = self.compendium.validate()
-        
+
         assert errors == []
 
     def test_validate_wrong_kind(self):
@@ -243,7 +247,7 @@ class TestCompendiumDefinition:
             model="TestModel",
             entries={"item": {"name": "test"}}
         )
-        
+
         errors = comp.validate()
         assert len(errors) == 1
         assert "kind must be 'compendium'" in errors[0]
@@ -257,7 +261,7 @@ class TestCompendiumDefinition:
             model="TestModel",
             entries={"item": {"name": "test"}}
         )
-        
+
         errors = comp.validate()
         assert len(errors) == 1
         assert "id is required" in errors[0]
@@ -271,7 +275,7 @@ class TestCompendiumDefinition:
             model="TestModel",
             entries={"item": {"name": "test"}}
         )
-        
+
         errors = comp.validate()
         assert len(errors) == 1
         assert "name is required" in errors[0]
@@ -285,7 +289,7 @@ class TestCompendiumDefinition:
             model="",
             entries={"item": {"name": "test"}}
         )
-        
+
         errors = comp.validate()
         assert len(errors) == 1
         assert "model is required" in errors[0]
@@ -299,7 +303,7 @@ class TestCompendiumDefinition:
             model="TestModel",
             entries={}
         )
-        
+
         errors = comp.validate()
         assert len(errors) == 1
         assert "must have at least one entry" in errors[0]
@@ -313,7 +317,7 @@ class TestCompendiumDefinition:
             model="",
             entries={}
         )
-        
+
         errors = comp.validate()
         assert len(errors) == 5  # All validation errors
 
@@ -332,11 +336,11 @@ class TestCompendiumSearchBehavior:
                 "item1": {"name": "Item", "level": 5, "cost": 100}
             }
         )
-        
+
         # Numeric values should not be searched
         results = comp.search_entries("5")
         assert results == {}
-        
+
         results = comp.search_entries("100")
         assert results == {}
 
@@ -351,11 +355,11 @@ class TestCompendiumSearchBehavior:
                 "item1": {"name": "Item", "magical": True, "cursed": False}
             }
         )
-        
+
         # Boolean values should not be searched
         results = comp.search_entries("true")
         assert results == {}
-        
+
         results = comp.search_entries("false")
         assert results == {}
 
@@ -370,7 +374,7 @@ class TestCompendiumSearchBehavior:
                 "item1": {"name": "Item", "special": None}
             }
         )
-        
+
         # None values should not cause errors
         results = comp.search_entries("none")
         assert results == {}
@@ -398,16 +402,16 @@ class TestCompendiumSearchBehavior:
                 }
             }
         )
-        
+
         # Should find text in deeply nested structures
         results = comp.search_entries("evocation")
         assert len(results) == 1
         assert "item1" in results
-        
+
         results = comp.search_entries("adamantine")
         assert len(results) == 1
         assert "item1" in results
-        
+
         results = comp.search_entries("lightning")
         assert len(results) == 1
         assert "item1" in results

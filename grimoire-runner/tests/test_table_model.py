@@ -19,14 +19,14 @@ class TestTableEntry:
     def test_table_entry_default_weight(self):
         """Test table entry with default weight."""
         entry = TableEntry(value="Test Result")
-        
+
         assert entry.value == "Test Result"
         assert entry.weight == 1
 
     def test_table_entry_custom_weight(self):
         """Test table entry with custom weight."""
         entry = TableEntry(value="Rare Result", weight=5)
-        
+
         assert entry.value == "Rare Result"
         assert entry.weight == 5
 
@@ -35,15 +35,15 @@ class TestTableEntry:
         # String value
         entry1 = TableEntry(value="String value")
         assert entry1.value == "String value"
-        
+
         # Integer value
         entry2 = TableEntry(value=42)
         assert entry2.value == 42
-        
+
         # Dictionary value
         entry3 = TableEntry(value={"name": "Complex", "type": "object"})
         assert entry3.value == {"name": "Complex", "type": "object"}
-        
+
         # List value
         entry4 = TableEntry(value=["item1", "item2", "item3"])
         assert entry4.value == ["item1", "item2", "item3"]
@@ -60,7 +60,7 @@ class TestTableDefinition:
             id="simple_test",
             entries={
                 1: "Result One",
-                2: "Result Two", 
+                2: "Result Two",
                 3: "Result Three"
             }
         )
@@ -97,7 +97,7 @@ class TestTableDefinition:
     def test_table_initialization_minimal(self):
         """Test table initialization with minimal parameters."""
         table = TableDefinition(kind="table", name="Test Table")
-        
+
         assert table.kind == "table"
         assert table.name == "Test Table"
         assert table.id is None
@@ -121,7 +121,7 @@ class TestTableDefinition:
             entry_type="Result",
             entries={1: "Result"}
         )
-        
+
         assert table.kind == "table"
         assert table.name == "Full Table"
         assert table.id == "full_test"
@@ -149,16 +149,16 @@ class TestTableDefinition:
             name="String Key Table",
             entries={"key1": "Value 1", "key2": "Value 2"}
         )
-        
+
         result = table.get_entry("key1")
         assert result == "Value 1"
 
     def test_get_all_entries(self):
         """Test getting all entries."""
         entries = self.simple_table.get_all_entries()
-        
+
         assert entries == {1: "Result One", 2: "Result Two", 3: "Result Three"}
-        
+
         # Should be a copy, not the original
         entries[4] = "New Result"
         assert 4 not in self.simple_table.entries
@@ -167,28 +167,28 @@ class TestTableDefinition:
         """Test getting all entries from empty table."""
         empty_table = TableDefinition(kind="table", name="Empty")
         entries = empty_table.get_all_entries()
-        
+
         assert entries == {}
 
     def test_get_random_entry(self):
         """Test getting random entry."""
         # Use fixed seed for reproducible test
         rng = random.Random(42)
-        
+
         # Get multiple random entries
         results = [self.simple_table.get_random_entry(rng) for _ in range(10)]
-        
+
         # All results should be valid entries
         valid_values = set(self.simple_table.entries.values())
         assert all(result in valid_values for result in results)
-        
+
         # Should have some variation (not all the same)
         assert len(set(results)) > 1
 
     def test_get_random_entry_default_rng(self):
         """Test getting random entry with default RNG."""
         result = self.simple_table.get_random_entry()
-        
+
         valid_values = set(self.simple_table.entries.values())
         assert result in valid_values
 
@@ -196,27 +196,27 @@ class TestTableDefinition:
         """Test getting random entry from empty table."""
         empty_table = TableDefinition(kind="table", name="Empty")
         result = empty_table.get_random_entry()
-        
+
         assert result is None
 
     def test_get_weighted_random_entry_no_weights(self):
         """Test weighted random with no custom weights (equal weights)."""
         rng = random.Random(42)
-        
+
         results = [self.simple_table.get_weighted_random_entry(rng=rng) for _ in range(10)]
-        
+
         valid_values = set(self.simple_table.entries.values())
         assert all(result in valid_values for result in results)
 
     def test_get_weighted_random_entry_custom_weights(self):
         """Test weighted random with custom weights."""
         rng = random.Random(42)
-        
+
         # Weight entry 1 heavily
         weights = {1: 10, 2: 1, 3: 1}
-        
+
         results = [self.simple_table.get_weighted_random_entry(weights, rng) for _ in range(100)]
-        
+
         # "Result One" should appear much more frequently
         result_one_count = results.count("Result One")
         assert result_one_count > 50  # Should be heavily weighted
@@ -225,7 +225,7 @@ class TestTableDefinition:
         """Test weighted random from empty table."""
         empty_table = TableDefinition(kind="table", name="Empty")
         result = empty_table.get_weighted_random_entry()
-        
+
         assert result is None
 
     def test_get_entry_by_range_integer_exact_match(self):
@@ -237,10 +237,10 @@ class TestTableDefinition:
         """Test range entry lookup within range."""
         result = self.range_table.get_entry_by_range(2)
         assert result == "Common Result"
-        
+
         result = self.range_table.get_entry_by_range(5)
         assert result == "Uncommon Result"
-        
+
         result = self.range_table.get_entry_by_range(8)
         assert result == "Rare Result"
 
@@ -270,7 +270,7 @@ class TestTableDefinition:
                 "not-numbers": "Invalid"
             }
         )
-        
+
         result = table.get_entry_by_range(3)
         assert result is None
 
@@ -281,7 +281,7 @@ class TestTableDefinition:
             name="String Table",
             entries={"exact": "Exact Match", "1-3": "Range Match"}
         )
-        
+
         # String key should match exactly
         result = table.get_entry_by_range("exact")
         assert result == "Exact Match"
@@ -303,7 +303,7 @@ class TestTableDefinition:
             name="Test Table",
             entries={1: "Result"}
         )
-        
+
         errors = table.validate()
         assert len(errors) == 1
         assert "kind must be 'table'" in errors[0]
@@ -315,7 +315,7 @@ class TestTableDefinition:
             name="",
             entries={1: "Result"}
         )
-        
+
         errors = table.validate()
         assert len(errors) == 1
         assert "name is required" in errors[0]
@@ -327,7 +327,7 @@ class TestTableDefinition:
             name="Empty Table",
             entries={}
         )
-        
+
         errors = table.validate()
         assert len(errors) == 1
         assert "must have at least one entry" in errors[0]
@@ -340,7 +340,7 @@ class TestTableDefinition:
             roll="invalid_roll",
             entries={1: "Result"}
         )
-        
+
         errors = table.validate()
         assert len(errors) == 1
         assert "Invalid roll expression" in errors[0]
@@ -348,7 +348,7 @@ class TestTableDefinition:
     def test_validate_valid_roll_expressions(self):
         """Test validation with various valid roll expressions."""
         valid_rolls = ["1d4", "2d6", "1d8", "3d10", "1d12", "1d20", "1d100"]
-        
+
         for roll in valid_rolls:
             table = TableDefinition(
                 kind="table",
@@ -356,7 +356,7 @@ class TestTableDefinition:
                 roll=roll,
                 entries={1: "Result"}
             )
-            
+
             errors = table.validate()
             assert errors == [], f"Roll expression '{roll}' should be valid"
 
@@ -368,7 +368,7 @@ class TestTableDefinition:
             roll="invalid",
             entries={}
         )
-        
+
         errors = table.validate()
         assert len(errors) == 4  # All validation errors
 
@@ -389,21 +389,21 @@ class TestTableDefinitionComplexScenarios:
                 5: True
             }
         )
-        
+
         # Test getting different types
         weapon = table.get_entry(1)
         assert weapon["name"] == "Sword"
         assert weapon["stats"]["damage"] == "1d8"
-        
+
         items_list = table.get_entry(2)
         assert items_list == ["Multiple", "Items", "List"]
-        
+
         simple = table.get_entry(3)
         assert simple == "Simple String"
-        
+
         number = table.get_entry(4)
         assert number == 42
-        
+
         boolean = table.get_entry(5)
         assert boolean is True
 
@@ -418,7 +418,7 @@ class TestTableDefinitionComplexScenarios:
                 "1-5": "Range Key"
             }
         )
-        
+
         assert table.get_entry(1) == "Integer Key"
         assert table.get_entry("string") == "String Key"
         assert table.get_entry_by_range(3) == "Range Key"
@@ -430,15 +430,15 @@ class TestTableDefinitionComplexScenarios:
             name="Distribution Test",
             entries={i: f"Result {i}" for i in range(1, 11)}  # 10 entries
         )
-        
+
         rng = random.Random(12345)  # Fixed seed
         results = [table.get_random_entry(rng) for _ in range(1000)]
-        
+
         # Count occurrences
         counts = {}
         for result in results:
             counts[result] = counts.get(result, 0) + 1
-        
+
         # Each entry should appear roughly 100 times (1000/10)
         # Allow for some variance (50-150 times is reasonable)
         for count in counts.values():
@@ -451,15 +451,15 @@ class TestTableDefinitionComplexScenarios:
             name="Weighted Test",
             entries={1: "Common", 2: "Rare", 3: "Ultra Rare"}
         )
-        
+
         # Heavy weighting towards "Common"
         weights = {1: 100, 2: 10, 3: 1}
-        
+
         rng = random.Random(54321)  # Fixed seed
         results = [table.get_weighted_random_entry(weights, rng) for _ in range(1000)]
-        
+
         counts = {result: results.count(result) for result in set(results)}
-        
+
         # "Common" should appear much more frequently
         assert counts["Common"] > 800
         assert counts["Rare"] < 200

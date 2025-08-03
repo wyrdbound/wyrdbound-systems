@@ -15,7 +15,7 @@ from grimoire_runner.executors.base import BaseStepExecutor
 
 class ConcreteExecutor(BaseStepExecutor):
     """Concrete implementation for testing."""
-    
+
     def execute(self, step, context, system):
         """Test implementation."""
         from grimoire_runner.models.flow import StepResult
@@ -39,7 +39,7 @@ class TestBaseStepExecutor:
         """Test default can_execute behavior."""
         executor = ConcreteExecutor()
         step = Mock()
-        
+
         # Default implementation returns True
         assert executor.can_execute(step) is True
 
@@ -47,7 +47,7 @@ class TestBaseStepExecutor:
         """Test default validate_step behavior."""
         executor = ConcreteExecutor()
         step = Mock()
-        
+
         # Default implementation returns empty list
         errors = executor.validate_step(step)
         assert errors == []
@@ -69,16 +69,16 @@ class TestBaseStepExecutor:
 
 class CustomExecutor(BaseStepExecutor):
     """Custom executor for testing overridden methods."""
-    
+
     def execute(self, step, context, system):
         """Custom execute implementation."""
         from grimoire_runner.models.flow import StepResult
         return StepResult(step_id=step.id, success=True, data={"custom": True})
-    
+
     def can_execute(self, step):
         """Custom can_execute implementation."""
         return step.type == "custom_type"
-    
+
     def validate_step(self, step):
         """Custom validate_step implementation."""
         errors = []
@@ -93,12 +93,12 @@ class TestCustomExecutor:
     def test_custom_can_execute(self):
         """Test custom can_execute implementation."""
         executor = CustomExecutor()
-        
+
         # Should return True for custom_type
         step1 = Mock()
         step1.type = "custom_type"
         assert executor.can_execute(step1) is True
-        
+
         # Should return False for other types
         step2 = Mock()
         step2.type = "other_type"
@@ -107,13 +107,13 @@ class TestCustomExecutor:
     def test_custom_validate_step(self):
         """Test custom validate_step implementation."""
         executor = CustomExecutor()
-        
+
         # Step with custom_param should be valid
         step1 = Mock()
         step1.custom_param = "value"
         errors = executor.validate_step(step1)
         assert errors == []
-        
+
         # Step without custom_param should have error
         step2 = Mock()
         del step2.custom_param  # Remove the attribute
@@ -128,9 +128,9 @@ class TestCustomExecutor:
         step.id = "test_step"
         context = Mock()
         system = Mock()
-        
+
         result = executor.execute(step, context, system)
-        
+
         assert result.step_id == "test_step"
         assert result.success is True
         assert result.data["custom"] is True

@@ -32,9 +32,9 @@ class TestDiceExecutorExtended:
         step = Mock()
         step.id = "test_step"
         step.type = "unsupported_type"
-        
+
         result = self.executor.execute(step, self.context, Mock())
-        
+
         assert isinstance(result, StepResult)
         assert result.step_id == "test_step"
         assert result.success is False
@@ -46,9 +46,9 @@ class TestDiceExecutorExtended:
         step.id = "test_step"
         step.type = "dice_roll"
         step.roll = None
-        
+
         result = self.executor.execute(step, self.context, Mock())
-        
+
         assert isinstance(result, StepResult)
         assert result.step_id == "test_step"
         assert result.success is False
@@ -60,9 +60,9 @@ class TestDiceExecutorExtended:
         step.id = "test_step"
         step.type = "dice_roll"
         step.roll = ""
-        
+
         result = self.executor.execute(step, self.context, Mock())
-        
+
         assert isinstance(result, StepResult)
         assert result.step_id == "test_step"
         assert result.success is False
@@ -78,21 +78,21 @@ class TestDiceExecutorExtended:
         mock_result.breakdown = "3d6: [4, 5, 6] = 15"
         mock_integration.roll_expression.return_value = mock_result
         mock_dice_integration_class.return_value = mock_integration
-        
+
         executor = DiceExecutor()
-        
+
         step = Mock()
         step.id = "test_step"
         step.type = "dice_roll"
         step.roll = "3d6"
         step.modifiers = None
         step.prompt = None
-        
+
         # Mock context to resolve template
         self.context.resolve_template.return_value = "3d6"
-        
+
         result = executor.execute(step, self.context, Mock())
-        
+
         assert isinstance(result, StepResult)
         assert result.step_id == "test_step"
         assert result.success is True
@@ -109,18 +109,18 @@ class TestDiceExecutorExtended:
         mock_result.breakdown = "2d6: [6, 6] = 12"
         mock_integration.roll_expression.return_value = mock_result
         mock_dice_integration_class.return_value = mock_integration
-        
+
         executor = DiceExecutor()
-        
+
         step = Mock()
         step.id = "test_step"
         step.type = "dice_roll"
         step.roll = "2d6"
         step.modifiers = None
         step.prompt = None
-        
+
         result = executor.execute(step, self.context, Mock())
-        
+
         assert isinstance(result, StepResult)
         assert result.step_id == "test_step"
         assert result.success is True
@@ -133,17 +133,17 @@ class TestDiceExecutorExtended:
         mock_integration = Mock()
         mock_integration.roll_expression.side_effect = Exception("Invalid dice expression")
         mock_dice_integration_class.return_value = mock_integration
-        
+
         executor = DiceExecutor()
-        
+
         step = Mock()
         step.id = "test_step"
         step.type = "dice_roll"
         step.roll = "invalid"
         step.modifiers = None
-        
+
         result = executor.execute(step, self.context, Mock())
-        
+
         assert isinstance(result, StepResult)
         assert result.step_id == "test_step"
         assert result.success is False
@@ -154,9 +154,9 @@ class TestDiceExecutorExtended:
         step = Mock()
         step.id = "test_step"
         step.type = "dice_sequence"
-        
+
         result = self.executor.execute(step, self.context, Mock())
-        
+
         # Should return error for unimplemented feature
         assert isinstance(result, StepResult)
         assert result.step_id == "test_step"
@@ -179,11 +179,11 @@ class TestDiceExecutorExtended:
         step1 = Mock()
         step1.type = "player_choice"
         assert not self.executor.can_execute(step1)
-        
+
         step2 = Mock()
         step2.type = "text_output"
         assert not self.executor.can_execute(step2)
-        
+
         step3 = Mock()
         step3.type = "unknown_type"
         assert not self.executor.can_execute(step3)
@@ -207,9 +207,9 @@ class TestDiceExecutorIntegration:
         mock_result.breakdown = "1d8: [8] = 8"
         mock_integration.roll_expression.return_value = mock_result
         mock_dice_integration_class.return_value = mock_integration
-        
+
         executor = DiceExecutor()
-        
+
         # Create a real StepDefinition
         step = StepDefinition(
             id="damage_roll",
@@ -217,9 +217,9 @@ class TestDiceExecutorIntegration:
             name="Damage Roll",
             roll="1d8"
         )
-        
+
         result = executor.execute(step, self.context, Mock())
-        
+
         assert isinstance(result, StepResult)
         assert result.step_id == "damage_roll"
         assert result.success is True
@@ -235,21 +235,21 @@ class TestDiceExecutorIntegration:
         mock_result.breakdown = "1d20+5: [15] + 5 = 20"
         mock_integration.roll_expression.return_value = mock_result
         mock_dice_integration_class.return_value = mock_integration
-        
+
         executor = DiceExecutor()
-        
+
         step = Mock()
         step.id = "attack_roll"
         step.type = "dice_roll"
         step.roll = "1d20+{{strength_bonus}}"
         step.modifiers = None
         step.prompt = None
-        
+
         # Mock context to resolve template
         self.context.resolve_template.return_value = "1d20+5"
-        
+
         result = executor.execute(step, self.context, Mock())
-        
+
         assert isinstance(result, StepResult)
         assert result.step_id == "attack_roll"
         assert result.success is True
