@@ -933,15 +933,41 @@ def list(
                 table.add_column("ID", style="cyan")
                 table.add_column("Name", style="magenta")
                 table.add_column("Description", style="yellow")
+                table.add_column("Entry Type", style="red")
                 table.add_column("Entries", style="green")
                 table.add_column("Roll", style="blue")
 
                 for table_id in tables:
                     tbl = system.get_table(table_id)
+
+                    # Get the display value for entry_type
+                    entry_type_display = "-"
+                    if tbl.entry_type:
+                        # Native types should be lowercase
+                        native_types = {
+                            "str",
+                            "int",
+                            "bool",
+                            "float",
+                            "list",
+                            "dict",
+                            "set",
+                            "tuple",
+                        }
+
+                        if tbl.entry_type in native_types:
+                            # Show native types in lowercase
+                            entry_type_display = tbl.entry_type
+                        else:
+                            # For model IDs, look up the model name
+                            model = system.get_model(tbl.entry_type)
+                            entry_type_display = model.name if model else tbl.entry_type
+
                     table.add_row(
                         tbl.id or table_id,
                         tbl.name or "-",
                         tbl.description or "-",
+                        entry_type_display,
                         str(len(tbl.entries)),
                         tbl.roll or "-",
                     )

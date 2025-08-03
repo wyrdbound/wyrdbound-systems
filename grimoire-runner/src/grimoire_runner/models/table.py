@@ -24,7 +24,7 @@ class TableDefinition:
     version: str = "1.0"
     roll: str | None = None  # e.g., "1d10", "2d6"
     description: str | None = None
-    entry_type: str | None = None  # Type hint for entries
+    entry_type: str = "str"  # Type hint for entries, defaults to "str"
 
     # Entries can be simple dict (roll_value -> result) or weighted
     entries: dict[int | str, Any] = field(default_factory=dict)
