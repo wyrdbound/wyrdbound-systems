@@ -374,6 +374,7 @@ class TestListCommand:
         mock_encounters.description = "Random encounters"
         mock_encounters.entries = [{"weight": 1, "result": "Goblin"}]
         mock_encounters.roll = "1d20"
+        mock_encounters.entry_type = "str"  # Add entry_type attribute
 
         mock_treasure = Mock()
         mock_treasure.id = "treasure"
@@ -381,6 +382,7 @@ class TestListCommand:
         mock_treasure.description = "Treasure table"
         mock_treasure.entries = [{"weight": 1, "result": "Gold"}]
         mock_treasure.roll = "1d100"
+        mock_treasure.entry_type = "str"  # Add entry_type attribute
 
         mock_system.get_table.side_effect = lambda table_id: {
             "encounters": mock_encounters,

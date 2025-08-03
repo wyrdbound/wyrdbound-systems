@@ -101,7 +101,7 @@ class TestTableDefinition:
         assert table.version == "1.0"
         assert table.roll is None
         assert table.description is None
-        assert table.entry_type is None
+        assert table.entry_type == "str"  # Now defaults to "str"
         assert table.entries == {}
 
     def test_table_initialization_full(self):

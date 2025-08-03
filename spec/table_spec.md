@@ -17,7 +17,7 @@ name: "Human Readable Table Name"
 version: "1.0"
 roll: "dice_expression"
 description: "Description of what this table generates"
-entry_type: "armor" # Optional, specifies the type of entries (e.g., "armor", "weapon", "trait")
+entry_type: "str" # Optional, defaults to "str" for string values. Set to model ID for structured data (e.g., "armor", "weapon")
 entries: {}
 ```
 
@@ -29,6 +29,7 @@ entries: {}
 - **`version`** (optional): Version number for the table definition
 - **`roll`** (required): Dice expression that determines how to roll on this table
 - **`description`** (optional): Description of what the table generates or represents
+- **`entry_type`** (optional): Type of entries returned by this table. Defaults to `"str"` for simple string values. Set to a model ID (e.g., `"armor"`, `"weapon"`, `"item"`) when the table returns structured data based on a specific model.
 - **`entries`** (required): Map of roll results to their corresponding values
 
 ## Roll Expressions
