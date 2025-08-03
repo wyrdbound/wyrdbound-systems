@@ -73,6 +73,7 @@ class TestSerializationHelpers:
 
     def test_to_json_error_handling(self):
         """Test JSON serialization error handling."""
+
         # Create a non-serializable object
         class NonSerializable:
             def __str__(self):
@@ -150,6 +151,7 @@ class TestSerializationHelpers:
 
     def test_to_yaml_error_handling(self):
         """Test YAML serialization error handling."""
+
         # Create a non-serializable object
         class NonSerializable:
             pass
@@ -203,7 +205,7 @@ class TestSerializationHelpers:
         """Test loading data from JSON file."""
         data = {"name": "test", "value": 123}
 
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
             json.dump(data, f)
             temp_path = f.name
 
@@ -217,7 +219,7 @@ class TestSerializationHelpers:
         """Test loading data from YAML file."""
         data = {"name": "test", "value": 123}
 
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.yaml', delete=False) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as f:
             yaml.dump(data, f)
             temp_path = f.name
 
@@ -231,7 +233,7 @@ class TestSerializationHelpers:
         """Test loading data from .yml file."""
         data = {"name": "test", "value": 123}
 
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.yml', delete=False) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".yml", delete=False) as f:
             yaml.dump(data, f)
             temp_path = f.name
 
@@ -245,7 +247,7 @@ class TestSerializationHelpers:
         """Test loading YAML from file with unknown extension."""
         data = {"name": "test", "value": 123}
 
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.txt', delete=False) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=False) as f:
             yaml.dump(data, f)
             temp_path = f.name
 
@@ -259,7 +261,7 @@ class TestSerializationHelpers:
         """Test loading JSON from file with unknown extension when YAML fails."""
         data = {"name": "test", "value": 123}
 
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.txt', delete=False) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=False) as f:
             json.dump(data, f)
             temp_path = f.name
 
@@ -276,7 +278,7 @@ class TestSerializationHelpers:
 
     def test_load_from_file_invalid_content(self):
         """Test loading from file with invalid content."""
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
             f.write("invalid json content")
             temp_path = f.name
 
@@ -466,7 +468,9 @@ class TestSerializationHelpers:
 
     def test_sanitize_for_filename_spaces_and_underscores(self):
         """Test handling of spaces and multiple underscores."""
-        result = SerializationHelpers.sanitize_for_filename("file   with    spaces___and___underscores")
+        result = SerializationHelpers.sanitize_for_filename(
+            "file   with    spaces___and___underscores"
+        )
         assert result == "file_with_spaces_and_underscores"
 
     def test_sanitize_for_filename_length_limit(self):

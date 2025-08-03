@@ -38,13 +38,9 @@ class TestCompendiumDefinition:
                 "type": "weapon",
                 "damage": "1d6",
                 "description": "A gnarled wooden staff with crystal tip",
-                "properties": {
-                    "magical": True,
-                    "spell_focus": True,
-                    "material": "oak"
-                },
+                "properties": {"magical": True, "spell_focus": True, "material": "oak"},
                 "tags": ["magic", "wood"],
-            }
+            },
         }
 
         self.compendium = CompendiumDefinition(
@@ -52,16 +48,13 @@ class TestCompendiumDefinition:
             id="items",
             name="Items Compendium",
             model="Item",
-            entries=self.sample_entries.copy()
+            entries=self.sample_entries.copy(),
         )
 
     def test_initialization(self):
         """Test compendium initialization."""
         comp = CompendiumDefinition(
-            kind="compendium",
-            id="test",
-            name="Test Compendium",
-            model="TestModel"
+            kind="compendium", id="test", name="Test Compendium", model="TestModel"
         )
 
         assert comp.kind == "compendium"
@@ -78,7 +71,7 @@ class TestCompendiumDefinition:
             id="test",
             name="Test Compendium",
             model="TestModel",
-            entries=entries
+            entries=entries,
         )
 
         assert comp.entries == entries
@@ -106,10 +99,7 @@ class TestCompendiumDefinition:
     def test_list_entries_empty(self):
         """Test listing entries when compendium is empty."""
         empty_comp = CompendiumDefinition(
-            kind="compendium",
-            id="empty",
-            name="Empty Compendium",
-            model="TestModel"
+            kind="compendium", id="empty", name="Empty Compendium", model="TestModel"
         )
 
         entries = empty_comp.list_entries()
@@ -117,8 +107,10 @@ class TestCompendiumDefinition:
 
     def test_filter_entries_by_type(self):
         """Test filtering entries by type."""
+
         def weapon_filter(entry):
             return entry.get("type") == "weapon"
+
         weapons = self.compendium.filter_entries(weapon_filter)
 
         assert len(weapons) == 2
@@ -128,8 +120,10 @@ class TestCompendiumDefinition:
 
     def test_filter_entries_by_tag(self):
         """Test filtering entries by tag."""
+
         def magic_filter(entry):
             return "magic" in entry.get("tags", [])
+
         magic_items = self.compendium.filter_entries(magic_filter)
 
         assert len(magic_items) == 2
@@ -139,12 +133,11 @@ class TestCompendiumDefinition:
 
     def test_filter_entries_complex(self):
         """Test filtering with complex criteria."""
+
         # Items that are weapons AND have magic tags
         def complex_filter(entry):
-            return (
-                    entry.get("type") == "weapon" and
-                    "magic" in entry.get("tags", [])
-                )
+            return entry.get("type") == "weapon" and "magic" in entry.get("tags", [])
+
         filtered = self.compendium.filter_entries(complex_filter)
 
         assert len(filtered) == 1
@@ -152,8 +145,10 @@ class TestCompendiumDefinition:
 
     def test_filter_entries_none_match(self):
         """Test filtering when no entries match."""
+
         def no_match_filter(entry):
             return entry.get("type") == "armor"
+
         filtered = self.compendium.filter_entries(no_match_filter)
 
         assert filtered == {}
@@ -206,7 +201,9 @@ class TestCompendiumDefinition:
 
     def test_search_entries_multiple_fields(self):
         """Test searching in multiple specific fields."""
-        results = self.compendium.search_entries("magic", fields=["description", "tags"])
+        results = self.compendium.search_entries(
+            "magic", fields=["description", "tags"]
+        )
 
         # Should find both potion (tags) and staff (description mentions crystal, tags)
         assert len(results) == 2
@@ -228,7 +225,9 @@ class TestCompendiumDefinition:
 
     def test_search_entries_field_not_exists(self):
         """Test searching in fields that don't exist."""
-        results = self.compendium.search_entries("anything", fields=["nonexistent_field"])
+        results = self.compendium.search_entries(
+            "anything", fields=["nonexistent_field"]
+        )
 
         assert results == {}
 
@@ -245,7 +244,7 @@ class TestCompendiumDefinition:
             id="test",
             name="Test",
             model="TestModel",
-            entries={"item": {"name": "test"}}
+            entries={"item": {"name": "test"}},
         )
 
         errors = comp.validate()
@@ -259,7 +258,7 @@ class TestCompendiumDefinition:
             id="",
             name="Test",
             model="TestModel",
-            entries={"item": {"name": "test"}}
+            entries={"item": {"name": "test"}},
         )
 
         errors = comp.validate()
@@ -273,7 +272,7 @@ class TestCompendiumDefinition:
             id="test",
             name="",
             model="TestModel",
-            entries={"item": {"name": "test"}}
+            entries={"item": {"name": "test"}},
         )
 
         errors = comp.validate()
@@ -287,7 +286,7 @@ class TestCompendiumDefinition:
             id="test",
             name="Test",
             model="",
-            entries={"item": {"name": "test"}}
+            entries={"item": {"name": "test"}},
         )
 
         errors = comp.validate()
@@ -297,11 +296,7 @@ class TestCompendiumDefinition:
     def test_validate_no_entries(self):
         """Test validation with no entries."""
         comp = CompendiumDefinition(
-            kind="compendium",
-            id="test",
-            name="Test",
-            model="TestModel",
-            entries={}
+            kind="compendium", id="test", name="Test", model="TestModel", entries={}
         )
 
         errors = comp.validate()
@@ -310,13 +305,7 @@ class TestCompendiumDefinition:
 
     def test_validate_multiple_errors(self):
         """Test validation with multiple errors."""
-        comp = CompendiumDefinition(
-            kind="wrong",
-            id="",
-            name="",
-            model="",
-            entries={}
-        )
+        comp = CompendiumDefinition(kind="wrong", id="", name="", model="", entries={})
 
         errors = comp.validate()
         assert len(errors) == 5  # All validation errors
@@ -332,9 +321,7 @@ class TestCompendiumSearchBehavior:
             id="test",
             name="Test",
             model="TestModel",
-            entries={
-                "item1": {"name": "Item", "level": 5, "cost": 100}
-            }
+            entries={"item1": {"name": "Item", "level": 5, "cost": 100}},
         )
 
         # Numeric values should not be searched
@@ -351,9 +338,7 @@ class TestCompendiumSearchBehavior:
             id="test",
             name="Test",
             model="TestModel",
-            entries={
-                "item1": {"name": "Item", "magical": True, "cursed": False}
-            }
+            entries={"item1": {"name": "Item", "magical": True, "cursed": False}},
         )
 
         # Boolean values should not be searched
@@ -370,9 +355,7 @@ class TestCompendiumSearchBehavior:
             id="test",
             name="Test",
             model="TestModel",
-            entries={
-                "item1": {"name": "Item", "special": None}
-            }
+            entries={"item1": {"name": "Item", "special": None}},
         )
 
         # None values should not cause errors
@@ -392,15 +375,12 @@ class TestCompendiumSearchBehavior:
                     "properties": {
                         "magical": {
                             "school": "evocation",
-                            "effects": ["fire", "lightning"]
+                            "effects": ["fire", "lightning"],
                         },
-                        "physical": {
-                            "material": "adamantine",
-                            "weight": 5
-                        }
-                    }
+                        "physical": {"material": "adamantine", "weight": 5},
+                    },
                 }
-            }
+            },
         )
 
         # Should find text in deeply nested structures

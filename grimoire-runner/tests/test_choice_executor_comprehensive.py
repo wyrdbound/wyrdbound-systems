@@ -29,9 +29,9 @@ class TestChoiceExecutorCore:
     def test_executor_initialization(self):
         """Test choice executor initialization."""
         assert self.executor is not None
-        assert hasattr(self.executor, 'execute')
-        assert hasattr(self.executor, 'validate_step')
-        assert hasattr(self.executor, 'can_execute')
+        assert hasattr(self.executor, "execute")
+        assert hasattr(self.executor, "validate_step")
+        assert hasattr(self.executor, "can_execute")
 
     def test_choice_step_validation_success(self):
         """Test successful validation of a choice step."""
@@ -42,8 +42,8 @@ class TestChoiceExecutorCore:
             prompt="Choose an option",
             choices=[
                 ChoiceDefinition(id="option1", label="Option 1"),
-                ChoiceDefinition(id="option2", label="Option 2")
-            ]
+                ChoiceDefinition(id="option2", label="Option 2"),
+            ],
         )
 
         errors = self.executor.validate_step(step)
@@ -56,7 +56,7 @@ class TestChoiceExecutorCore:
             type="player_choice",
             name="Test Choice",
             prompt="Choose an option",
-            choices=[]
+            choices=[],
         )
 
         errors = self.executor.validate_step(step)
@@ -72,8 +72,10 @@ class TestChoiceExecutorCore:
             prompt="Choose an option",
             choices=[
                 ChoiceDefinition(id="option1", label="First Option"),
-                ChoiceDefinition(id="option1", label="Duplicate ID")  # Invalid: duplicate ID
-            ]
+                ChoiceDefinition(
+                    id="option1", label="Duplicate ID"
+                ),  # Invalid: duplicate ID
+            ],
         )
 
         errors = self.executor.validate_step(step)
@@ -82,20 +84,14 @@ class TestChoiceExecutorCore:
     def test_can_execute_player_choice(self):
         """Test can_execute returns True for player_choice steps."""
         step = StepDefinition(
-            id="test_choice",
-            type="player_choice",
-            name="Test Choice"
+            id="test_choice", type="player_choice", name="Test Choice"
         )
 
         assert self.executor.can_execute(step) is True
 
     def test_can_execute_other_types(self):
         """Test can_execute returns False for non-choice steps."""
-        step = StepDefinition(
-            id="test_step",
-            type="dice_roll",
-            name="Test Step"
-        )
+        step = StepDefinition(id="test_step", type="dice_roll", name="Test Step")
 
         assert self.executor.can_execute(step) is False
 
@@ -106,9 +102,7 @@ class TestChoiceExecutorCore:
             type="player_choice",
             name="Single Choice",
             prompt="Only one option",
-            choices=[
-                ChoiceDefinition(id="only", label="Only Option")
-            ]
+            choices=[ChoiceDefinition(id="only", label="Only Option")],
         )
 
         result = self.executor.execute(step, self.context, Mock())
@@ -124,7 +118,7 @@ class TestChoiceExecutorCore:
         choices = [
             ChoiceDefinition(id="option1", label="First Option"),
             ChoiceDefinition(id="option2", label="Second Option"),
-            ChoiceDefinition(id="option3", label="Third Option")
+            ChoiceDefinition(id="option3", label="Third Option"),
         ]
 
         step = StepDefinition(
@@ -132,7 +126,7 @@ class TestChoiceExecutorCore:
             type="player_choice",
             name="Multiple Choice",
             prompt="Choose one option",
-            choices=choices
+            choices=choices,
         )
 
         result = self.executor.execute(step, self.context, Mock())
@@ -151,9 +145,7 @@ class TestChoiceExecutorCore:
             type="player_choice",
             name="Template Choice",
             prompt="Hello {{player_name}}, choose an option",
-            choices=[
-                ChoiceDefinition(id="greet", label="Greet back")
-            ]
+            choices=[ChoiceDefinition(id="greet", label="Greet back")],
         )
 
         result = self.executor.execute(step, self.context, Mock())
@@ -173,8 +165,8 @@ class TestChoiceExecutorCore:
             prompt="Choose your action",
             choices=[
                 ChoiceDefinition(id="attack", label="Attack with {{weapon_type}}"),
-                ChoiceDefinition(id="defend", label="Defend")
-            ]
+                ChoiceDefinition(id="defend", label="Defend"),
+            ],
         )
 
         result = self.executor.execute(step, self.context, Mock())
@@ -200,9 +192,7 @@ class TestChoiceExecutorInteraction:
             type="player_choice",
             name="No Prompt Choice",
             prompt="",
-            choices=[
-                ChoiceDefinition(id="option1", label="Option 1")
-            ]
+            choices=[ChoiceDefinition(id="option1", label="Option 1")],
         )
 
         result = self.executor.execute(step, self.context, Mock())
@@ -217,9 +207,7 @@ class TestChoiceExecutorInteraction:
             type="player_choice",
             name="Data Test",
             prompt="Test data structure",
-            choices=[
-                ChoiceDefinition(id="test", label="Test Option")
-            ]
+            choices=[ChoiceDefinition(id="test", label="Test Option")],
         )
 
         result = self.executor.execute(step, self.context, Mock())
@@ -229,7 +217,7 @@ class TestChoiceExecutorInteraction:
         assert result.success is True
         assert result.requires_input is True
         assert isinstance(result.data, dict)
-        assert "choices" in result.data or hasattr(result, 'choices')
+        assert "choices" in result.data or hasattr(result, "choices")
 
 
 class TestChoiceExecutorEdgeCases:
@@ -251,7 +239,7 @@ class TestChoiceExecutorEdgeCases:
             id="test",
             type="player_choice",
             name="Test",
-            choices=[ChoiceDefinition(id="test", label="Test")]
+            choices=[ChoiceDefinition(id="test", label="Test")],
         )
 
         # The executor gracefully handles None context by logging error and returning failure
@@ -268,9 +256,7 @@ class TestChoiceExecutorEdgeCases:
             type="player_choice",
             name="Long Label Test",
             prompt="Choose",
-            choices=[
-                ChoiceDefinition(id="long", label=long_label)
-            ]
+            choices=[ChoiceDefinition(id="long", label=long_label)],
         )
 
         result = self.executor.execute(step, self.context, Mock())
@@ -287,8 +273,8 @@ class TestChoiceExecutorEdgeCases:
             prompt="Choose with special chars: àáâãäåæçèéêë",
             choices=[
                 ChoiceDefinition(id="unicode", label="Ñiño with émojis 🎮🎲"),
-                ChoiceDefinition(id="symbols", label="Symbols: !@#$%^&*()")
-            ]
+                ChoiceDefinition(id="symbols", label="Symbols: !@#$%^&*()"),
+            ],
         )
 
         result = self.executor.execute(step, self.context, Mock())
@@ -305,13 +291,16 @@ class TestChoiceExecutorEdgeCases:
             prompt="Choose",
             choices=[
                 ChoiceDefinition(id="same", label="First"),
-                ChoiceDefinition(id="same", label="Second")  # Duplicate ID
-            ]
+                ChoiceDefinition(id="same", label="Second"),  # Duplicate ID
+            ],
         )
 
         errors = self.executor.validate_step(step)
         assert len(errors) > 0
-        assert any("duplicate" in error.lower() or "unique" in error.lower() for error in errors)
+        assert any(
+            "duplicate" in error.lower() or "unique" in error.lower()
+            for error in errors
+        )
 
 
 class TestChoiceExecutorIntegration:
@@ -338,9 +327,7 @@ class TestChoiceExecutorIntegration:
                 type="player_choice",
                 name="System Choice",
                 prompt="System-wide choice",
-                choices=[
-                    ChoiceDefinition(id="system_action", label="System Action")
-                ]
+                choices=[ChoiceDefinition(id="system_action", label="System Action")],
             )
 
             executor = ChoiceExecutor()
@@ -363,8 +350,7 @@ class TestChoiceExecutorPerformance:
         """Test performance with many choices."""
         # Create a step with many choices
         choices = [
-            ChoiceDefinition(id=f"choice_{i}", label=f"Choice {i}")
-            for i in range(100)
+            ChoiceDefinition(id=f"choice_{i}", label=f"Choice {i}") for i in range(100)
         ]
 
         step = StepDefinition(
@@ -372,7 +358,7 @@ class TestChoiceExecutorPerformance:
             type="player_choice",
             name="Many Choices",
             prompt="Choose from many options",
-            choices=choices
+            choices=choices,
         )
 
         # Should handle many choices efficiently
@@ -393,9 +379,7 @@ class TestChoiceExecutorPerformance:
             type="player_choice",
             name="Nested Template",
             prompt="Deep nesting: {{level1}}",
-            choices=[
-                ChoiceDefinition(id="test", label="Test {{level1}}")
-            ]
+            choices=[ChoiceDefinition(id="test", label="Test {{level1}}")],
         )
 
         result = self.executor.execute(step, self.context, Mock())
@@ -413,7 +397,7 @@ class TestChoiceExecutorPerformance:
             id="concurrent_test",
             type="player_choice",
             name="Concurrent Test",
-            choices=[ChoiceDefinition(id="test", label="Test")]
+            choices=[ChoiceDefinition(id="test", label="Test")],
         )
 
         results = []

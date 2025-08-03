@@ -68,7 +68,7 @@ class TestDiceExecutorExtended:
         assert result.success is False
         assert "Dice roll step requires 'roll' parameter" in result.error
 
-    @patch('grimoire_runner.executors.dice_executor.DiceIntegration')
+    @patch("grimoire_runner.executors.dice_executor.DiceIntegration")
     def test_execute_dice_roll_success(self, mock_dice_integration_class):
         """Test successful dice roll execution."""
         # Mock the dice integration
@@ -99,7 +99,7 @@ class TestDiceExecutorExtended:
         assert result.data["result"] == 15
         mock_integration.roll_expression.assert_called_once_with("3d6", {})
 
-    @patch('grimoire_runner.executors.dice_executor.DiceIntegration')
+    @patch("grimoire_runner.executors.dice_executor.DiceIntegration")
     def test_execute_dice_roll_with_output_variable(self, mock_dice_integration_class):
         """Test dice roll execution with output variable."""
         # Mock the dice integration
@@ -126,12 +126,14 @@ class TestDiceExecutorExtended:
         assert result.success is True
         assert result.data["result"] == 12
 
-    @patch('grimoire_runner.executors.dice_executor.DiceIntegration')
+    @patch("grimoire_runner.executors.dice_executor.DiceIntegration")
     def test_execute_dice_roll_integration_error(self, mock_dice_integration_class):
         """Test dice roll execution when integration throws error."""
         # Mock the dice integration to throw error
         mock_integration = Mock()
-        mock_integration.roll_expression.side_effect = Exception("Invalid dice expression")
+        mock_integration.roll_expression.side_effect = Exception(
+            "Invalid dice expression"
+        )
         mock_dice_integration_class.return_value = mock_integration
 
         executor = DiceExecutor()
@@ -197,7 +199,7 @@ class TestDiceExecutorIntegration:
         self.executor = DiceExecutor()
         self.context = Mock()
 
-    @patch('grimoire_runner.executors.dice_executor.DiceIntegration')
+    @patch("grimoire_runner.executors.dice_executor.DiceIntegration")
     def test_execute_with_step_definition(self, mock_dice_integration_class):
         """Test execution with real StepDefinition object."""
         # Mock the dice integration
@@ -212,10 +214,7 @@ class TestDiceExecutorIntegration:
 
         # Create a real StepDefinition
         step = StepDefinition(
-            id="damage_roll",
-            type="dice_roll",
-            name="Damage Roll",
-            roll="1d8"
+            id="damage_roll", type="dice_roll", name="Damage Roll", roll="1d8"
         )
 
         result = executor.execute(step, self.context, Mock())
@@ -225,7 +224,7 @@ class TestDiceExecutorIntegration:
         assert result.success is True
         assert result.data["result"] == 8
 
-    @patch('grimoire_runner.executors.dice_executor.DiceIntegration')
+    @patch("grimoire_runner.executors.dice_executor.DiceIntegration")
     def test_execute_with_templated_roll(self, mock_dice_integration_class):
         """Test execution with templated roll expression."""
         # Mock the dice integration

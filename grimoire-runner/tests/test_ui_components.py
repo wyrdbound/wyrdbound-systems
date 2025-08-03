@@ -42,7 +42,7 @@ class TestCompendiumBrowserApp:
             "id": "test_system",
             "name": "Test System",
             "description": "A test system with compendiums",
-            "version": "1.0.0"
+            "version": "1.0.0",
         }
 
         with open(system_dir / "system.yaml", "w") as f:
@@ -64,16 +64,16 @@ class TestCompendiumBrowserApp:
                     "type": "weapon",
                     "damage": "1d8",
                     "cost": 10,
-                    "tags": ["metal", "weapon"]
+                    "tags": ["metal", "weapon"],
                 },
                 "potion": {
                     "name": "Health Potion",
                     "type": "consumable",
                     "effect": "heal",
                     "cost": 5,
-                    "tags": ["magic", "healing"]
-                }
-            }
+                    "tags": ["magic", "healing"],
+                },
+            },
         }
 
         with open(compendium_dir / "items.yaml", "w") as f:
@@ -90,8 +90,8 @@ class TestCompendiumBrowserApp:
                 "name": {"type": "string", "required": True},
                 "type": {"type": "string", "required": True},
                 "cost": {"type": "integer", "default": 0},
-                "tags": {"type": "list", "default": []}
-            }
+                "tags": {"type": "list", "default": []},
+            },
         }
 
         with open(models_dir / "item.yaml", "w") as f:
@@ -105,6 +105,7 @@ class TestCompendiumBrowserApp:
             system_path = self.create_test_system_with_compendiums(temp_dir)
 
             from grimoire_runner.core.loader import SystemLoader
+
             loader = SystemLoader()
             system = loader.load_system(system_path)
 
@@ -120,6 +121,7 @@ class TestCompendiumBrowserApp:
             system_path = self.create_test_system_with_compendiums(temp_dir)
 
             from grimoire_runner.core.loader import SystemLoader
+
             loader = SystemLoader()
             system = loader.load_system(system_path)
 
@@ -142,6 +144,7 @@ class TestCompendiumBrowserApp:
             system_path = self.create_test_system_with_compendiums(temp_dir)
 
             from grimoire_runner.core.loader import SystemLoader
+
             loader = SystemLoader()
             system = loader.load_system(system_path)
 
@@ -212,6 +215,7 @@ class TestCompendiumBrowserApp:
             system_path = self.create_test_system_with_compendiums(temp_dir)
 
             from grimoire_runner.core.loader import SystemLoader
+
             loader = SystemLoader()
             system = loader.load_system(system_path)
 
@@ -223,7 +227,7 @@ class TestCompendiumBrowserApp:
                 "cost": 10,
                 "tags": ["tag1", "tag2"],
                 "complex_list": [1, 2, 3, 4, 5],
-                "nested_dict": {"key1": "value1", "key2": "value2"}
+                "nested_dict": {"key1": "value1", "key2": "value2"},
             }
 
             formatted = app._format_entry_preview("test_entry", test_entry)
@@ -252,7 +256,7 @@ class TestCompendiumBrowserApp:
         system.compendiums = {}
 
         # Should not raise an exception
-        with patch.object(CompendiumBrowserApp, 'run') as mock_run:
+        with patch.object(CompendiumBrowserApp, "run") as mock_run:
             run_compendium_browser(system)
             mock_run.assert_called_once()
 
@@ -270,7 +274,7 @@ class TestSystemExplorerScreen:
             "id": "comprehensive_system",
             "name": "Comprehensive Test System",
             "description": "System with all component types",
-            "version": "1.0.0"
+            "version": "1.0.0",
         }
 
         with open(system_dir / "system.yaml", "w") as f:
@@ -285,8 +289,13 @@ class TestSystemExplorerScreen:
             "name": "Test Flow",
             "description": "A test flow",
             "steps": [
-                {"id": "step1", "name": "First Step", "type": "dice_roll", "roll": "1d6"}
-            ]
+                {
+                    "id": "step1",
+                    "name": "First Step",
+                    "type": "dice_roll",
+                    "roll": "1d6",
+                }
+            ],
         }
 
         with open(flows_dir / "test_flow.yaml", "w") as f:
@@ -301,8 +310,8 @@ class TestSystemExplorerScreen:
             "name": "Character",
             "attributes": {
                 "name": {"type": "string", "required": True},
-                "level": {"type": "integer", "default": 1}
-            }
+                "level": {"type": "integer", "default": 1},
+            },
         }
 
         with open(models_dir / "character.yaml", "w") as f:
@@ -319,8 +328,8 @@ class TestSystemExplorerScreen:
             "description": "A test table",
             "entries": [
                 {"range": "1-3", "result": "Low"},
-                {"range": "4-6", "result": "High"}
-            ]
+                {"range": "4-6", "result": "High"},
+            ],
         }
 
         with open(tables_dir / "test_table.yaml", "w") as f:
@@ -336,9 +345,7 @@ class TestSystemExplorerScreen:
             "name": "Items",
             "description": "Test items",
             "model": "item",
-            "entries": {
-                "sword": {"name": "Sword", "type": "weapon"}
-            }
+            "entries": {"sword": {"name": "Sword", "type": "weapon"}},
         }
 
         with open(compendium_dir / "items.yaml", "w") as f:
@@ -367,6 +374,7 @@ class TestSystemExplorerScreen:
             system_path = self.create_comprehensive_test_system(temp_dir)
 
             from grimoire_runner.core.loader import SystemLoader
+
             loader = SystemLoader()
             system = loader.load_system(system_path)
             engine = GrimoireEngine()
@@ -375,6 +383,7 @@ class TestSystemExplorerScreen:
 
             # Create a minimal app to run the screen in context
             from grimoire_runner.ui.textual_app import GrimoireApp
+
             app = GrimoireApp()
 
             async with app.run_test() as pilot:
@@ -479,7 +488,7 @@ class TestGrimoireApp:
             "id": "test_system",
             "name": "Test System",
             "description": "A minimal test system",
-            "version": "1.0.0"
+            "version": "1.0.0",
         }
 
         with open(system_dir / "system.yaml", "w") as f:
@@ -524,13 +533,13 @@ class TestGrimoireApp:
             system_path = self.create_test_system(temp_dir)
 
             # Should not raise an exception
-            with patch.object(GrimoireApp, 'run') as mock_run:
+            with patch.object(GrimoireApp, "run") as mock_run:
                 run_textual_app(system_path=system_path, auto_flow="test_flow")
                 mock_run.assert_called_once()
 
     def test_run_textual_app_no_params(self):
         """Test run_textual_app function with no parameters."""
-        with patch.object(GrimoireApp, 'run') as mock_run:
+        with patch.object(GrimoireApp, "run") as mock_run:
             run_textual_app()
             mock_run.assert_called_once()
 
@@ -595,7 +604,7 @@ class TestCompendiumDetailScreen:
             "type": "test",
             "nested": {"key": "value"},
             "list_data": [1, 2, 3],
-            "description": "A complex test entry with multiple data types"
+            "description": "A complex test entry with multiple data types",
         }
 
         screen = CompendiumDetailScreen(entry_id, entry_data)
@@ -609,7 +618,7 @@ class TestCompendiumDetailScreen:
             "name": "Test Entry",
             "cost": 10,
             "tags": ["tag1", "tag2"],
-            "description": "A test entry"
+            "description": "A test entry",
         }
 
         screen = CompendiumDetailScreen(entry_id, entry_data)

@@ -117,7 +117,7 @@ class TestLogging:
 
     def test_setup_logging_console_output(self):
         """Test setup_logging with console output - console is default behavior."""
-        with patch('sys.stdout'):
+        with patch("sys.stdout"):
             setup_logging()  # Console output is default
 
             logger = logging.getLogger()
@@ -151,11 +151,7 @@ class TestSerialization:
 
     def test_serialize_data_dict(self):
         """Test serializing dictionary data."""
-        test_data = {
-            "name": "Test",
-            "value": 42,
-            "items": ["a", "b", "c"]
-        }
+        test_data = {"name": "Test", "value": 42, "items": ["a", "b", "c"]}
 
         # Test JSON serialization
         json_result = SerializationHelpers.to_json(test_data)
@@ -171,10 +167,7 @@ class TestSerialization:
 
     def test_serialize_data_list(self):
         """Test serializing list data."""
-        test_data = [
-            {"name": "Item1", "value": 1},
-            {"name": "Item2", "value": 2}
-        ]
+        test_data = [{"name": "Item1", "value": 1}, {"name": "Item2", "value": 2}]
 
         json_result = SerializationHelpers.to_json(test_data)
         assert isinstance(json_result, str)
@@ -189,6 +182,7 @@ class TestSerialization:
 
     def test_serialize_data_non_serializable(self):
         """Test serializing non-serializable data."""
+
         class NonSerializable:
             pass
 
@@ -377,7 +371,7 @@ class TestSerialization:
             "boolean": True,
             "null": None,
             "list": [1, 2, 3],
-            "nested": {"key": "value"}
+            "nested": {"key": "value"},
         }
 
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -397,7 +391,7 @@ class TestSerialization:
             "boolean": True,
             "null": None,
             "list": [1, 2, 3],
-            "nested": {"key": "value"}
+            "nested": {"key": "value"},
         }
 
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -432,7 +426,7 @@ class TestSerialization:
         test_data = {
             "unicode": "测试数据",
             "emoji": "🎲🗡️⚔️",
-            "accents": "café naïve résumé"
+            "accents": "café naïve résumé",
         }
 
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -446,9 +440,7 @@ class TestSerialization:
     def test_serialization_large_data(self):
         """Test serialization with large data sets."""
         # Create large test data
-        large_data = {
-            "items": [{"id": i, "name": f"Item {i}"} for i in range(1000)]
-        }
+        large_data = {"items": [{"id": i, "name": f"Item {i}"} for i in range(1000)]}
 
         with tempfile.TemporaryDirectory() as temp_dir:
             file_path = Path(temp_dir) / "large.json"
@@ -471,5 +463,7 @@ class TestSerialization:
             with patch("builtins.open", mock_open()) as mock_file:
                 mock_file.side_effect = PermissionError("Permission denied")
 
-                with pytest.raises(ValueError):  # SerializationHelpers wraps errors in ValueError
+                with pytest.raises(
+                    ValueError
+                ):  # SerializationHelpers wraps errors in ValueError
                     SerializationHelpers.save_to_file(test_data, file_path)

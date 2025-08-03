@@ -34,6 +34,7 @@ class TestStringTemplateLoaderExtended:
     def test_get_source_existing_template(self):
         """Test getting source for existing template."""
         from jinja2 import Environment
+
         env = Environment(loader=self.loader)
 
         self.loader.add_template("greeting", "Hello {{name}}!")
@@ -46,6 +47,7 @@ class TestStringTemplateLoaderExtended:
     def test_get_source_nonexistent_template(self):
         """Test getting source for non-existent template."""
         from jinja2 import Environment
+
         env = Environment(loader=self.loader)
 
         with pytest.raises(TemplateError, match="Template 'nonexistent' not found"):
@@ -144,7 +146,7 @@ class TestTemplateHelpersExtended:
             "character": {
                 "name": "Gandalf",
                 "level": 20,
-                "inventory": ["Staff", "Ring", "Robe"]
+                "inventory": ["Staff", "Ring", "Robe"],
             }
         }
 
@@ -174,17 +176,23 @@ class TestTemplateHelpersExtended:
 
     def test_extract_variables_multiple(self):
         """Test variable extraction from templates with multiple variables."""
-        variables = self.helpers.extract_variables("{{greeting}} {{name}}, you have {{count}} items")
+        variables = self.helpers.extract_variables(
+            "{{greeting}} {{name}}, you have {{count}} items"
+        )
         assert variables == {"greeting", "name", "count"}
 
     def test_extract_variables_with_filters(self):
         """Test variable extraction from templates with filters."""
-        variables = self.helpers.extract_variables("{{ name | title_case }} has {{ item | snake_case }}")
+        variables = self.helpers.extract_variables(
+            "{{ name | title_case }} has {{ item | snake_case }}"
+        )
         assert variables == {"name", "item"}
 
     def test_extract_variables_with_attributes(self):
         """Test variable extraction from templates with attribute access."""
-        variables = self.helpers.extract_variables("{{character.name}} is level {{character.level}}")
+        variables = self.helpers.extract_variables(
+            "{{character.name}} is level {{character.level}}"
+        )
         assert variables == {"character"}
 
     def test_extract_variables_no_variables(self):
@@ -194,7 +202,9 @@ class TestTemplateHelpersExtended:
 
     def test_extract_variables_complex_expressions(self):
         """Test variable extraction from complex template expressions."""
-        template = "{% if user.active %}{{user.name}}{% endif %} has {{items|length}} items"
+        template = (
+            "{% if user.active %}{{user.name}}{% endif %} has {{items|length}} items"
+        )
         variables = self.helpers.extract_variables(template)
         assert variables == {"user", "items"}
 
@@ -208,7 +218,10 @@ class TestTemplateHelpersExtended:
         """Test validation of templates with invalid syntax."""
         assert self.helpers.validate_template("{{ unclosed variable") is not None
         assert self.helpers.validate_template("{% invalid tag %}") is not None
-        assert self.helpers.validate_template("{{ variable | nonexistent_filter }}") is not None
+        assert (
+            self.helpers.validate_template("{{ variable | nonexistent_filter }}")
+            is not None
+        )
 
     def test_validate_template_empty(self):
         """Test validation of empty template."""
@@ -253,7 +266,7 @@ class TestTemplateHelpersIntegration:
             "character": {
                 "name": "aragorn son of arathorn",
                 "class": "Ranger-Scout",
-                "strength_mod": 4
+                "strength_mod": 4,
             }
         }
 
@@ -276,7 +289,7 @@ class TestTemplateHelpersIntegration:
         # Create a large context
         large_context = {
             "items": [f"item_{i}" for i in range(1000)],
-            "character": {"name": "Test", "level": 10}
+            "character": {"name": "Test", "level": 10},
         }
 
         template_str = "{{ character.name }} has {{ items|length }} items"

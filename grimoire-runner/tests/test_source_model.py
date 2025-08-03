@@ -42,7 +42,7 @@ class TestSourceDefinition:
             publisher="Wizards of the Coast",
             description="Core rulebook for D&D 5th Edition",
             source_url="https://example.com/phb",
-            version="2.0"
+            version="2.0",
         )
 
         assert source.kind == "source"
@@ -90,21 +90,13 @@ class TestSourceDefinition:
 
     def test_source_default_flag_true(self):
         """Test source with default flag set to True."""
-        source = SourceDefinition(
-            kind="source",
-            name="Core Rules",
-            default=True
-        )
+        source = SourceDefinition(kind="source", name="Core Rules", default=True)
 
         assert source.default is True
 
     def test_source_default_flag_false(self):
         """Test source with default flag set to False."""
-        source = SourceDefinition(
-            kind="source",
-            name="Optional Rules",
-            default=False
-        )
+        source = SourceDefinition(kind="source", name="Optional Rules", default=False)
 
         assert source.default is False
 
@@ -113,7 +105,7 @@ class TestSourceDefinition:
         source = SourceDefinition(
             kind="source",
             name="Online Reference",
-            source_url="https://example.com/rules"
+            source_url="https://example.com/rules",
         )
 
         assert source.source_url == "https://example.com/rules"
@@ -121,9 +113,7 @@ class TestSourceDefinition:
     def test_source_with_publisher(self):
         """Test source with publisher information."""
         source = SourceDefinition(
-            kind="source",
-            name="Third Party Content",
-            publisher="Indie Game Studio"
+            kind="source", name="Third Party Content", publisher="Indie Game Studio"
         )
 
         assert source.publisher == "Indie Game Studio"
@@ -131,9 +121,7 @@ class TestSourceDefinition:
     def test_source_with_edition(self):
         """Test source with edition information."""
         source = SourceDefinition(
-            kind="source",
-            name="Game Rules",
-            edition="6th Edition"
+            kind="source", name="Game Rules", edition="6th Edition"
         )
 
         assert source.edition == "6th Edition"
@@ -143,18 +131,14 @@ class TestSourceDefinition:
         source = SourceDefinition(
             kind="source",
             name="Expansion Pack",
-            description="Additional rules and content for advanced play"
+            description="Additional rules and content for advanced play",
         )
 
         assert source.description == "Additional rules and content for advanced play"
 
     def test_source_custom_version(self):
         """Test source with custom version."""
-        source = SourceDefinition(
-            kind="source",
-            name="Beta Rules",
-            version="0.5-beta"
-        )
+        source = SourceDefinition(kind="source", name="Beta Rules", version="0.5-beta")
 
         assert source.version == "0.5-beta"
 
@@ -174,7 +158,7 @@ class TestSourceDefinitionComplexScenarios:
             publisher="Wizards of the Coast",
             description="Bestiary containing hundreds of creatures for D&D campaigns",
             source_url="https://dnd.wizards.com/products/monster-manual",
-            version="1.0"
+            version="1.0",
         )
 
         errors = source.validate()
@@ -194,7 +178,7 @@ class TestSourceDefinitionComplexScenarios:
             edition="5e",
             default=False,
             publisher="DM John Smith",
-            description="House rules and custom content for the Shadowfall campaign"
+            description="House rules and custom content for the Shadowfall campaign",
         )
 
         errors = source.validate()
@@ -212,7 +196,7 @@ class TestSourceDefinitionComplexScenarios:
             display_name="System Reference Document (Online)",
             default=True,
             description="Free online reference for core game rules",
-            source_url="https://dnd5e.wikidot.com/srd"
+            source_url="https://dnd5e.wikidot.com/srd",
         )
 
         errors = source.validate()
@@ -227,7 +211,7 @@ class TestSourceDefinitionComplexScenarios:
             kind="source",
             name="Règles Françaises",
             publisher="Éditeur International",
-            description="Règles de jeu en français avec caractères spéciaux: ñáéíóú 中文"
+            description="Règles de jeu en français avec caractères spéciaux: ñáéíóú 中文",
         )
 
         errors = source.validate()

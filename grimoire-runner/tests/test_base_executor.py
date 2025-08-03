@@ -19,6 +19,7 @@ class ConcreteExecutor(BaseStepExecutor):
     def execute(self, step, context, system):
         """Test implementation."""
         from grimoire_runner.models.flow import StepResult
+
         return StepResult(step_id=step.id, success=True)
 
 
@@ -55,15 +56,17 @@ class TestBaseStepExecutor:
     def test_execute_method_exists(self):
         """Test that execute method exists and is callable."""
         executor = ConcreteExecutor()
-        assert hasattr(executor, 'execute')
+        assert hasattr(executor, "execute")
         assert callable(executor.execute)
 
     def test_abstract_methods_enforced(self):
         """Test that abstract methods are enforced."""
         # Class without execute method should fail
         with pytest.raises(TypeError):
+
             class IncompleteExecutor(BaseStepExecutor):
                 pass
+
             IncompleteExecutor()
 
 
@@ -73,6 +76,7 @@ class CustomExecutor(BaseStepExecutor):
     def execute(self, step, context, system):
         """Custom execute implementation."""
         from grimoire_runner.models.flow import StepResult
+
         return StepResult(step_id=step.id, success=True, data={"custom": True})
 
     def can_execute(self, step):
@@ -82,7 +86,7 @@ class CustomExecutor(BaseStepExecutor):
     def validate_step(self, step):
         """Custom validate_step implementation."""
         errors = []
-        if not hasattr(step, 'custom_param'):
+        if not hasattr(step, "custom_param"):
             errors.append("Missing custom_param")
         return errors
 

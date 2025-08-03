@@ -58,11 +58,7 @@ class TestTableDefinition:
             kind="table",
             name="Simple Table",
             id="simple_test",
-            entries={
-                1: "Result One",
-                2: "Result Two",
-                3: "Result Three"
-            }
+            entries={1: "Result One", 2: "Result Two", 3: "Result Three"},
         )
 
         self.range_table = TableDefinition(
@@ -74,8 +70,8 @@ class TestTableDefinition:
                 "1-3": "Common Result",
                 "4-7": "Uncommon Result",
                 "8-9": "Rare Result",
-                10: "Legendary Result"
-            }
+                10: "Legendary Result",
+            },
         )
 
         self.complex_table = TableDefinition(
@@ -90,8 +86,8 @@ class TestTableDefinition:
             entries={
                 2: {"name": "Dagger", "damage": "1d4"},
                 7: {"name": "Sword", "damage": "1d8"},
-                12: {"name": "Greatsword", "damage": "2d6"}
-            }
+                12: {"name": "Greatsword", "damage": "2d6"},
+            },
         )
 
     def test_table_initialization_minimal(self):
@@ -119,7 +115,7 @@ class TestTableDefinition:
             roll="1d20",
             description="A fully specified table",
             entry_type="Result",
-            entries={1: "Result"}
+            entries={1: "Result"},
         )
 
         assert table.kind == "table"
@@ -147,7 +143,7 @@ class TestTableDefinition:
         table = TableDefinition(
             kind="table",
             name="String Key Table",
-            entries={"key1": "Value 1", "key2": "Value 2"}
+            entries={"key1": "Value 1", "key2": "Value 2"},
         )
 
         result = table.get_entry("key1")
@@ -203,7 +199,9 @@ class TestTableDefinition:
         """Test weighted random with no custom weights (equal weights)."""
         rng = random.Random(42)
 
-        results = [self.simple_table.get_weighted_random_entry(rng=rng) for _ in range(10)]
+        results = [
+            self.simple_table.get_weighted_random_entry(rng=rng) for _ in range(10)
+        ]
 
         valid_values = set(self.simple_table.entries.values())
         assert all(result in valid_values for result in results)
@@ -215,7 +213,10 @@ class TestTableDefinition:
         # Weight entry 1 heavily
         weights = {1: 10, 2: 1, 3: 1}
 
-        results = [self.simple_table.get_weighted_random_entry(weights, rng) for _ in range(100)]
+        results = [
+            self.simple_table.get_weighted_random_entry(weights, rng)
+            for _ in range(100)
+        ]
 
         # "Result One" should appear much more frequently
         result_one_count = results.count("Result One")
@@ -267,8 +268,8 @@ class TestTableDefinition:
                 "invalid-range-format": "Should not match",
                 "1-": "Incomplete range",
                 "-5": "Incomplete range",
-                "not-numbers": "Invalid"
-            }
+                "not-numbers": "Invalid",
+            },
         )
 
         result = table.get_entry_by_range(3)
@@ -279,7 +280,7 @@ class TestTableDefinition:
         table = TableDefinition(
             kind="table",
             name="String Table",
-            entries={"exact": "Exact Match", "1-3": "Range Match"}
+            entries={"exact": "Exact Match", "1-3": "Range Match"},
         )
 
         # String key should match exactly
@@ -298,11 +299,7 @@ class TestTableDefinition:
 
     def test_validate_wrong_kind(self):
         """Test validation with wrong kind."""
-        table = TableDefinition(
-            kind="wrong",
-            name="Test Table",
-            entries={1: "Result"}
-        )
+        table = TableDefinition(kind="wrong", name="Test Table", entries={1: "Result"})
 
         errors = table.validate()
         assert len(errors) == 1
@@ -310,11 +307,7 @@ class TestTableDefinition:
 
     def test_validate_missing_name(self):
         """Test validation with missing name."""
-        table = TableDefinition(
-            kind="table",
-            name="",
-            entries={1: "Result"}
-        )
+        table = TableDefinition(kind="table", name="", entries={1: "Result"})
 
         errors = table.validate()
         assert len(errors) == 1
@@ -322,11 +315,7 @@ class TestTableDefinition:
 
     def test_validate_no_entries(self):
         """Test validation with no entries."""
-        table = TableDefinition(
-            kind="table",
-            name="Empty Table",
-            entries={}
-        )
+        table = TableDefinition(kind="table", name="Empty Table", entries={})
 
         errors = table.validate()
         assert len(errors) == 1
@@ -338,7 +327,7 @@ class TestTableDefinition:
             kind="table",
             name="Invalid Roll Table",
             roll="invalid_roll",
-            entries={1: "Result"}
+            entries={1: "Result"},
         )
 
         errors = table.validate()
@@ -351,10 +340,7 @@ class TestTableDefinition:
 
         for roll in valid_rolls:
             table = TableDefinition(
-                kind="table",
-                name="Test Table",
-                roll=roll,
-                entries={1: "Result"}
+                kind="table", name="Test Table", roll=roll, entries={1: "Result"}
             )
 
             errors = table.validate()
@@ -362,12 +348,7 @@ class TestTableDefinition:
 
     def test_validate_multiple_errors(self):
         """Test validation with multiple errors."""
-        table = TableDefinition(
-            kind="wrong",
-            name="",
-            roll="invalid",
-            entries={}
-        )
+        table = TableDefinition(kind="wrong", name="", roll="invalid", entries={})
 
         errors = table.validate()
         assert len(errors) == 4  # All validation errors
@@ -382,12 +363,16 @@ class TestTableDefinitionComplexScenarios:
             kind="table",
             name="Complex Entries",
             entries={
-                1: {"type": "weapon", "name": "Sword", "stats": {"damage": "1d8", "weight": 3}},
+                1: {
+                    "type": "weapon",
+                    "name": "Sword",
+                    "stats": {"damage": "1d8", "weight": 3},
+                },
                 2: ["Multiple", "Items", "List"],
                 3: "Simple String",
                 4: 42,
-                5: True
-            }
+                5: True,
+            },
         )
 
         # Test getting different types
@@ -412,11 +397,7 @@ class TestTableDefinitionComplexScenarios:
         table = TableDefinition(
             kind="table",
             name="Mixed Keys",
-            entries={
-                1: "Integer Key",
-                "string": "String Key",
-                "1-5": "Range Key"
-            }
+            entries={1: "Integer Key", "string": "String Key", "1-5": "Range Key"},
         )
 
         assert table.get_entry(1) == "Integer Key"
@@ -428,7 +409,7 @@ class TestTableDefinitionComplexScenarios:
         table = TableDefinition(
             kind="table",
             name="Distribution Test",
-            entries={i: f"Result {i}" for i in range(1, 11)}  # 10 entries
+            entries={i: f"Result {i}" for i in range(1, 11)},  # 10 entries
         )
 
         rng = random.Random(12345)  # Fixed seed
@@ -449,7 +430,7 @@ class TestTableDefinitionComplexScenarios:
         table = TableDefinition(
             kind="table",
             name="Weighted Test",
-            entries={1: "Common", 2: "Rare", 3: "Ultra Rare"}
+            entries={1: "Common", 2: "Rare", 3: "Ultra Rare"},
         )
 
         # Heavy weighting towards "Common"

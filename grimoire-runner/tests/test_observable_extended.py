@@ -118,10 +118,7 @@ class TestObservableValue:
         obs.value = 2
         obs.value = 3
 
-        expected_calls = [
-            call("test_field", 1, 2),
-            call("test_field", 2, 3)
-        ]
+        expected_calls = [call("test_field", 1, 2), call("test_field", 2, 3)]
         observer.assert_has_calls(expected_calls)
 
 
@@ -132,7 +129,9 @@ class TestDerivedFieldManager:
         """Set up test fixtures."""
         self.mock_context = Mock()
         self.mock_template_resolver = Mock()
-        self.manager = DerivedFieldManager(self.mock_context, self.mock_template_resolver)
+        self.manager = DerivedFieldManager(
+            self.mock_context, self.mock_template_resolver
+        )
 
     def test_derived_field_manager_initialization(self):
         """Test DerivedFieldManager initialization."""
@@ -180,7 +179,9 @@ class TestDerivedFieldManager:
 
     def test_extract_dependencies_mixed_syntax(self):
         """Test extracting dependencies from mixed syntax."""
-        deps = self.manager._extract_dependencies("{{ name }} + $abilities.str + $.level")
+        deps = self.manager._extract_dependencies(
+            "{{ name }} + $abilities.str + $.level"
+        )
 
         assert "name" in deps
         assert "abilities.str" in deps
@@ -291,20 +292,26 @@ class TestDerivedFieldManagerIntegration:
         """Set up test fixtures."""
         self.mock_context = Mock()
         self.mock_template_resolver = Mock()
-        self.manager = DerivedFieldManager(self.mock_context, self.mock_template_resolver)
+        self.manager = DerivedFieldManager(
+            self.mock_context, self.mock_template_resolver
+        )
 
     def test_character_stats_scenario(self):
         """Test a realistic character stats scenario."""
         # Register derived fields like in an RPG character
         self.manager.register_derived_field("str_modifier", "{{ str_score }} / 2 - 5")
-        self.manager.register_derived_field("attack_bonus", "{{ str_modifier }} + {{ level }}")
-        self.manager.register_derived_field("damage", "{{ attack_bonus }} + {{ weapon_damage }}")
+        self.manager.register_derived_field(
+            "attack_bonus", "{{ str_modifier }} + {{ level }}"
+        )
+        self.manager.register_derived_field(
+            "damage", "{{ attack_bonus }} + {{ weapon_damage }}"
+        )
 
         # Mock template resolver to simulate calculations
         self.mock_template_resolver.side_effect = lambda expr: {
             "{{ str_score }} / 2 - 5": 3,  # str_modifier calculation
             "{{ str_modifier }} + {{ level }}": 8,  # attack_bonus calculation
-            "{{ attack_bonus }} + {{ weapon_damage }}": 13  # damage calculation
+            "{{ attack_bonus }} + {{ weapon_damage }}": 13,  # damage calculation
         }.get(expr, 0)
 
         # Set base values
@@ -329,12 +336,17 @@ class TestDerivedFieldManagerIntegration:
             ("{{ player.name }}", {"player.name"}),
             ("{{ stats.str + stats.con }}", {"stats.str"}),  # Regex finds first match
             ("$character.level", {"character.level"}),
-            ("{{ base_damage }} + $modifiers.strength", {"base_damage", "modifiers.strength"}),
+            (
+                "{{ base_damage }} + $modifiers.strength",
+                {"base_damage", "modifiers.strength"},
+            ),
         ]
 
         for expression, expected_deps in test_cases:
             deps = self.manager._extract_dependencies(expression)
-            assert deps.issuperset(expected_deps), f"Failed for {expression}: got {deps}, expected {expected_deps}"
+            assert deps.issuperset(expected_deps), (
+                f"Failed for {expression}: got {deps}, expected {expected_deps}"
+            )
 
     def test_dependency_graph_building(self):
         """Test that dependency graph is built correctly."""

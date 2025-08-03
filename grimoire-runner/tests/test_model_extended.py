@@ -40,7 +40,7 @@ class TestAttributeDefinition:
             enum=None,
             derived="{{ base_stat + modifier }}",
             required=False,
-            description="A character attribute"
+            description="A character attribute",
         )
 
         assert attr.type == "int"
@@ -54,9 +54,7 @@ class TestAttributeDefinition:
     def test_attribute_definition_enum(self):
         """Test AttributeDefinition with enum values."""
         attr = AttributeDefinition(
-            type="str",
-            enum=["small", "medium", "large"],
-            default="medium"
+            type="str", enum=["small", "medium", "large"], default="medium"
         )
 
         assert attr.type == "str"
@@ -70,8 +68,7 @@ class TestValidationRule:
     def test_validation_rule_creation(self):
         """Test ValidationRule creation."""
         rule = ValidationRule(
-            expression="strength >= 8",
-            message="Strength must be at least 8"
+            expression="strength >= 8", message="Strength must be at least 8"
         )
 
         assert rule.expression == "strength >= 8"
@@ -84,9 +81,7 @@ class TestModelDefinition:
     def setup_method(self):
         """Set up test fixtures."""
         self.basic_model = ModelDefinition(
-            id="character",
-            name="Character",
-            description="A basic character model"
+            id="character", name="Character", description="A basic character model"
         )
 
         self.complex_model = ModelDefinition(
@@ -100,13 +95,15 @@ class TestModelDefinition:
                     "strength": AttributeDefinition(type="int", range="3..18"),
                     "dexterity": AttributeDefinition(type="int", range="3..18"),
                 },
-                "size": AttributeDefinition(type="str", enum=["tiny", "small", "medium", "large"]),
+                "size": AttributeDefinition(
+                    type="str", enum=["tiny", "small", "medium", "large"]
+                ),
                 "optional_field": AttributeDefinition(type="str", required=False),
             },
             validations=[
                 ValidationRule("level > 0", "Level must be positive"),
-                ValidationRule("name.length > 0", "Name cannot be empty")
-            ]
+                ValidationRule("name.length > 0", "Name cannot be empty"),
+            ],
         )
 
     def test_model_definition_defaults(self):
@@ -135,7 +132,7 @@ class TestModelDefinition:
             version=2,
             extends=["base_entity"],
             attributes=attributes,
-            validations=validations
+            validations=validations,
         )
 
         assert model.id == "character"
@@ -178,9 +175,7 @@ class TestModelDefinition:
         model = ModelDefinition(
             id="test",
             name="Test",
-            attributes={
-                "dict_attr": {"type": "int", "default": 5, "required": False}
-            }
+            attributes={"dict_attr": {"type": "int", "default": 5, "required": False}},
         )
 
         attr = model.get_attribute("dict_attr")
@@ -199,7 +194,7 @@ class TestModelDefinition:
             attributes={
                 "name": AttributeDefinition(type="str"),
                 "age": AttributeDefinition(type="int"),
-            }
+            },
         )
 
         all_attrs = model.get_all_attributes()
@@ -229,10 +224,8 @@ class TestModelDefinition:
             name="Test",
             attributes={
                 "dict_attr": {"type": "str", "default": "test"},
-                "nested": {
-                    "inner": {"type": "int", "range": "1..10"}
-                }
-            }
+                "nested": {"inner": {"type": "int", "range": "1..10"}},
+            },
         )
 
         all_attrs = model.get_all_attributes()
@@ -250,7 +243,7 @@ class TestModelDefinition:
             "name": "Test Character",
             "level": 5,
             "abilities": {"strength": 15, "dexterity": 12},
-            "size": "medium"
+            "size": "medium",
         }
 
         errors = self.complex_model.validate_instance(instance)
@@ -277,7 +270,7 @@ class TestModelDefinition:
             "name": "Test Character",
             "level": 5,
             "abilities": {"strength": 15, "dexterity": 12},
-            "size": "medium"
+            "size": "medium",
             # optional_field is missing but that's OK
         }
 
@@ -290,7 +283,7 @@ class TestModelDefinition:
             "name": 123,  # Should be string
             "level": "five",  # Should be int
             "abilities": {"strength": 15.5, "dexterity": 12},  # strength should be int
-            "size": "medium"
+            "size": "medium",
         }
 
         errors = self.complex_model.validate_instance(instance)
@@ -305,7 +298,7 @@ class TestModelDefinition:
             "name": "Test Character",
             "level": 5,
             "abilities": {"strength": 15, "dexterity": 12},
-            "size": "huge"  # Not in enum
+            "size": "huge",  # Not in enum
         }
 
         errors = self.complex_model.validate_instance(instance)
@@ -319,8 +312,11 @@ class TestModelDefinition:
         instance = {
             "name": "Test Character",
             "level": 25,  # Out of range (1..20)
-            "abilities": {"strength": 2, "dexterity": 12},  # strength out of range (3..18)
-            "size": "medium"
+            "abilities": {
+                "strength": 2,
+                "dexterity": 12,
+            },  # strength out of range (3..18)
+            "size": "medium",
         }
 
         errors = self.complex_model.validate_instance(instance)
@@ -331,26 +327,27 @@ class TestModelDefinition:
 
     def test_has_nested_value(self):
         """Test _has_nested_value method."""
-        instance = {
-            "name": "Test",
-            "abilities": {"strength": 15}
-        }
+        instance = {"name": "Test", "abilities": {"strength": 15}}
 
         assert self.complex_model._has_nested_value(instance, "name")
         assert self.complex_model._has_nested_value(instance, "abilities.strength")
         assert not self.complex_model._has_nested_value(instance, "nonexistent")
-        assert not self.complex_model._has_nested_value(instance, "abilities.nonexistent")
+        assert not self.complex_model._has_nested_value(
+            instance, "abilities.nonexistent"
+        )
 
     def test_get_nested_value(self):
         """Test _get_nested_value method."""
         instance = {
             "name": "Test",
             "abilities": {"strength": 15, "dexterity": 12},
-            "level": 5
+            "level": 5,
         }
 
         assert self.complex_model._get_nested_value(instance, "name") == "Test"
-        assert self.complex_model._get_nested_value(instance, "abilities.strength") == 15
+        assert (
+            self.complex_model._get_nested_value(instance, "abilities.strength") == 15
+        )
         assert self.complex_model._get_nested_value(instance, "level") == 5
 
         with pytest.raises(KeyError):
@@ -364,17 +361,54 @@ class TestModelDefinition:
         bool_attr = AttributeDefinition(type="bool")
 
         # Valid values
-        assert len(self.complex_model._validate_attribute_value("test", 5, int_attr)) == 0
-        assert len(self.complex_model._validate_attribute_value("test", "hello", str_attr)) == 0
-        assert len(self.complex_model._validate_attribute_value("test", 3.14, float_attr)) == 0
-        assert len(self.complex_model._validate_attribute_value("test", 5, float_attr)) == 0  # int accepted for float
-        assert len(self.complex_model._validate_attribute_value("test", True, bool_attr)) == 0
+        assert (
+            len(self.complex_model._validate_attribute_value("test", 5, int_attr)) == 0
+        )
+        assert (
+            len(self.complex_model._validate_attribute_value("test", "hello", str_attr))
+            == 0
+        )
+        assert (
+            len(self.complex_model._validate_attribute_value("test", 3.14, float_attr))
+            == 0
+        )
+        assert (
+            len(self.complex_model._validate_attribute_value("test", 5, float_attr))
+            == 0
+        )  # int accepted for float
+        assert (
+            len(self.complex_model._validate_attribute_value("test", True, bool_attr))
+            == 0
+        )
 
         # Invalid values
-        assert len(self.complex_model._validate_attribute_value("test", "not_int", int_attr)) > 0
-        assert len(self.complex_model._validate_attribute_value("test", 123, str_attr)) > 0
-        assert len(self.complex_model._validate_attribute_value("test", "not_float", float_attr)) > 0
-        assert len(self.complex_model._validate_attribute_value("test", "not_bool", bool_attr)) > 0
+        assert (
+            len(
+                self.complex_model._validate_attribute_value(
+                    "test", "not_int", int_attr
+                )
+            )
+            > 0
+        )
+        assert (
+            len(self.complex_model._validate_attribute_value("test", 123, str_attr)) > 0
+        )
+        assert (
+            len(
+                self.complex_model._validate_attribute_value(
+                    "test", "not_float", float_attr
+                )
+            )
+            > 0
+        )
+        assert (
+            len(
+                self.complex_model._validate_attribute_value(
+                    "test", "not_bool", bool_attr
+                )
+            )
+            > 0
+        )
 
     def test_validate_range(self):
         """Test _validate_range method."""
@@ -406,7 +440,7 @@ class TestModelDefinition:
         invalid_model = ModelDefinition(
             id="",  # Invalid empty ID
             name="",  # Invalid empty name
-            kind="invalid"  # Invalid kind
+            kind="invalid",  # Invalid kind
         )
 
         errors = invalid_model.validate()
@@ -429,8 +463,12 @@ class TestModelDefinitionIntegration:
             description="A Dungeons & Dragons character",
             attributes={
                 "name": AttributeDefinition(type="str", description="Character name"),
-                "race": AttributeDefinition(type="str", enum=["human", "elf", "dwarf", "halfling"]),
-                "class": AttributeDefinition(type="str", enum=["fighter", "wizard", "rogue", "cleric"]),
+                "race": AttributeDefinition(
+                    type="str", enum=["human", "elf", "dwarf", "halfling"]
+                ),
+                "class": AttributeDefinition(
+                    type="str", enum=["fighter", "wizard", "rogue", "cleric"]
+                ),
                 "level": AttributeDefinition(type="int", range="1..20", default=1),
                 "abilities": {
                     "strength": AttributeDefinition(type="int", range="3..18"),
@@ -440,10 +478,16 @@ class TestModelDefinitionIntegration:
                     "wisdom": AttributeDefinition(type="int", range="3..18"),
                     "charisma": AttributeDefinition(type="int", range="3..18"),
                 },
-                "hit_points": AttributeDefinition(type="int", range="1..", derived="{{ level * 8 + con_modifier }}"),
-                "armor_class": AttributeDefinition(type="int", range="1..", derived="{{ 10 + dex_modifier + armor_bonus }}"),
+                "hit_points": AttributeDefinition(
+                    type="int", range="1..", derived="{{ level * 8 + con_modifier }}"
+                ),
+                "armor_class": AttributeDefinition(
+                    type="int",
+                    range="1..",
+                    derived="{{ 10 + dex_modifier + armor_bonus }}",
+                ),
                 "background": AttributeDefinition(type="str", required=False),
-            }
+            },
         )
 
         # Valid character
@@ -458,10 +502,10 @@ class TestModelDefinitionIntegration:
                 "constitution": 15,
                 "intelligence": 12,
                 "wisdom": 13,
-                "charisma": 14
+                "charisma": 14,
             },
             "hit_points": 45,
-            "armor_class": 16
+            "armor_class": 16,
         }
 
         errors = character_model.validate_instance(valid_character)
@@ -474,9 +518,9 @@ class TestModelDefinitionIntegration:
             "level": 25,  # Out of range
             "abilities": {
                 "strength": 2,  # Out of range
-                "dexterity": 14
+                "dexterity": 14,
                 # Missing required abilities
-            }
+            },
         }
 
         errors = character_model.validate_instance(invalid_character)
@@ -491,14 +535,16 @@ class TestModelDefinitionIntegration:
                 "player": {
                     "info": {
                         "name": AttributeDefinition(type="str"),
-                        "email": AttributeDefinition(type="str", required=False)
+                        "email": AttributeDefinition(type="str", required=False),
                     },
                     "preferences": {
-                        "theme": AttributeDefinition(type="str", enum=["light", "dark"]),
-                        "volume": AttributeDefinition(type="float", range="0..1")
-                    }
+                        "theme": AttributeDefinition(
+                            type="str", enum=["light", "dark"]
+                        ),
+                        "volume": AttributeDefinition(type="float", range="0..1"),
+                    },
                 }
-            }
+            },
         )
 
         all_attrs = model.get_all_attributes()
@@ -512,7 +558,7 @@ class TestModelDefinitionIntegration:
         instance = {
             "player": {
                 "info": {"name": "Alice"},
-                "preferences": {"theme": "dark", "volume": 0.8}
+                "preferences": {"theme": "dark", "volume": 0.8},
             }
         }
 
