@@ -38,10 +38,19 @@ jobs:
           python -m pytest tests/ \
             --cov=grimoire_runner \
             --cov-report=term-missing \
+            --cov-report=html \
             --log-level=WARNING \
             --override-ini="addopts=-v --tb=short"
           echo "::endgroup::"
         shell: bash
+
+      - name: Upload coverage reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report-python-${{ matrix.python-version }}
+          path: grimoire-runner/htmlcov/
+          retention-days: 30
 
   lint:
     runs-on: ubuntu-latest
