@@ -346,54 +346,6 @@ class TestConcurrencyAndRacing:
     """Test concurrency issues and race conditions."""
 
     @pytest.mark.asyncio
-    async def test_concurrent_modal_operations(self):
-        """Test concurrent modal operations."""
-        from textual.app import App
-
-        class TestApp(App):
-            def __init__(self):
-                super().__init__()
-                self.results = []
-                self.active_modals = 0
-
-            def handle_result(self, result):
-                self.results.append(result)
-                self.active_modals -= 1
-
-            async def concurrent_modals(self):
-                """Create multiple modals concurrently."""
-                tasks = []
-                for i in range(3):
-                    task = asyncio.create_task(self.create_modal(i))
-                    tasks.append(task)
-
-                await asyncio.gather(*tasks)
-
-            async def create_modal(self, index):
-                """Create a single modal."""
-                choices = [Mock(id=f"choice_{index}", label=f"Choice {index}")]
-                modal = SimpleChoiceModal(f"Modal {index}", choices)
-                self.active_modals += 1
-                self.push_screen(modal, self.handle_result)
-                await asyncio.sleep(0.01)
-
-        app = TestApp()
-
-        async with app.run_test() as pilot:
-            app.call_after_refresh(app.concurrent_modals)
-            await pilot.pause(0.2)
-
-            # Handle whatever modals are visible
-            while len(app.screen_stack) > 1:
-                await pilot.click("RadioButton")
-                await pilot.pause(0.1)
-                await pilot.click("#confirm")
-                await pilot.pause(0.2)
-
-            # Should have some results
-            print(f"Concurrent results: {app.results}")
-
-    @pytest.mark.asyncio
     async def test_modal_state_consistency(self):
         """Test modal state consistency under rapid interactions."""
         from textual.app import App

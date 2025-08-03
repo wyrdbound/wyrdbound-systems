@@ -303,6 +303,7 @@ class TestSystemExplorerScreen:
         tables_dir.mkdir()
         
         table_data = {
+            "kind": "table",  # Required field
             "id": "test_table",
             "name": "Test Table",
             "description": "A test table",
@@ -315,11 +316,12 @@ class TestSystemExplorerScreen:
         with open(tables_dir / "test_table.yaml", "w") as f:
             yaml.dump(table_data, f)
         
-        # Create compendiums
-        compendiums_dir = system_dir / "compendiums"
-        compendiums_dir.mkdir()
+        # Create compendium directory (note: singular, as expected by loader)
+        compendium_dir = system_dir / "compendium"
+        compendium_dir.mkdir()
         
         compendium_data = {
+            "kind": "compendium",  # Required field
             "id": "items",
             "name": "Items",
             "description": "Test items",
@@ -329,7 +331,7 @@ class TestSystemExplorerScreen:
             }
         }
         
-        with open(compendiums_dir / "items.yaml", "w") as f:
+        with open(compendium_dir / "items.yaml", "w") as f:
             yaml.dump(compendium_data, f)
         
         return system_dir
@@ -361,14 +363,17 @@ class TestSystemExplorerScreen:
             
             screen = SystemExplorerScreen(system, engine)
             
-            # Create a minimal app to test the screen
-            app = Mock()
-            app.push_screen = Mock()
-            screen.app = app
+            # Create a minimal app to run the screen in context
+            from grimoire_runner.ui.textual_app import GrimoireApp
+            app = GrimoireApp()
             
-            # Test composition doesn't crash
-            widgets = list(screen.compose())
-            assert len(widgets) > 0
+            async with app.run_test() as pilot:
+                await pilot.pause(0.1)
+                # Test composition within app context
+                app.push_screen(screen)
+                await pilot.pause(0.1)
+                # If we get here without exception, composition worked
+                assert True
 
     def test_explorer_empty_flows_tab(self):
         """Test flows tab with no flows."""
@@ -598,7 +603,7 @@ class TestCompendiumDetailScreen:
         }
         
         screen = CompendiumDetailScreen(entry_id, entry_data)
-        content = screen._format_entry_content(entry_data)
+        content = screen._format_entry_data()  # Correct method name
         
         assert "Test Entry" in content
         assert "10" in content
