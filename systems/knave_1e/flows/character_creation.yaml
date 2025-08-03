@@ -259,7 +259,7 @@ steps:
           value: 1
       - log_event:
           type: "character_created"
-          data: "{{ get_value('outputs.knave.name') || 'Unnamed Knave' }}"
+          data: "{{ get_value('outputs.knave.name') or 'Unnamed Knave' }}"
 
 # Flow control
 resume_points:
