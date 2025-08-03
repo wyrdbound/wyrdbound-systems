@@ -17,6 +17,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 from grimoire_runner.ui.simple_textual import SimpleChoiceModal, SimpleFlowApp
 
 
+@pytest.mark.performance
 class TestUIPerformance:
     """Test UI performance under various loads."""
 
@@ -134,6 +135,8 @@ class TestUIPerformance:
             assert len(app.modal_results) <= 20  # Some may be auto-dismissed
 
     @pytest.mark.asyncio
+    @pytest.mark.slow
+    @pytest.mark.performance
     async def test_flow_app_with_many_steps(self):
         """Test flow app performance with many steps."""
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -266,6 +269,8 @@ class TestUIPerformance:
                 print(f"20 page downs took: {scroll_time:.3f}s")
 
     @pytest.mark.asyncio
+    @pytest.mark.slow
+    @pytest.mark.performance
     async def test_memory_usage_over_time(self):
         """Test memory usage during extended operation."""
         import gc

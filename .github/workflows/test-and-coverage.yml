@@ -34,13 +34,13 @@ jobs:
         run: |
           source .venv/bin/activate
           cd grimoire-runner
-          echo "::group::🧪 Running Tests with Coverage"
+          echo "::group::🧪 Running Tests with Coverage (including performance tests)"
           python -m pytest tests/ \
             --cov=grimoire_runner \
             --cov-report=term-missing \
             --cov-report=html \
             --log-level=WARNING \
-            --tb=short
+            --override-ini="addopts=-v --tb=short"
           echo "::endgroup::"
         shell: bash
 

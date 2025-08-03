@@ -661,6 +661,7 @@ class TestSystemLoaderEdgeCases:
                 system_file.chmod(0o644)
 
 
+@pytest.mark.performance
 class TestSystemLoaderPerformance:
     """Test SystemLoader performance characteristics."""
 

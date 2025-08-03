@@ -103,10 +103,13 @@ class ModelDefinition:
 
         # Validate attribute values
         for attr_path, attr_def in all_attrs.items():
-            value = self._get_nested_value(instance, attr_path)
-            if value is not None:
-                attr_errors = self._validate_attribute_value(attr_path, value, attr_def)
-                errors.extend(attr_errors)
+            if self._has_nested_value(instance, attr_path):
+                value = self._get_nested_value(instance, attr_path)
+                if value is not None:
+                    attr_errors = self._validate_attribute_value(
+                        attr_path, value, attr_def
+                    )
+                    errors.extend(attr_errors)
 
         # Run validation rules
         # TODO: Implement expression evaluation
