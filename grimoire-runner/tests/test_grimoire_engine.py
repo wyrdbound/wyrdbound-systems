@@ -518,6 +518,7 @@ class TestGrimoireEngine:
             assert context2.get_variable("dice_result") == 20
 
 
+@pytest.mark.performance
 class TestGrimoireEnginePerformance:
     """Test GrimoireEngine performance characteristics."""
 

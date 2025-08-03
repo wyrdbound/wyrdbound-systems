@@ -285,6 +285,7 @@ class TestFlowAppEdgeCases:
                 assert "🎮" in info_text or "emoji" in info_text.lower()
 
     @pytest.mark.asyncio
+    @pytest.mark.slow
     async def test_app_rapid_restarts(self):
         """Test rapid restart operations."""
         with tempfile.TemporaryDirectory() as temp_dir:

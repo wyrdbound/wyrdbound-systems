@@ -94,13 +94,15 @@ testpaths = ["tests"]
 python_files = ["test_*.py", "*_test.py"]
 python_classes = ["Test*"]
 python_functions = ["test_*"]
-addopts = "-v --tb=short"
+addopts = "-v --tb=short -m 'not slow and not performance'"
 minversion = "6.0"
 asyncio_mode = "strict"
 asyncio_default_fixture_loop_scope = "function"
 markers = [
     "asyncio: marks tests as requiring asyncio support",
     "no_cover: marks tests that should be excluded from coverage requirements",
+    "slow: marks tests as slow running (disabled by default)",
+    "performance: marks tests as performance tests (disabled by default)",
 ]
 
 [tool.coverage.run]
@@ -118,7 +120,7 @@ omit = [
 ]
 
 [tool.coverage.report]
-fail_under = 25
+fail_under = 90
 show_missing = true
 skip_covered = false
 sort = "Cover"
