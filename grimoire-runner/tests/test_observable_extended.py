@@ -344,9 +344,9 @@ class TestDerivedFieldManagerIntegration:
 
         for expression, expected_deps in test_cases:
             deps = self.manager._extract_dependencies(expression)
-            assert deps.issuperset(
-                expected_deps
-            ), f"Failed for {expression}: got {deps}, expected {expected_deps}"
+            assert deps.issuperset(expected_deps), (
+                f"Failed for {expression}: got {deps}, expected {expected_deps}"
+            )
 
     def test_dependency_graph_building(self):
         """Test that dependency graph is built correctly."""
