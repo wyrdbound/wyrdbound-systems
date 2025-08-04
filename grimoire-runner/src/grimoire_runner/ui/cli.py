@@ -19,10 +19,10 @@ from rich.table import Table
 from rich.tree import Tree
 
 from ..core.engine import GrimoireEngine
-from .textual_app import run_textual_app
-from .textual_browser import run_compendium_browser
+from .rich_browser import run_rich_browser
+from .rich_tui import run_rich_tui_executor
 
-# Setup console (Rich is used by Textual)
+# Setup console (Rich is the primary UI library)
 console = Console()
 app = typer.Typer(name="grimoire-runner", help="Interactive GRIMOIRE system runner")
 
@@ -127,15 +127,15 @@ def execute(
         "-i",
         help="Enable interactive mode for user choices",
     ),
-    use_textual: bool = typer.Option(
+    use_rich_tui: bool = typer.Option(
         True,
-        "--textual/--no-textual",
-        help="Use Textual interface (default) or fallback to Rich console",
+        "--rich-tui/--no-rich-tui",
+        help="Use Rich TUI interface (default) or fallback to basic console",
     ),
     no_progress: bool = typer.Option(
         False,
         "--no-progress",
-        help="Disable step-by-step progress display (Rich mode only)",
+        help="Disable step-by-step progress display (console mode only)",
     ),
 ):
     """Execute a complete flow with enhanced visual output."""
@@ -144,27 +144,25 @@ def execute(
     else:
         logging.basicConfig(level=logging.INFO)
 
-    # Use Textual interface by default
-    if use_textual:
+    # Use Rich TUI interface by default
+    if use_rich_tui:
         try:
-            from .simple_textual import run_simple_textual_executor
-
-            run_simple_textual_executor(system_path, flow)
+            run_rich_tui_executor(system_path, flow)
             return
         except ImportError as e:
-            console.print(f"[yellow]Textual interface not available: {e}[/yellow]")
-            console.print("[yellow]Falling back to Rich console interface...[/yellow]")
+            console.print(f"[yellow]Rich TUI interface not available: {e}[/yellow]")
+            console.print("[yellow]Falling back to basic console interface...[/yellow]")
         except Exception as e:
-            console.print(f"[red]Textual interface error: {e}[/red]")
-            console.print("[yellow]Falling back to Rich console interface...[/yellow]")
+            console.print(f"[red]Rich TUI interface error: {e}[/red]")
+            console.print("[yellow]Falling back to basic console interface...[/yellow]")
 
-    # Fallback to Rich console interface
-    _execute_with_rich_console(
+    # Fallback to basic console interface
+    _execute_with_basic_console(
         system_path, flow, output, verbose, interactive, no_progress
     )
 
 
-def _execute_with_rich_console(
+def _execute_with_basic_console(
     system_path: Path,
     flow: str,
     output: Path | None,
@@ -172,7 +170,7 @@ def _execute_with_rich_console(
     interactive: bool,
     no_progress: bool,
 ):
-    """Execute flow using the Rich console interface (original implementation)."""
+    """Execute flow using the basic console interface (fallback implementation)."""
     if verbose:
         logging.basicConfig(level=logging.DEBUG)
     else:
@@ -758,9 +756,8 @@ def browse(
 ):
     """Browse compendium content."""
     try:
-        # Load system
-        system = engine.load_system(system_path)
-        run_compendium_browser(system)
+        # Load system and run Rich browser
+        run_rich_browser(system_path)
 
     except Exception as e:
         console.print(f"[bold red]Error:[/bold red] {e}")
@@ -775,14 +772,11 @@ def interactive(
     """Start interactive REPL mode."""
     try:
         if flow:
-            # If a specific flow is requested, use the same execution engine as the execute command
-            # This provides full step-by-step execution with user interaction
-            from .simple_textual import run_simple_textual_executor
-
-            run_simple_textual_executor(system_path, flow)
+            # If a specific flow is requested, use Rich TUI for execution
+            run_rich_tui_executor(system_path, flow)
         else:
-            # If no flow specified, show the system explorer for browsing
-            run_textual_app(system_path, flow)
+            # If no flow specified, use Rich browser for system exploration
+            run_rich_browser(system_path)
 
     except Exception as e:
         console.print(f"[bold red]Error:[/bold red] {e}")
@@ -811,8 +805,11 @@ def debug(
                 engine.set_breakpoint(flow, bp)
                 console.print(f"[yellow]Breakpoint set:[/yellow] {flow}.{bp}")
 
-        # Start interactive debugging via Textual app
-        run_textual_app(system_path)
+        # Start interactive debugging via Rich browser
+        console.print(
+            "[yellow]Debug mode enabled. Use Rich browser to explore system state.[/yellow]"
+        )
+        run_rich_browser(system_path)
 
     except Exception as e:
         console.print(f"[bold red]Error:[/bold red] {e}")

@@ -19,7 +19,6 @@ Description-Content-Type: text/markdown
 Requires-Dist: pydantic>=2.0
 Requires-Dist: pyyaml>=6.0
 Requires-Dist: jinja2>=3.1
-Requires-Dist: textual>=0.85.0
 Requires-Dist: typer[all]>=0.9
 Requires-Dist: langchain>=0.1
 Requires-Dist: langchain-anthropic>=0.1

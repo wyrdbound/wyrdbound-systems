@@ -36,6 +36,8 @@ src/grimoire_runner/ui/__init__.py
 src/grimoire_runner/ui/browser.py
 src/grimoire_runner/ui/cli.py
 src/grimoire_runner/ui/interactive.py
+src/grimoire_runner/ui/rich_browser.py
+src/grimoire_runner/ui/rich_tui.py
 src/grimoire_runner/ui/simple_textual.py
 src/grimoire_runner/ui/textual_app.py
 src/grimoire_runner/ui/textual_browser.py
