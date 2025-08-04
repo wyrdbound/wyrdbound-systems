@@ -46,6 +46,7 @@ class ChoiceDefinition:
     next_step: str | None = None
     actions: list[dict[str, Any]] = field(default_factory=list)
     reset_outputs: bool = False
+    description: str | None = None
 
 
 @dataclass

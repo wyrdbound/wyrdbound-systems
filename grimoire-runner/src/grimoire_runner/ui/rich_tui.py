@@ -184,23 +184,31 @@ class RichTUI:
 
             if step_result.choices:
                 # Handle choices using Rich prompts
-                selected_choice = self._handle_choice_input(step_result)
+                selected_choice_result = self._handle_choice_input(step_result)
 
-                if selected_choice is None:
+                if selected_choice_result is None:
                     self.console.print("[red]❌ Input cancelled[/red]")
                     step_result.success = False
                     step_result.error = "User cancelled input"
                 else:
+                    # Extract choice ID and label from result
+                    if isinstance(selected_choice_result, tuple):
+                        selected_choice_id, selected_choice_label = selected_choice_result
+                    else:
+                        # Backward compatibility - just the ID
+                        selected_choice_id = selected_choice_result
+                        selected_choice_label = selected_choice_result
+
                     # Only show selection confirmation for single choices
                     # Multi-selection already shows "Final Selections" summary
                     selection_count = step_result.data.get("selection_count", 1) if step_result.data else 1
                     if selection_count == 1:
-                        self.console.print(f"[green]✅ Selected: {selected_choice}[/green]")
+                        self.console.print(f"[green]✅ Selected: {selected_choice_label}[/green]")
 
                     # Process the choice
                     choice_executor = ChoiceExecutor()
                     choice_result = choice_executor.process_choice(
-                        selected_choice, step, self.context
+                        selected_choice_id, step, self.context
                     )
 
                     if choice_result and choice_result.next_step_id:
@@ -219,7 +227,7 @@ class RichTUI:
         self.step_results.append(step_result)
         return step_result.success, step_result.next_step_id
 
-    def _handle_choice_input(self, step_result) -> str | None:
+    def _handle_choice_input(self, step_result) -> tuple[str, str] | None:
         """Handle user choice input using Rich prompts."""
         choices = step_result.choices
         prompt_text = step_result.prompt or "Please make a choice:"
@@ -232,13 +240,21 @@ class RichTUI:
         else:
             return self._handle_single_choice_input(choices, prompt_text)
     
-    def _handle_single_choice_input(self, choices, prompt_text) -> str | None:
+    def _handle_single_choice_input(self, choices, prompt_text) -> tuple[str, str] | None:
         """Handle single choice input."""
+        # Check if any choices have descriptions
+        has_descriptions = any(
+            getattr(choice, "description", "") for choice in choices
+        )
+        
         # Display choices in a table for better accessibility
         choices_table = Table(title="Available Choices", show_header=True)
         choices_table.add_column("Option", style="cyan", justify="right")
         choices_table.add_column("Choice", style="green")
-        choices_table.add_column("Description", style="dim")
+        
+        # Only add description column if at least one choice has a description
+        if has_descriptions:
+            choices_table.add_column("Description", style="dim")
 
         choice_map = {}
         for i, choice in enumerate(choices, 1):
@@ -246,8 +262,11 @@ class RichTUI:
             choice_id = choice.id if hasattr(choice, "id") else str(choice)
             description = getattr(choice, "description", "") or ""
 
-            choices_table.add_row(str(i), label, description)
-            choice_map[str(i)] = choice_id
+            if has_descriptions:
+                choices_table.add_row(str(i), label, description)
+            else:
+                choices_table.add_row(str(i), label)
+            choice_map[str(i)] = (choice_id, label)
 
         self.console.print()
         self.console.print(choices_table)
@@ -281,21 +300,30 @@ class RichTUI:
                     return choice_map["1"]
                 return None
     
-    def _handle_multiple_choice_input(self, step_result, choices, prompt_text, selection_count) -> str | None:
+    def _handle_multiple_choice_input(self, step_result, choices, prompt_text, selection_count) -> tuple[str, str] | None:
         """Handle multiple choice selection (like ability swapping)."""
         selected_choices = []
         selected_ids = []
+        selected_labels = []
         available_choices = choices.copy()  # Make a copy
         
         try:
             for selection_num in range(selection_count):
                 self.console.print(f"\n[bold cyan]Selection {selection_num + 1} of {selection_count}:[/bold cyan]")
                 
+                # Check if any remaining choices have descriptions
+                has_descriptions = any(
+                    getattr(choice, "description", "") for choice in available_choices
+                )
+                
                 # Show remaining choices
                 choices_table = Table(show_header=True, header_style="bold magenta")
                 choices_table.add_column("Option", style="cyan", justify="right")
                 choices_table.add_column("Choice", style="green")
-                choices_table.add_column("Description", style="dim")
+                
+                # Only add description column if at least one choice has a description
+                if has_descriptions:
+                    choices_table.add_column("Description", style="dim")
                 
                 choice_map = {}
                 for i, choice in enumerate(available_choices, 1):
@@ -303,7 +331,10 @@ class RichTUI:
                     choice_id = choice.id if hasattr(choice, "id") else str(choice)
                     description = getattr(choice, "description", "") or ""
                     
-                    choices_table.add_row(str(i), label, description)
+                    if has_descriptions:
+                        choices_table.add_row(str(i), label, description)
+                    else:
+                        choices_table.add_row(str(i), label)
                     choice_map[str(i)] = (choice_id, choice)
                 
                 self.console.print(choices_table)
@@ -334,6 +365,7 @@ class RichTUI:
                             selected_ids.append(choice_id)
                             
                             choice_label = choice_obj.label if hasattr(choice_obj, "label") else str(choice_obj)
+                            selected_labels.append(choice_label)
                             self.console.print(f"[green]✅ Selected: {choice_label}[/green]")
                             
                             # Remove the selected choice from available choices
@@ -350,6 +382,7 @@ class RichTUI:
                             selected_choices.append(choice_obj)
                             selected_ids.append(choice_id)
                             choice_label = choice_obj.label if hasattr(choice_obj, "label") else str(choice_obj)
+                            selected_labels.append(choice_label)
                             self.console.print(f"[yellow]Using default choice: {choice_label}[/yellow]")
                             available_choices.remove(choice_obj)
                             break
@@ -366,8 +399,11 @@ class RichTUI:
             self.context.set_variable("selected_items", selected_ids)
             self.context.set_variable("user_choices", selected_ids)  # Alternative name
             
-            # Return the first selection ID (for compatibility)
-            return selected_ids[0] if selected_ids else None
+            # Return the first selection ID and label (for compatibility)
+            if selected_ids and selected_labels:
+                return (selected_ids[0], selected_labels[0])
+            else:
+                return None
             
         except Exception as e:
             self.console.print(f"[red]Error during selection: {e}[/red]")

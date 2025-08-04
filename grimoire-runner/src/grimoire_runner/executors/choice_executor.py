@@ -211,10 +211,31 @@ class ChoiceExecutor(BaseStepExecutor):
                         choices = []
 
                         for entry_key, entry_value in table.entries.items():
-                            # Use table entry as choice option
+                            # Use the entry value as the choice ID (not the table key)
+                            choice_id = str(entry_value)
+                            choice_label = str(entry_value)
+                            choice_description = ""
+                            
+                            # If table has an entry_type, try to look up the item in compendiums
+                            if hasattr(table, 'entry_type') and table.entry_type:
+                                # Try to find the item in compendiums
+                                for comp_id in system.list_compendiums():
+                                    comp = system.get_compendium(comp_id)
+                                    if comp and entry_value in comp.entries:
+                                        entry_data = comp.entries[entry_value]
+                                        # Use the proper name if available
+                                        if isinstance(entry_data, dict) and "name" in entry_data:
+                                            choice_label = entry_data["name"]
+                                        # Use the description if available
+                                        if isinstance(entry_data, dict) and "description" in entry_data:
+                                            choice_description = entry_data["description"]
+                                        break
+
+                            # Create choice definition
                             choice = ChoiceDefinition(
-                                id=str(entry_key),
-                                label=str(entry_value),
+                                id=choice_id,
+                                label=choice_label,
+                                description=choice_description,
                                 actions=[
                                     {
                                         "set_value": {
