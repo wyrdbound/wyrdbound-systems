@@ -23,6 +23,7 @@ class DiceResult:
     expression: str
     breakdown: dict[str, Any] | None = None
     rolls: list | None = None
+    detailed_result: str | None = None  # Full string representation from wyrdbound-dice
 
 
 class DiceIntegration:
@@ -67,6 +68,7 @@ class DiceIntegration:
                 expression=expression,
                 breakdown=self._get_roll_breakdown(result),
                 rolls=self._get_individual_rolls(result),
+                detailed_result=str(result),  # Capture the detailed string representation
             )
         except Exception as e:
             logger.error(f"Error rolling with wyrdbound-dice: {e}")

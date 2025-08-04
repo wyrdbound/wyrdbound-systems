@@ -37,6 +37,17 @@ class ChoiceExecutor(BaseStepExecutor):
                 choices = self._generate_choices_from_source(
                     step.choice_source, context, system
                 )
+                
+                # Fail the step if no choices were generated from the source
+                if not choices:
+                    error_msg = "Failed to generate choices from choice source"
+                    logger.error(f"Step {step.id}: {error_msg}")
+                    return StepResult(
+                        step_id=step.id, 
+                        success=False, 
+                        error=error_msg
+                    )
+                
                 # Extract selection count from choice source
                 if isinstance(step.choice_source, dict):
                     selection_count = step.choice_source.get("selection_count", 1)
@@ -190,8 +201,50 @@ class ChoiceExecutor(BaseStepExecutor):
                         logger.warning(f"Compendium {comp_name} not found")
                         return []
 
+                elif "table" in choice_source:
+                    # Generate choices from table entries
+                    table_name = choice_source["table"]
+                    table = system.get_table(table_name)
+                    if table:
+                        from ..models.flow import ChoiceDefinition
+
+                        choices = []
+
+                        for entry_key, entry_value in table.entries.items():
+                            # Use table entry as choice option
+                            choice = ChoiceDefinition(
+                                id=str(entry_key),
+                                label=str(entry_value),
+                                actions=[
+                                    {
+                                        "set_value": {
+                                            "path": "variables.selected_item",
+                                            "value": entry_value,
+                                        }
+                                    }
+                                ],
+                            )
+                            choices.append(choice)
+
+                        logger.info(
+                            f"Generated {len(choices)} choices from table {table_name}"
+                        )
+                        return choices
+                    else:
+                        # Provide helpful error message with available tables
+                        available_tables = system.list_tables()
+                        table_list = ", ".join(sorted(available_tables)) if available_tables else "none"
+                        logger.warning(
+                            f"Table '{table_name}' not found in system. Available tables: {table_list}"
+                        )
+                        return []
+
                 else:
-                    logger.warning(f"Unknown choice source format: {choice_source}")
+                    # Improved error message for unknown formats
+                    available_formats = ["table_from_values", "compendium", "table"]
+                    logger.warning(
+                        f"Unknown choice source format: {choice_source}. Supported formats: {', '.join(available_formats)}"
+                    )
                     return []
             else:
                 logger.warning(

@@ -67,7 +67,11 @@ class DiceExecutor(BaseStepExecutor):
                 str(roll_expression), modifiers
             )
 
-            logger.info(f"Dice roll: {roll_expression} = {result.total}")
+            # Log with detailed information if available, otherwise fall back to simple format
+            if result.detailed_result:
+                logger.info(f"Dice roll: {result.detailed_result}")
+            else:
+                logger.info(f"Dice roll: {roll_expression} = {result.total}")
 
             # Prepare result data
             result_data = {

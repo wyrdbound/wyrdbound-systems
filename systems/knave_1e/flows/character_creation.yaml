@@ -209,6 +209,11 @@ steps:
           - set_value:
               path: "outputs.knave.traits.background"
               value: "{{ result }}"
+      - table: "misfortunes"
+        actions:
+          - set_value:
+              path: "outputs.knave.traits.misfortunes"
+              value: "{{ result }}"
       - table: "alignment"
         actions:
           - set_value:

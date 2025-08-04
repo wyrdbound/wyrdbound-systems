@@ -2,16 +2,10 @@
 
 import time
 from pathlib import Path
+from typing import Any
 
 from rich.console import Console
 from rich.panel import Panel
-from rich.progress import (
-    BarColumn,
-    MofNCompleteColumn,
-    Progress,
-    SpinnerColumn,
-    TextColumn,
-)
 from rich.prompt import Confirm, Prompt
 from rich.table import Table
 
@@ -105,86 +99,71 @@ class RichTUI:
         step_num = 0
         total_steps = len(self.flow_obj.steps)
 
-        # Progress bar
-        with Progress(
-            SpinnerColumn(),
-            TextColumn("[progress.description]{task.description}"),
-            BarColumn(),
-            MofNCompleteColumn(),
-            console=self.console,
-            transient=False,
-        ) as progress:
-            task = progress.add_task("Executing flow...", total=total_steps)
+        # Simple progress tracking without Rich Progress widget to avoid line conflicts
+        self.console.print("[bold cyan]Starting flow execution...[/bold cyan]")
+        self.console.print()
 
-            while current_step_id:
-                step = self.flow_obj.get_step(current_step_id)
-                if not step:
-                    self.console.print(
-                        f"[red]Error: Step not found: {current_step_id}[/red]"
-                    )
-                    break
-
-                step_num += 1
-
-                # Update progress
-                progress.update(
-                    task,
-                    completed=step_num - 1,
-                    description=f"Step {step_num}/{total_steps}: {step.name or step.id}",
-                )
-
-                # Show step header
-                self.console.print()
-                step_description = getattr(step, "description", None) or ""
-                description_text = (
-                    f"\n[dim]Description: {step_description}[/dim]"
-                    if step_description
-                    else ""
-                )
-
+        while current_step_id:
+            step = self.flow_obj.get_step(current_step_id)
+            if not step:
                 self.console.print(
-                    Panel(
-                        f"[bold]Step {step_num}: {step.name or step.id}[/bold]\n"
-                        f"[dim]Type: {step.type}[/dim]" + description_text,
-                        border_style="blue",
-                        title="Current Step",
-                    )
+                    f"[red]Error: Step not found: {current_step_id}[/red]"
                 )
+                break
 
-                # Update context
-                self.context.current_step = current_step_id
-                self.context.step_history.append(current_step_id)
+            step_num += 1
 
-                # Execute step
-                try:
-                    success, next_step_id = self._execute_single_step(step, step_num)
+            # Show step header with progress info
+            progress_text = f"[bold cyan]Step {step_num}/{total_steps}[/bold cyan]"
+            step_description = getattr(step, "description", None) or ""
+            description_text = (
+                f"\n[dim]Description: {step_description}[/dim]"
+                if step_description
+                else ""
+            )
 
-                    if not success:
-                        self.console.print(
-                            "[red]❌ Flow execution stopped due to step failure[/red]"
-                        )
-                        break
+            self.console.print(
+                Panel(
+                    f"{progress_text}: [bold]{step.name or step.id}[/bold]\n"
+                    f"[dim]Type: {step.type}[/dim]"
+                    + description_text,
+                    border_style="blue",
+                    title="Current Step",
+                )
+            )
 
-                    # Determine next step
-                    if next_step_id:
-                        current_step_id = next_step_id
-                    else:
-                        current_step_id = self.flow_obj.get_next_step_id(
-                            current_step_id
-                        )
+            # Update context
+            self.context.current_step = current_step_id
+            self.context.step_history.append(current_step_id)
 
-                except Exception as e:
+            # Execute step
+            try:
+                success, next_step_id = self._execute_single_step(step, step_num)
+
+                if not success:
                     self.console.print(
-                        f"[red]Error in step {current_step_id}: {str(e)}[/red]"
+                        "[red]❌ Flow execution stopped due to step failure[/red]"
                     )
                     break
 
-                # Small delay for readability
-                time.sleep(0.5)
+                # Determine next step
+                if next_step_id:
+                    current_step_id = next_step_id
+                else:
+                    current_step_id = self.flow_obj.get_next_step_id(
+                        current_step_id
+                    )
 
-            # Final progress update
-            progress.update(task, completed=total_steps, description="Flow completed")
+            except Exception as e:
+                self.console.print(
+                    f"[red]Error in step {current_step_id}: {str(e)}[/red]"
+                )
+                break
 
+            # Small delay for readability
+            time.sleep(0.5)
+
+        # Final completion message
         self.console.print()
         self.console.print(
             Panel(
@@ -212,7 +191,11 @@ class RichTUI:
                     step_result.success = False
                     step_result.error = "User cancelled input"
                 else:
-                    self.console.print(f"[green]✅ Selected: {selected_choice}[/green]")
+                    # Only show selection confirmation for single choices
+                    # Multi-selection already shows "Final Selections" summary
+                    selection_count = step_result.data.get("selection_count", 1) if step_result.data else 1
+                    if selection_count == 1:
+                        self.console.print(f"[green]✅ Selected: {selected_choice}[/green]")
 
                     # Process the choice
                     choice_executor = ChoiceExecutor()
@@ -240,7 +223,17 @@ class RichTUI:
         """Handle user choice input using Rich prompts."""
         choices = step_result.choices
         prompt_text = step_result.prompt or "Please make a choice:"
-
+        
+        # Check if this requires multiple selections
+        selection_count = step_result.data.get("selection_count", 1) if step_result.data else 1
+        
+        if selection_count > 1:
+            return self._handle_multiple_choice_input(step_result, choices, prompt_text, selection_count)
+        else:
+            return self._handle_single_choice_input(choices, prompt_text)
+    
+    def _handle_single_choice_input(self, choices, prompt_text) -> str | None:
+        """Handle single choice input."""
         # Display choices in a table for better accessibility
         choices_table = Table(title="Available Choices", show_header=True)
         choices_table.add_column("Option", style="cyan", justify="right")
@@ -287,6 +280,102 @@ class RichTUI:
                 if "1" in choice_map:
                     return choice_map["1"]
                 return None
+    
+    def _handle_multiple_choice_input(self, step_result, choices, prompt_text, selection_count) -> str | None:
+        """Handle multiple choice selection (like ability swapping)."""
+        selected_choices = []
+        selected_ids = []
+        available_choices = choices.copy()  # Make a copy
+        
+        try:
+            for selection_num in range(selection_count):
+                self.console.print(f"\n[bold cyan]Selection {selection_num + 1} of {selection_count}:[/bold cyan]")
+                
+                # Show remaining choices
+                choices_table = Table(show_header=True, header_style="bold magenta")
+                choices_table.add_column("Option", style="cyan", justify="right")
+                choices_table.add_column("Choice", style="green")
+                choices_table.add_column("Description", style="dim")
+                
+                choice_map = {}
+                for i, choice in enumerate(available_choices, 1):
+                    label = choice.label if hasattr(choice, "label") else str(choice)
+                    choice_id = choice.id if hasattr(choice, "id") else str(choice)
+                    description = getattr(choice, "description", "") or ""
+                    
+                    choices_table.add_row(str(i), label, description)
+                    choice_map[str(i)] = (choice_id, choice)
+                
+                self.console.print(choices_table)
+                
+                # Show previously selected items
+                if selected_choices:
+                    selected_labels = [c.label if hasattr(c, "label") else str(c) for c in selected_choices]
+                    self.console.print(f"\n[dim]Already selected: {', '.join(selected_labels)}[/dim]")
+                
+                self.console.print()
+                
+                # Create choices text for prompt
+                choices_text = " / ".join([str(i) for i in range(1, len(available_choices) + 1)])
+                
+                while True:
+                    try:
+                        response = Prompt.ask(
+                            f"Enter choice number for selection {selection_num + 1} ({choices_text}) or 'q' to quit",
+                            console=self.console
+                        )
+                        
+                        if response.lower() == "q":
+                            return None
+                            
+                        if response in choice_map:
+                            choice_id, choice_obj = choice_map[response]
+                            selected_choices.append(choice_obj)
+                            selected_ids.append(choice_id)
+                            
+                            choice_label = choice_obj.label if hasattr(choice_obj, "label") else str(choice_obj)
+                            self.console.print(f"[green]✅ Selected: {choice_label}[/green]")
+                            
+                            # Remove the selected choice from available choices
+                            available_choices.remove(choice_obj)
+                            break
+                        else:
+                            self.console.print(f"[red]Invalid choice number. Please choose from: {choices_text}[/red]")
+                            
+                    except (KeyboardInterrupt, EOFError):
+                        # Handle automated input gracefully
+                        if choice_map:
+                            # Use first available choice
+                            choice_id, choice_obj = choice_map["1"]
+                            selected_choices.append(choice_obj)
+                            selected_ids.append(choice_id)
+                            choice_label = choice_obj.label if hasattr(choice_obj, "label") else str(choice_obj)
+                            self.console.print(f"[yellow]Using default choice: {choice_label}[/yellow]")
+                            available_choices.remove(choice_obj)
+                            break
+                        else:
+                            return None
+            
+            # Show final selection summary
+            self.console.print("\n[bold green]Final Selections:[/bold green]")
+            for i, choice in enumerate(selected_choices, 1):
+                choice_label = choice.label if hasattr(choice, "label") else str(choice)
+                self.console.print(f"  {i}. {choice_label}")
+            
+            # Store the multiple selections in context (like the original console interface)
+            self.context.set_variable("selected_items", selected_ids)
+            self.context.set_variable("user_choices", selected_ids)  # Alternative name
+            
+            # Return the first selection ID (for compatibility)
+            return selected_ids[0] if selected_ids else None
+            
+        except Exception as e:
+            self.console.print(f"[red]Error during selection: {e}[/red]")
+            self.console.print("[yellow]Continuing with default behavior...[/yellow]")
+            # Fall back to empty selection
+            self.context.set_variable("selected_items", [])
+            self.context.set_variable("user_choices", [])
+            return None
 
     def _show_results_summary(self) -> None:
         """Show a summary of the execution results."""
