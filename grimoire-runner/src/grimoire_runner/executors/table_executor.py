@@ -108,7 +108,7 @@ class TableExecutor(BaseStepExecutor):
             # Execute table actions with result context
             if table_roll.actions:
                 self._execute_table_actions(
-                    table_roll.actions, context, table_result, results
+                    table_roll.actions, context, system, table_result, results
                 )
 
         # If only one result, return it directly, otherwise return list
@@ -121,6 +121,7 @@ class TableExecutor(BaseStepExecutor):
         self,
         actions: list[Any],
         context: "ExecutionContext",
+        system: "System",
         result: Any,
         all_results: list[Any],
     ) -> None:
@@ -134,7 +135,7 @@ class TableExecutor(BaseStepExecutor):
 
         try:
             for action in actions:
-                self._execute_table_action(action, context, result)
+                self._execute_table_action(action, context, system, result)
         finally:
             # Restore original values
             if original_result is not None:
@@ -143,7 +144,7 @@ class TableExecutor(BaseStepExecutor):
                 context.set_variable("results", original_results)
 
     def _execute_table_action(
-        self, action, context: "ExecutionContext", result: Any
+        self, action, context: "ExecutionContext", system: "System", result: Any
     ) -> None:
         """Execute a single table action."""
         action_type = list(action.keys())[0]
@@ -169,7 +170,17 @@ class TableExecutor(BaseStepExecutor):
             flow_id = action_data["flow"]
             inputs = action_data.get("inputs", {})
             logger.info(f"Flow call requested: {flow_id} (inputs: {inputs})")
-            # TODO: Implement flow calling
+            
+            # Check if the flow exists in the system
+            flow_obj = system.get_flow(flow_id)
+            if not flow_obj:
+                # Get available flows for better error message
+                available_flows = list(system.flows.keys()) if hasattr(system, 'flows') else []
+                flow_list = ", ".join(sorted(available_flows)) if available_flows else "none"
+                raise ValueError(f"Flow '{flow_id}' not found in system. Available flows: {flow_list}")
+            
+            # TODO: Actually execute the flow call when flow execution is implemented
+            logger.warning(f"Flow calling not yet implemented for flow '{flow_id}'")
 
         # TODO: Add other action types as needed
 
