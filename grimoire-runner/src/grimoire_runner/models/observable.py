@@ -101,33 +101,58 @@ class DerivedFieldManager:
 
         return dependencies
 
-    def register_derived_field(self, field_name: str, derived_expression: str) -> None:
-        """Register a field that should be computed from other fields."""
-        logger.debug(f"Registering derived field: {field_name} = {derived_expression}")
+    def register_derived_field(self, field_name: str, expression: str) -> None:
+        """Register a derived field with its template expression."""
+        logger.info(f"Registering derived field: {field_name} = '{expression}'")
 
-        # Extract dependencies from the Jinja2 template
-        dependencies = self._extract_dependencies(derived_expression)
-        logger.debug(f"Dependencies for {field_name}: {dependencies}")
+        # Build qualified field name if we have an instance ID
+        qualified_field_name = (
+            f"{self.current_instance_id}.{field_name}"
+            if self.current_instance_id
+            else field_name
+        )
+
+        # Extract dependencies from the expression
+        dependencies = self._extract_dependencies(expression)
+        
+        # Convert relative dependencies to qualified names
+        qualified_dependencies = set()
+        for dep in dependencies:
+            if dep.startswith("$."):
+                # Convert $. to the current instance scope
+                instance_dep = dep[2:]  # Remove $.
+                qualified_dep = (
+                    f"{self.current_instance_id}.{instance_dep}"
+                    if self.current_instance_id
+                    else instance_dep
+                )
+                qualified_dependencies.add(qualified_dep)
+            else:
+                qualified_dependencies.add(dep)
 
         # Store field info
-        self.fields[field_name] = {
-            "derived": derived_expression,
-            "dependencies": dependencies,
+        self.fields[qualified_field_name] = {
+            "derived": expression,
+            "dependencies": qualified_dependencies,
         }
 
-        # Update dependency graph
-        for dep in dependencies:
+        # Update dependency graph (reverse mapping: dependency -> fields that depend on it)
+        for dep in qualified_dependencies:
             if dep not in self.dependency_graph:
                 self.dependency_graph[dep] = set()
-            self.dependency_graph[dep].add(field_name)
-            logger.debug(f"Added dependency: {dep} → {field_name}")
+            self.dependency_graph[dep].add(qualified_field_name)
+
+        logger.info(
+            f"Derived field '{qualified_field_name}' depends on: {qualified_dependencies}"
+        )
 
     def set_field_value(self, field_name: str, value: Any) -> None:
         """Set a value and trigger recomputation of dependent fields."""
         logger.debug(f"Setting observable value: {field_name} = {value}")
 
         # First, set the value in the execution context so it's available for template resolution
-        self.execution_context.set_output(field_name, value)
+        # Use the internal method to avoid recursion
+        self.execution_context._set_nested_value(self.execution_context.outputs, field_name, value)
 
         # Then create/update observable which will trigger recomputation
         if field_name not in self.observable_values:
@@ -178,13 +203,18 @@ class DerivedFieldManager:
         """Recompute a specific field."""
         logger.debug(f"Recomputing field: {field}")
 
-        if field not in self.fields:
-            logger.debug(f"Field {field} not registered for recomputation")
+        # Map qualified field name back to unqualified for field lookup
+        lookup_field = field
+        if self.current_instance_id and field.startswith(f"{self.current_instance_id}."):
+            lookup_field = field[len(f"{self.current_instance_id}."):]
+
+        if lookup_field not in self.fields:
+            logger.debug(f"Field {lookup_field} not registered for recomputation")
             return
 
         self._computing.add(field)
         try:
-            template_expr = self.fields[field]["derived"]
+            template_expr = self.fields[lookup_field]["derived"]
             # Convert $variable syntax to {{ variable }} syntax for Jinja2
             jinja_expr = self._convert_to_jinja_syntax(template_expr)
             logger.debug(f"Converting template: '{template_expr}' -> '{jinja_expr}'")
@@ -192,17 +222,15 @@ class DerivedFieldManager:
             result = self.template_resolver(jinja_expr)
             logger.debug(f"Field {field} computed to: {result}")
 
-            # Store the result in the correct namespace
-            storage_path = field
-            if self.current_instance_id and not field.startswith(
-                f"{self.current_instance_id}."
-            ):
-                storage_path = f"{self.current_instance_id}.{field}"
+            # Store the result using the qualified field name, avoiding recursion
+            self.execution_context._set_nested_value(self.execution_context.outputs, field, result)
 
-            self.execution_context.set_output(storage_path, result)
-
-            # Trigger any dependent fields
-            self._recompute_dependent_fields(field)
+            # Create/update observable for this computed field
+            if field not in self.observable_values:
+                self.observable_values[field] = ObservableValue(field, result)
+                self.observable_values[field].add_observer(self._on_value_changed)
+            else:
+                self.observable_values[field].value = result
         except Exception as e:
             logger.debug(f"Error computing field {field}: {e}")
         finally:
@@ -283,6 +311,7 @@ class DerivedFieldManager:
         self, model_def: "ModelDefinition", instance_id: str = None
     ) -> None:
         """Initialize observable system from a model definition."""
+        logger.info(f"Initializing observable system for model {getattr(model_def, 'id', 'unknown')} with instance_id: {instance_id}")
         self.current_instance_id = instance_id
         self.register_model_attributes(model_def, {})
 

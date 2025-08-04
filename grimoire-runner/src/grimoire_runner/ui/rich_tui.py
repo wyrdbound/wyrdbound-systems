@@ -1,5 +1,6 @@
 """Rich-based TUI for step-by-step flow execution with accessibility in mind."""
 
+import logging
 import time
 from pathlib import Path
 from typing import Any
@@ -11,6 +12,8 @@ from rich.table import Table
 
 from ..core.engine import GrimoireEngine
 from ..executors.choice_executor import ChoiceExecutor
+
+logger = logging.getLogger(__name__)
 
 
 class RichTUI:
@@ -62,9 +65,26 @@ class RichTUI:
         # Create execution context
         self.context = self.engine.create_execution_context()
 
+        # Set system metadata in context for templating
+        self.context.system_metadata = {
+            "id": self.system.id,
+            "name": self.system.name,
+            "description": self.system.description,
+            "version": self.system.version,
+            "currency": getattr(self.system, "currency", {}),
+            "credits": getattr(self.system, "credits", {}),
+        }
+
         # Initialize flow variables
         for var_name, var_value in self.flow_obj.variables.items():
             self.context.set_variable(var_name, var_value)
+
+        # Initialize observable derived fields from output models
+        for output_def in self.flow_obj.outputs:
+            if output_def.type in self.system.models:
+                model = self.system.models[output_def.type]
+                logger.info(f"Rich TUI: Initializing model observables for {output_def.type} ({output_def.id})")
+                self.context.initialize_model_observables(model, output_def.id)
 
         # Show flow info
         self._show_flow_info()

@@ -1,0 +1,39 @@
+id: "add_item_to_character"
+type: "flow"
+name: "Add Item to Character"
+description: "Add an item to a character's inventory"
+version: "1.0"
+
+inputs:
+  - type: "character"
+    id: "character"
+    required: true
+    description: "The character to add the item to"
+  - type: "item"
+    id: "item"
+    required: true
+    description: "The item to add to the character's inventory"
+
+outputs:
+  - type: "character"
+    id: "character"
+    description: "The updated character with the new item"
+
+variables: {}
+
+steps:
+  - id: "add_item"
+    name: "Add Item to Inventory"
+    type: "completion"
+    actions:
+      - set_value:
+          path: "outputs.character.inventory"
+          value: "{{ inputs.character.inventory + [inputs.item] }}"
+      - log_event:
+          message: "Added {{ inputs.item.display_name }} to {{ inputs.character.name or 'Unnamed Character' }}. Inventory: {{ (inputs.character.inventory + [inputs.item]) | sum(attribute='slot_cost') }} slots used / {{ inputs.character.inventory_capacity }} capacity"
+          data:
+            character_name: "{{ inputs.character.name }}"
+            item_added: "{{ inputs.item.display_name }}"
+            item_slot_cost: "{{ inputs.item.slot_cost }}"
+            slots_used_after: "{{ (inputs.character.inventory + [inputs.item]) | sum(attribute='slot_cost') }}"
+            inventory_capacity: "{{ inputs.character.inventory_capacity }}"

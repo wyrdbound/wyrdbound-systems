@@ -104,6 +104,7 @@ class GrimoireEngine:
         for output_def in flow.outputs:
             if output_def.type in system.models:
                 model = system.models[output_def.type]
+                logger.info(f"Initializing model observables for {output_def.type} ({output_def.id})")
                 context.initialize_model_observables(model, output_def.id)
 
         # Execute all steps

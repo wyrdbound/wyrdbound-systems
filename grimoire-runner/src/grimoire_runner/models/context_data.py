@@ -89,16 +89,18 @@ class ExecutionContext:
             return False
 
     def set_output(self, path: str, value: Any) -> None:
-        """Set an output at the specified path."""
-        self._set_nested_value(self.outputs, path, value)
+        """Set an output at the specified path, triggering derived field computation if applicable."""
+        # Always use the observable system for consistency and to trigger derived fields
+        if self._derived_field_manager:
+            self._derived_field_manager.set_field_value(path, value)
+        else:
+            # Fallback if no derived field manager (shouldn't happen in normal operation)
+            self._set_nested_value(self.outputs, path, value)
 
     def set_output_with_observables(self, path: str, value: Any) -> None:
         """Set an output and trigger observable updates."""
+        # This is now redundant since set_output always handles observables
         self.set_output(path, value)
-
-        # If we have a derived field manager, also update the observable system
-        if self._derived_field_manager:
-            self._derived_field_manager.set_field_value(path, value)
 
     def get_output(self, path: str, default: Any = None) -> Any:
         """Get an output at the specified path."""
@@ -242,13 +244,6 @@ class ExecutionContext:
         """Compute all derived fields in the model."""
         if self._derived_field_manager:
             self._derived_field_manager.compute_all_derived_fields()
-
-    def set_observable_output(self, path: str, value: Any) -> None:
-        """Set an output value that will trigger derived field recalculation."""
-        if self._derived_field_manager:
-            self._derived_field_manager.set_field_value(path, value)
-        else:
-            self.set_output(path, value)
 
     def _get_nested_value(self, obj: dict[str, Any], path: str) -> Any:
         """Get a nested value by dot-separated path."""
