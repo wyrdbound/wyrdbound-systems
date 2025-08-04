@@ -230,8 +230,8 @@ steps:
       abilities: "{{ get_value('outputs.knave.abilities') }}"
       background: "{{ get_value('outputs.knave.traits.background') }}"
     llm_settings:
-      provider: "anthropic"
-      model: "claude-3-haiku"
+      provider: "ollama"
+      model: "gemma3"
       max_tokens: 200
     actions:
       - set_value:

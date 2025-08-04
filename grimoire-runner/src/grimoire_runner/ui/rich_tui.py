@@ -238,10 +238,10 @@ class RichTUI:
 
         # Show step result
         if step_result.success:
-            self.console.print(f"[green]✅ Completed step {step_num}[/green]")
+            self.console.print(f"[green]✅ Completed Step {step_num}[/green]")
         else:
             self.console.print(
-                f"[red]❌ Failed step {step_num}: {step_result.error}[/red]"
+                f"[red]❌ Failed Step {step_num}: {step_result.error}[/red]"
             )
 
         self.step_results.append(step_result)

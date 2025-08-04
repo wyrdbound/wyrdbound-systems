@@ -148,7 +148,7 @@ class DerivedFieldManager:
 
     def set_field_value(self, field_name: str, value: Any) -> None:
         """Set a value and trigger recomputation of dependent fields."""
-        logger.debug(f"Setting observable value: {field_name} = {value}")
+        logger.info(f"Observable: Setting field {field_name} = {value}")
 
         # First, set the value in the execution context so it's available for template resolution
         # Use the internal method to avoid recursion
@@ -156,28 +156,41 @@ class DerivedFieldManager:
 
         # Then create/update observable which will trigger recomputation
         if field_name not in self.observable_values:
-            logger.debug(f"Creating new ObservableValue for {field_name}")
+            logger.info(f"Observable: Creating new ObservableValue for {field_name}")
             # Create with None first, then set the value to trigger observers
             self.observable_values[field_name] = ObservableValue(field_name, None)
             # Add observer to trigger recomputation
             self.observable_values[field_name].add_observer(self._on_value_changed)
-            logger.debug(
-                f"Added observer to {field_name}, observers: {len(self.observable_values[field_name]._observers)}"
+            logger.info(
+                f"Observable: Added observer to {field_name}, observers: {len(self.observable_values[field_name]._observers)}"
             )
             # Now set the actual value (this will trigger observers)
             self.observable_values[field_name].value = value
         else:
             # Update existing observable (this will trigger observers)
-            logger.debug(f"Updating existing ObservableValue for {field_name}")
+            logger.info(f"Observable: Updating existing ObservableValue for {field_name}")
             self.observable_values[field_name].value = value
 
     def _on_value_changed(self, field: str, old_value: Any, new_value: Any) -> None:
         """Called when a value changes."""
-        logger.debug(f"Observable: {field} changed from {old_value} to {new_value}")
+        logger.info(f"Observable: {field} changed from {old_value} to {new_value}")
         self._recompute_dependent_fields(field)
 
     def _recompute_dependent_fields(self, changed_field: str) -> None:
         """Recompute all fields that depend on the changed field."""
+        logger.info(f"Recomputing fields that depend on: {changed_field}")
+        
+        # Check if any derived fields depend on this field
+        if changed_field in self.dependency_graph:
+            dependent_fields = self.dependency_graph[changed_field]
+            logger.info(f"Found {len(dependent_fields)} dependent fields: {dependent_fields}")
+            
+            for dependent_field in dependent_fields:
+                if dependent_field not in self._computing:  # Prevent circular dependencies
+                    logger.info(f"Recomputing dependent field: {dependent_field}")
+                    self._recompute_field(dependent_field)
+        else:
+            logger.info(f"No dependent fields found for: {changed_field}")
         logger.debug(f"Field '{changed_field}' changed, checking dependencies...")
 
         if changed_field not in self.dependency_graph:
@@ -200,39 +213,49 @@ class DerivedFieldManager:
                 self._recompute_field(field_name)
 
     def _recompute_field(self, field: str) -> None:
-        """Recompute a specific field."""
-        logger.debug(f"Recomputing field: {field}")
+        """Recompute a single derived field."""
+        logger.info(f"_recompute_field called for: {field}")
+        
+        # The field is already qualified (e.g., "knave.abilities.strength.defense")
+        # Look for it directly in the fields registry
+        logger.info(f"_recompute_field: looking for qualified field = {field}")
+        logger.info(f"_recompute_field: registered fields = {list(self.fields.keys())}")
 
-        # Map qualified field name back to unqualified for field lookup
-        lookup_field = field
-        if self.current_instance_id and field.startswith(f"{self.current_instance_id}."):
-            lookup_field = field[len(f"{self.current_instance_id}."):]
-
-        if lookup_field not in self.fields:
-            logger.debug(f"Field {lookup_field} not registered for recomputation")
+        if field not in self.fields:
+            logger.info(f"Qualified field {field} not registered for recomputation")
             return
 
         self._computing.add(field)
         try:
-            template_expr = self.fields[lookup_field]["derived"]
+            template_expr = self.fields[field]["derived"]
             # Convert $variable syntax to {{ variable }} syntax for Jinja2
             jinja_expr = self._convert_to_jinja_syntax(template_expr)
-            logger.debug(f"Converting template: '{template_expr}' -> '{jinja_expr}'")
+            logger.info(f"Computing field {field}: '{template_expr}' -> '{jinja_expr}'")
 
             result = self.template_resolver(jinja_expr)
-            logger.debug(f"Field {field} computed to: {result}")
+            logger.info(f"Field {field} computed to: {result}")
 
             # Store the result using the qualified field name, avoiding recursion
             self.execution_context._set_nested_value(self.execution_context.outputs, field, result)
 
             # Create/update observable for this computed field
             if field not in self.observable_values:
+                logger.info(f"Creating observable for computed field {field} = {result}")
                 self.observable_values[field] = ObservableValue(field, result)
                 self.observable_values[field].add_observer(self._on_value_changed)
+                # For newly created computed fields, explicitly trigger dependent field recomputation
+                self._recompute_dependent_fields(field)
             else:
+                logger.info(f"Updating observable for computed field {field} = {result}")
+                old_value = self.observable_values[field].value
                 self.observable_values[field].value = result
+                # If the value didn't change but this is a computed field, still trigger dependencies
+                # in case this is the first time dependent fields need to be computed
+                if old_value == result:
+                    logger.info(f"Computed field {field} value unchanged ({result}), but triggering dependent field recomputation")
+                    self._recompute_dependent_fields(field)
         except Exception as e:
-            logger.debug(f"Error computing field {field}: {e}")
+            logger.error(f"Error computing field {field}: {e}")
         finally:
             self._computing.discard(field)
 
@@ -332,6 +355,41 @@ class DerivedFieldManager:
             if field_name not in self._computing:  # Prevent circular dependencies
                 logger.debug(f"Computing derived field: {field_name}")
                 self._recompute_field(field_name)
+
+    def get_computed_values_for_instance(self, instance_id: str) -> dict[str, Any]:
+        """Get all computed values (including derived fields) for a specific instance."""
+        computed_values = {}
+        
+        # Get the prefix for this instance
+        prefix = f"{instance_id}."
+        
+        logger.info(f"get_computed_values_for_instance({instance_id}): observable_values keys = {list(self.observable_values.keys())}")
+        
+        for field_name, observable_value in self.observable_values.items():
+            if field_name.startswith(prefix):
+                # Remove the instance prefix to get the relative field path
+                relative_path = field_name[len(prefix):]
+                logger.info(f"get_computed_values_for_instance({instance_id}): {field_name} -> {relative_path} = {observable_value.value}")
+                
+                # Set the value in the nested structure
+                self._set_nested_value_in_dict(computed_values, relative_path, observable_value.value)
+        
+        logger.info(f"get_computed_values_for_instance({instance_id}): final computed_values = {computed_values}")
+        return computed_values
+
+    def _set_nested_value_in_dict(self, target_dict: dict[str, Any], path: str, value: Any) -> None:
+        """Set a nested value in a dictionary using dot notation."""
+        parts = path.split(".")
+        current = target_dict
+        
+        # Navigate to the parent of the target key
+        for part in parts[:-1]:
+            if part not in current:
+                current[part] = {}
+            current = current[part]
+        
+        # Set the final value
+        current[parts[-1]] = value
 
     def _register_attributes_recursive(
         self, attributes: dict[str, Any], path_prefix: str

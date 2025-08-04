@@ -197,9 +197,26 @@ class SimpleFlowApp(App):
             # Initialize context
             self.context = self.engine.create_execution_context()
 
+            # Set system metadata in context for templating
+            self.context.system_metadata = {
+                "id": self.system.id,
+                "name": self.system.name,
+                "description": self.system.description,
+                "version": self.system.version,
+                "currency": getattr(self.system, "currency", {}),
+                "credits": getattr(self.system, "credits", {}),
+            }
+
             # Initialize flow variables
             for var_name, var_value in self.flow_obj.variables.items():
                 self.context.set_variable(var_name, var_value)
+
+            # Initialize observable derived fields from output models
+            for output_def in self.flow_obj.outputs:
+                if output_def.type in self.system.models:
+                    model = self.system.models[output_def.type]
+                    self.write_log(f"Initializing model observables for {output_def.type} ({output_def.id})")
+                    self.context.initialize_model_observables(model, output_def.id)
 
             # Execute flow step by step
             await self.execute_flow_steps()
@@ -304,9 +321,9 @@ class SimpleFlowApp(App):
 
         # Log completion
         if step_result.success:
-            self.write_log(f"✅ Completed step {step_num}")
+            self.write_log(f"✅ Completed Step {step_num}")
         else:
-            self.write_log(f"❌ Failed step {step_num}: {step_result.error}")
+            self.write_log(f"❌ Failed Step {step_num}: {step_result.error}")
 
         self.step_results.append(step_result)
         return step_result.success, step_result.next_step_id

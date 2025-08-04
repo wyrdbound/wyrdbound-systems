@@ -105,6 +105,9 @@ class TableExecutor(BaseStepExecutor):
 
             results.append(result_data)
 
+            # Log the individual table roll result
+            logger.info(f"Table roll result: {table_name.title()}: {table_result} (rolled {roll_value})")
+
             # Execute table actions with result context
             if table_roll.actions:
                 self._execute_table_actions(

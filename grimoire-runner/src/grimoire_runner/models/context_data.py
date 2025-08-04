@@ -103,11 +103,40 @@ class ExecutionContext:
         self.set_output(path, value)
 
     def get_output(self, path: str, default: Any = None) -> Any:
-        """Get an output at the specified path."""
+        """Get an output at the specified path, including computed derived fields."""
         try:
-            return self._get_nested_value(self.outputs, path)
+            base_value = self._get_nested_value(self.outputs, path)
+            logger.info(f"get_output({path}): base_value = {base_value}")
+            
+            # If we have a derived field manager and this looks like a model instance,
+            # try to merge in the computed derived fields
+            if self._derived_field_manager and isinstance(base_value, dict):
+                logger.info(f"get_output({path}): checking for computed values")
+                # Check if this path corresponds to a model instance
+                # For paths like "knave", check if we have derived fields for that instance
+                computed_values = self._derived_field_manager.get_computed_values_for_instance(path)
+                logger.info(f"get_output({path}): computed_values = {computed_values}")
+                if computed_values:
+                    # Deep merge the computed values into the base value
+                    merged_value = self._deep_merge_dicts(base_value.copy(), computed_values)
+                    logger.info(f"get_output({path}): merged_value = {merged_value}")
+                    return merged_value
+            
+            return base_value
         except (KeyError, TypeError):
             return default
+
+    def _deep_merge_dicts(self, base: dict, overlay: dict) -> dict:
+        """Deep merge two dictionaries, with overlay values taking precedence."""
+        result = base.copy()
+        
+        for key, value in overlay.items():
+            if key in result and isinstance(result[key], dict) and isinstance(value, dict):
+                result[key] = self._deep_merge_dicts(result[key], value)
+            else:
+                result[key] = value
+        
+        return result
 
     def set_input(self, path: str, value: Any) -> None:
         """Set an input at the specified path."""
@@ -170,6 +199,7 @@ class ExecutionContext:
 
     def resolve_path_value(self, path: str) -> Any:
         """Resolve a path that might reference variables, outputs, or inputs."""
+        logger.info(f"resolve_path_value({path})")
         if path.startswith("variables."):
             return self.get_variable(path[10:])  # Remove 'variables.' prefix
         elif path.startswith("outputs."):
