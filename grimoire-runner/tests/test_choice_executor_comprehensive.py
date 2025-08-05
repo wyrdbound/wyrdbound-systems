@@ -337,7 +337,6 @@ class TestChoiceExecutorIntegration:
             assert result.step_id == "system_choice"
 
 
-@pytest.mark.performance
 class TestChoiceExecutorPerformance:
     """Performance and stress tests for choice executor."""
 

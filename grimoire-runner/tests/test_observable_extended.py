@@ -226,8 +226,10 @@ class TestDerivedFieldManager:
         """Test setting a field value for a new field."""
         self.manager.set_field_value("test_field", "test_value")
 
-        # Should set in execution context
-        self.mock_context.set_output.assert_called_once_with("test_field", "test_value")
+        # Should set in execution context via _set_nested_value (not set_output to avoid recursion)
+        self.mock_context._set_nested_value.assert_called_once_with(
+            self.mock_context.outputs, "test_field", "test_value"
+        )
 
         # Should create observable value
         assert "test_field" in self.manager.observable_values
@@ -250,8 +252,10 @@ class TestDerivedFieldManager:
         # Second set
         self.manager.set_field_value("test_field", "updated")
 
-        # Should update context
-        self.mock_context.set_output.assert_called_once_with("test_field", "updated")
+        # Should update context via _set_nested_value (not set_output to avoid recursion)
+        self.mock_context._set_nested_value.assert_called_once_with(
+            self.mock_context.outputs, "test_field", "updated"
+        )
 
         # Should be same observable object
         assert self.manager.observable_values["test_field"] is initial_obs
@@ -268,9 +272,13 @@ class TestDerivedFieldManager:
         # Set base field value (should trigger recomputation of total)
         self.manager.set_field_value("base", 10)
 
-        # The first call sets the base value, and observer triggers recomputation of total
-        expected_calls = [call("base", 10), call("total", 15)]
-        self.mock_context.set_output.assert_has_calls(expected_calls, any_order=True)
+        # The first call sets the base value via _set_nested_value, and observer triggers recomputation of total
+        # which also uses _set_nested_value (not set_output to avoid recursion)
+        expected_calls = [
+            call(self.mock_context.outputs, "base", 10),
+            call(self.mock_context.outputs, "total", 15)
+        ]
+        self.mock_context._set_nested_value.assert_has_calls(expected_calls, any_order=True)
 
     def test_prevent_circular_dependencies(self):
         """Test that circular dependencies are prevented."""
