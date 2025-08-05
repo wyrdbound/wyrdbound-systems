@@ -215,7 +215,9 @@ class SimpleFlowApp(App):
             for output_def in self.flow_obj.outputs:
                 if output_def.type in self.system.models:
                     model = self.system.models[output_def.type]
-                    self.write_log(f"Initializing model observables for {output_def.type} ({output_def.id})")
+                    self.write_log(
+                        f"Initializing model observables for {output_def.type} ({output_def.id})"
+                    )
                     self.context.initialize_model_observables(model, output_def.id)
 
             # Execute flow step by step
@@ -286,7 +288,9 @@ class SimpleFlowApp(App):
         # Handle user input if needed
         if step_result.requires_input:
             self.write_log("⏳ Step requires user input...")
-            self.write_log(f"DEBUG: step_result.requires_input={step_result.requires_input}, step.type={step.type}")
+            self.write_log(
+                f"DEBUG: step_result.requires_input={step_result.requires_input}, step.type={step.type}"
+            )
 
             if step_result.choices:
                 # Show choice modal
@@ -310,7 +314,9 @@ class SimpleFlowApp(App):
                     # Process the choice
                     from ..executors.choice_executor import ChoiceExecutor
 
-                    self.write_log(f"DEBUG: About to process choice with choice_executor")
+                    self.write_log(
+                        "DEBUG: About to process choice with choice_executor"
+                    )
                     choice_executor = ChoiceExecutor()
                     choice_result = choice_executor.process_choice(
                         selected_choice, step, self.context
@@ -321,13 +327,20 @@ class SimpleFlowApp(App):
                         step_result.next_step_id = choice_result.next_step_id
 
                     step_result.success = True
-                    
+
                     # Execute step-level actions after choice is processed
                     self.write_log(f"DEBUG: step.actions = {step.actions}")
                     if step.actions:
-                        self.write_log(f"Executing {len(step.actions)} step actions after choice")
+                        self.write_log(
+                            f"Executing {len(step.actions)} step actions after choice"
+                        )
                         try:
-                            self.engine._execute_actions(step.actions, self.context, choice_result.data if choice_result else {}, self.system)
+                            self.engine._execute_actions(
+                                step.actions,
+                                self.context,
+                                choice_result.data if choice_result else {},
+                                self.system,
+                            )
                             self.write_log("✅ Step actions executed successfully")
                         except Exception as e:
                             self.write_log(f"❌ Error executing step actions: {e}")

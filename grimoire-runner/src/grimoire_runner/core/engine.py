@@ -104,7 +104,9 @@ class GrimoireEngine:
         for output_def in flow.outputs:
             if output_def.type in system.models:
                 model = system.models[output_def.type]
-                logger.info(f"Initializing model observables for {output_def.type} ({output_def.id})")
+                logger.info(
+                    f"Initializing model observables for {output_def.type} ({output_def.id})"
+                )
                 context.initialize_model_observables(model, output_def.id)
 
         # Execute all steps
@@ -407,47 +409,63 @@ class GrimoireEngine:
                 # Handle sub-flow calls
                 flow_id = action_data["flow"]
                 raw_inputs = action_data.get("inputs", {})
-                logger.info(f"Engine action flow_call: {flow_id} (raw inputs: {raw_inputs})")
-                
+                logger.info(
+                    f"Engine action flow_call: {flow_id} (raw inputs: {raw_inputs})"
+                )
+
                 # Resolve input templates using the current context
                 resolved_inputs = {}
                 for input_key, input_value in raw_inputs.items():
                     if isinstance(input_value, str):
                         # Resolve any templates in the input value
                         try:
-                            if input_value.startswith("{{") and input_value.endswith("}}"):
+                            if input_value.startswith("{{") and input_value.endswith(
+                                "}}"
+                            ):
                                 # This is a template, resolve it while preserving object types
                                 resolved_value = context.resolve_template(input_value)
-                                logger.info(f"Resolved template {input_key}: {input_value} -> {type(resolved_value).__name__}")
+                                logger.info(
+                                    f"Resolved template {input_key}: {input_value} -> {type(resolved_value).__name__}"
+                                )
                             elif "outputs." in input_value:
                                 # This is a path reference, resolve it
                                 resolved_value = context.resolve_path_value(input_value)
-                                logger.info(f"Resolved path {input_key}: {input_value} -> {type(resolved_value).__name__}")
+                                logger.info(
+                                    f"Resolved path {input_key}: {input_value} -> {type(resolved_value).__name__}"
+                                )
                             else:
                                 # Plain string, use as-is
                                 resolved_value = input_value
                             resolved_inputs[input_key] = resolved_value
                         except Exception as e:
-                            logger.error(f"Failed to resolve input {input_key}: {input_value} - {e}")
+                            logger.error(
+                                f"Failed to resolve input {input_key}: {input_value} - {e}"
+                            )
                             resolved_inputs[input_key] = input_value
                     else:
                         # Non-string values, use as-is
                         resolved_inputs[input_key] = input_value
-                
-                logger.info(f"Engine action flow_call resolved inputs: {resolved_inputs}")
-                
+
+                logger.info(
+                    f"Engine action flow_call resolved inputs: {resolved_inputs}"
+                )
+
                 # Import here to avoid circular imports
                 from ..executors.table_executor import TableExecutor
-                
+
                 # Use the table executor's sub-flow execution logic
                 # since it already handles the template resolution and typing correctly
                 table_executor = TableExecutor()
                 try:
                     if system:
-                        table_executor._execute_sub_flow(flow_id, resolved_inputs, context, system, raw_inputs)
+                        table_executor._execute_sub_flow(
+                            flow_id, resolved_inputs, context, system, raw_inputs
+                        )
                         logger.info(f"Successfully executed sub-flow: {flow_id}")
                     else:
-                        logger.error(f"No system available for sub-flow execution: {flow_id}")
+                        logger.error(
+                            f"No system available for sub-flow execution: {flow_id}"
+                        )
                 except Exception as e:
                     logger.error(f"Error executing sub-flow {flow_id}: {e}")
 

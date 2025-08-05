@@ -5,7 +5,6 @@ from pathlib import Path
 
 import typer
 from rich.console import Console
-from rich.panel import Panel
 from rich.progress import (
     Progress,
     SpinnerColumn,
@@ -135,7 +134,6 @@ def execute(
     except Exception as e:
         console.print(f"[bold red]Textual interface error:[/bold red] {e}")
         raise typer.Exit(1) from None
-
 
 
 @app.command()

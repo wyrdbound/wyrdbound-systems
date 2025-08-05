@@ -114,7 +114,7 @@ class DerivedFieldManager:
 
         # Extract dependencies from the expression
         dependencies = self._extract_dependencies(expression)
-        
+
         # Convert relative dependencies to qualified names
         qualified_dependencies = set()
         for dep in dependencies:
@@ -167,7 +167,9 @@ class DerivedFieldManager:
             self.observable_values[field_name].value = value
         else:
             # Update existing observable (this will trigger observers)
-            logger.info(f"Observable: Updating existing ObservableValue for {field_name}")
+            logger.info(
+                f"Observable: Updating existing ObservableValue for {field_name}"
+            )
             self.observable_values[field_name].value = value
 
     def _on_value_changed(self, field: str, old_value: Any, new_value: Any) -> None:
@@ -178,14 +180,18 @@ class DerivedFieldManager:
     def _recompute_dependent_fields(self, changed_field: str) -> None:
         """Recompute all fields that depend on the changed field."""
         logger.info(f"Recomputing fields that depend on: {changed_field}")
-        
+
         # Check if any derived fields depend on this field
         if changed_field in self.dependency_graph:
             dependent_fields = self.dependency_graph[changed_field]
-            logger.info(f"Found {len(dependent_fields)} dependent fields: {dependent_fields}")
-            
+            logger.info(
+                f"Found {len(dependent_fields)} dependent fields: {dependent_fields}"
+            )
+
             for dependent_field in dependent_fields:
-                if dependent_field not in self._computing:  # Prevent circular dependencies
+                if (
+                    dependent_field not in self._computing
+                ):  # Prevent circular dependencies
                     logger.info(f"Recomputing dependent field: {dependent_field}")
                     self._recompute_field(dependent_field)
         else:
@@ -214,7 +220,7 @@ class DerivedFieldManager:
     def _recompute_field(self, field: str) -> None:
         """Recompute a single derived field."""
         logger.info(f"_recompute_field called for: {field}")
-        
+
         # The field is already qualified (e.g., "knave.abilities.strength.defense")
         # Look for it directly in the fields registry
         logger.info(f"_recompute_field: looking for qualified field = {field}")
@@ -239,19 +245,25 @@ class DerivedFieldManager:
 
             # Create/update observable for this computed field
             if field not in self.observable_values:
-                logger.info(f"Creating observable for computed field {field} = {result}")
+                logger.info(
+                    f"Creating observable for computed field {field} = {result}"
+                )
                 self.observable_values[field] = ObservableValue(field, result)
                 self.observable_values[field].add_observer(self._on_value_changed)
                 # For newly created computed fields, explicitly trigger dependent field recomputation
                 self._recompute_dependent_fields(field)
             else:
-                logger.info(f"Updating observable for computed field {field} = {result}")
+                logger.info(
+                    f"Updating observable for computed field {field} = {result}"
+                )
                 old_value = self.observable_values[field].value
                 self.observable_values[field].value = result
                 # If the value didn't change but this is a computed field, still trigger dependencies
                 # in case this is the first time dependent fields need to be computed
                 if old_value == result:
-                    logger.info(f"Computed field {field} value unchanged ({result}), but triggering dependent field recomputation")
+                    logger.info(
+                        f"Computed field {field} value unchanged ({result}), but triggering dependent field recomputation"
+                    )
                     self._recompute_dependent_fields(field)
         except Exception as e:
             logger.error(f"Error computing field {field}: {e}")
@@ -333,7 +345,9 @@ class DerivedFieldManager:
         self, model_def: "ModelDefinition", instance_id: str = None
     ) -> None:
         """Initialize observable system from a model definition."""
-        logger.info(f"Initializing observable system for model {getattr(model_def, 'id', 'unknown')} with instance_id: {instance_id}")
+        logger.info(
+            f"Initializing observable system for model {getattr(model_def, 'id', 'unknown')} with instance_id: {instance_id}"
+        )
         self.current_instance_id = instance_id
         self.register_model_attributes(model_def, {})
 
@@ -358,88 +372,119 @@ class DerivedFieldManager:
     def get_computed_values_for_instance(self, instance_id: str) -> dict[str, Any]:
         """Get all computed values (including derived fields) for a specific instance."""
         computed_values = {}
-        
+
         # Get the prefix for this instance
         prefix = f"{instance_id}."
-        
-        logger.info(f"get_computed_values_for_instance({instance_id}): observable_values keys = {list(self.observable_values.keys())}")
-        
+
+        logger.info(
+            f"get_computed_values_for_instance({instance_id}): observable_values keys = {list(self.observable_values.keys())}"
+        )
+
         for field_name, observable_value in self.observable_values.items():
             if field_name.startswith(prefix):
                 # Remove the instance prefix to get the relative field path
-                relative_path = field_name[len(prefix):]
+                relative_path = field_name[len(prefix) :]
                 value_type = type(observable_value.value).__name__
-                value_preview = str(observable_value.value)[:100] + "..." if len(str(observable_value.value)) > 100 else str(observable_value.value)
-                logger.info(f"get_computed_values_for_instance({instance_id}): {field_name} -> {relative_path} = {value_type}: {value_preview}")
-                
+                value_preview = (
+                    str(observable_value.value)[:100] + "..."
+                    if len(str(observable_value.value)) > 100
+                    else str(observable_value.value)
+                )
+                logger.info(
+                    f"get_computed_values_for_instance({instance_id}): {field_name} -> {relative_path} = {value_type}: {value_preview}"
+                )
+
                 # Set the value in the nested structure
                 # If the value is a string that looks like serialized structured data, parse it
-                if isinstance(observable_value.value, str) and len(observable_value.value) > 10:
-                    logger.debug(f"Checking if {relative_path} value is serialized data: {observable_value.value[:50]}...")
+                if (
+                    isinstance(observable_value.value, str)
+                    and len(observable_value.value) > 10
+                ):
+                    logger.debug(
+                        f"Checking if {relative_path} value is serialized data: {observable_value.value[:50]}..."
+                    )
                 final_value = self._try_parse_structured_data(observable_value.value)
                 if final_value is not None:
-                    logger.info(f"Parsed serialized data for {relative_path}: {type(final_value).__name__}")
-                    self._set_nested_value_in_dict(computed_values, relative_path, final_value)
+                    logger.info(
+                        f"Parsed serialized data for {relative_path}: {type(final_value).__name__}"
+                    )
+                    self._set_nested_value_in_dict(
+                        computed_values, relative_path, final_value
+                    )
                 else:
-                    self._set_nested_value_in_dict(computed_values, relative_path, observable_value.value)
-        
-        logger.info(f"get_computed_values_for_instance({instance_id}): final computed_values = {computed_values}")
+                    self._set_nested_value_in_dict(
+                        computed_values, relative_path, observable_value.value
+                    )
+
+        logger.info(
+            f"get_computed_values_for_instance({instance_id}): final computed_values = {computed_values}"
+        )
         return computed_values
 
-    def _set_nested_value_in_dict(self, target_dict: dict[str, Any], path: str, value: Any) -> None:
+    def _set_nested_value_in_dict(
+        self, target_dict: dict[str, Any], path: str, value: Any
+    ) -> None:
         """Set a nested value in a dictionary using dot notation."""
         parts = path.split(".")
         current = target_dict
-        
+
         # Navigate to the parent of the target key
         for part in parts[:-1]:
             if part not in current:
                 current[part] = {}
             current = current[part]
-        
+
         # Set the final value - use generic type-based priority for conflicts
         final_key = parts[-1]
         if final_key in current:
             existing_value = current[final_key]
             # Generic rule: preserve structured data (lists, dicts) over serialized strings
-            if isinstance(existing_value, (list, dict)) and isinstance(value, str):
-                logger.debug(f"_set_nested_value_in_dict: Preserving existing structured data for {path}, ignoring string value")
+            if isinstance(existing_value, list | dict) and isinstance(value, str):
+                logger.debug(
+                    f"_set_nested_value_in_dict: Preserving existing structured data for {path}, ignoring string value"
+                )
                 return
             # Replace strings with structured data when available
-            elif isinstance(existing_value, str) and isinstance(value, (list, dict)):
-                logger.debug(f"_set_nested_value_in_dict: Replacing string with structured data for {path}")
-        
+            elif isinstance(existing_value, str) and isinstance(value, list | dict):
+                logger.debug(
+                    f"_set_nested_value_in_dict: Replacing string with structured data for {path}"
+                )
+
         current[final_key] = value
 
     def _try_parse_structured_data(self, value: Any) -> Any:
         """Try to parse a value as structured data. Returns None if not valid or not structured."""
         if not isinstance(value, str):
             return None
-        
+
         # Only try parsing if it looks like structured data
-        if not (value.strip().startswith(("[", "{")) and value.strip().endswith(("]", "}"))):
+        if not (
+            value.strip().startswith(("[", "{")) and value.strip().endswith(("]", "}"))
+        ):
             return None
-        
+
         # Try JSON first (double quotes)
         try:
             import json
+
             parsed = json.loads(value)
             # Only return if it's actually structured data (list or dict)
-            if isinstance(parsed, (list, dict)):
+            if isinstance(parsed, list | dict):
                 return parsed
         except (json.JSONDecodeError, ValueError):
             pass
-        
+
         # Try Python literal evaluation (single quotes)
         try:
             import ast
+
             parsed = ast.literal_eval(value)
             # Only return if it's actually structured data (list or dict)
-            if isinstance(parsed, (list, dict)):
+            if isinstance(parsed, list | dict):
                 return parsed
         except (ValueError, SyntaxError):
             pass
-        
+
         return None
 
     def _register_attributes_recursive(

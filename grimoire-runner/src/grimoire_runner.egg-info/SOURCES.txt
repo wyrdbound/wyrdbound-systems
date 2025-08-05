@@ -52,10 +52,14 @@ tests/test_basic_modal.py
 tests/test_choice_executor_comprehensive.py
 tests/test_cli_interface.py
 tests/test_compendium_model.py
+tests/test_comprehensive_models.py
 tests/test_dice_executor_extended.py
+tests/test_engine_actions.py
+tests/test_engine_extended.py
 tests/test_executors.py
+tests/test_focused_coverage.py
 tests/test_grimoire_engine.py
-tests/test_modal_debug.py
+tests/test_isolated_models.py
 tests/test_model_extended.py
 tests/test_observable_extended.py
 tests/test_rng_integration.py
@@ -67,7 +71,6 @@ tests/test_system_loader.py
 tests/test_table_model.py
 tests/test_templates.py
 tests/test_templates_extended.py
-tests/test_textual_ui.py
 tests/test_ui_components.py
 tests/test_ui_edge_cases.py
 tests/test_ui_performance.py

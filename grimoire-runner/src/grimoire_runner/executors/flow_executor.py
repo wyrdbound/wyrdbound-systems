@@ -47,7 +47,7 @@ class FlowExecutor(BaseStepExecutor):
                 logger.info(f"Completion message: {step.prompt}")
 
             # Execute any actions defined in the completion step
-            if hasattr(step, 'actions') and step.actions:
+            if hasattr(step, "actions") and step.actions:
                 logger.info(f"Executing {len(step.actions)} actions in completion step")
                 for action in step.actions:
                     self._execute_action(action, context)
@@ -98,29 +98,35 @@ class FlowExecutor(BaseStepExecutor):
         """Execute a single action within a step."""
         action_type = list(action.keys())[0]  # Get the action type (first key)
         action_data = action[action_type]
-        
+
         logger.info(f"Executing action: {action_type}")
-        
+
         if action_type == "set_value":
             # Handle set_value actions
             path = action_data["path"]
             value_template = action_data["value"]
-            
+
             logger.info(f"Action set_value: path={path}, template={value_template}")
-            
+
             # Check if this is a list append operation that should be handled programmatically
             if self._is_list_append_operation(value_template):
-                resolved_value = self._handle_list_append_operation(value_template, context)
-                logger.info(f"Handled list append programmatically: {type(resolved_value).__name__} with {len(resolved_value) if hasattr(resolved_value, '__len__') else 'N/A'} items")
+                resolved_value = self._handle_list_append_operation(
+                    value_template, context
+                )
+                logger.info(
+                    f"Handled list append programmatically: {type(resolved_value).__name__} with {len(resolved_value) if hasattr(resolved_value, '__len__') else 'N/A'} items"
+                )
             else:
                 # Resolve the value template normally
                 try:
                     resolved_value = context.resolve_template(value_template)
-                    logger.info(f"Resolved template to: {type(resolved_value).__name__} = {resolved_value}")
+                    logger.info(
+                        f"Resolved template to: {type(resolved_value).__name__} = {resolved_value}"
+                    )
                 except Exception as e:
                     logger.error(f"Failed to resolve template: {e}")
                     raise
-            
+
             try:
                 logger.info(f"Setting {path} = {resolved_value}")
                 context.set_output(path, resolved_value)
@@ -128,7 +134,7 @@ class FlowExecutor(BaseStepExecutor):
             except Exception as e:
                 logger.error(f"Failed to set value at {path}: {e}")
                 raise
-                
+
         elif action_type == "log_event":
             # Handle log_event actions
             message_template = action_data.get("message", "")
@@ -137,7 +143,7 @@ class FlowExecutor(BaseStepExecutor):
                 logger.info(f"Log event: {resolved_message}")
             except Exception as e:
                 logger.warning(f"Failed to resolve log message: {e}")
-                
+
         else:
             logger.warning(f"Unknown action type: {action_type}")
 
@@ -146,37 +152,39 @@ class FlowExecutor(BaseStepExecutor):
         # Look for patterns like: (some_list | default([])) + [some_item]
         # This is a heuristic to detect list concatenation operations
         return (
-            isinstance(template, str) and 
-            ") + [" in template and 
-            "default([])" in template
+            isinstance(template, str)
+            and ") + [" in template
+            and "default([])" in template
         )
 
     def _handle_list_append_operation(self, template: str, context) -> list:
         """Handle list append operations programmatically to preserve object types."""
         import re
-        
+
         # Parse template like: "{{ (inputs.character.inventory | default([])) + [inputs.item] }}"
         # Extract the base list path and the item to append
-        
+
         # Remove {{ }} wrappers
         inner_template = template.strip()
         if inner_template.startswith("{{") and inner_template.endswith("}}"):
             inner_template = inner_template[2:-2].strip()
-        
+
         # Look for pattern: (path | default([])) + [item_path]
-        pattern = r'\(([^|]+)\s*\|\s*default\(\[\]\)\)\s*\+\s*\[([^\]]+)\]'
+        pattern = r"\(([^|]+)\s*\|\s*default\(\[\]\)\)\s*\+\s*\[([^\]]+)\]"
         match = re.search(pattern, inner_template)
-        
+
         if not match:
             # Fallback to normal template resolution if pattern doesn't match
             logger.warning(f"Could not parse list append pattern: {template}")
             return context.resolve_template(template)
-        
+
         base_list_path = match.group(1).strip()
         item_path = match.group(2).strip()
-        
-        logger.info(f"Parsed list append: base_list='{base_list_path}', item='{item_path}'")
-        
+
+        logger.info(
+            f"Parsed list append: base_list='{base_list_path}', item='{item_path}'"
+        )
+
         # Get the current list (or empty list if None)
         try:
             # For inventory lists, try direct access first to avoid string conversion in template resolution
@@ -184,28 +192,40 @@ class FlowExecutor(BaseStepExecutor):
                 # Access the inventory directly from the context without template resolution
                 character_data = context.inputs.get("character", {})
                 current_list = character_data.get("inventory")
-                logger.info(f"Direct access to inventory: {type(current_list).__name__} with {len(current_list) if isinstance(current_list, list) else 'non-list'} items")
+                logger.info(
+                    f"Direct access to inventory: {type(current_list).__name__} with {len(current_list) if isinstance(current_list, list) else 'non-list'} items"
+                )
             else:
                 # For other paths, use template resolution
                 current_list = context.resolve_template(f"{{{{ {base_list_path} }}}}")
-            
+
             if current_list is None:
                 current_list = []
-            elif isinstance(current_list, str) and current_list.startswith("[") and current_list.endswith("]"):
+            elif (
+                isinstance(current_list, str)
+                and current_list.startswith("[")
+                and current_list.endswith("]")
+            ):
                 # If it's a string representation of a list, try to parse it carefully
                 # But this might not work for complex objects, so we'll default to empty list
-                logger.warning(f"Base list is string representation, starting fresh: {current_list}")
+                logger.warning(
+                    f"Base list is string representation, starting fresh: {current_list}"
+                )
                 current_list = []
             elif not isinstance(current_list, list):
-                logger.warning(f"Base list is not a list type ({type(current_list)}), starting fresh")
+                logger.warning(
+                    f"Base list is not a list type ({type(current_list)}), starting fresh"
+                )
                 current_list = []
             else:
                 # Make a copy to avoid modifying the original
                 current_list = list(current_list)
         except Exception as e:
-            logger.warning(f"Could not resolve base list '{base_list_path}': {e}, starting with empty list")
+            logger.warning(
+                f"Could not resolve base list '{base_list_path}': {e}, starting with empty list"
+            )
             current_list = []
-        
+
         # Get the item to append
         try:
             # For complex objects, avoid template resolution which converts to strings
@@ -221,31 +241,35 @@ class FlowExecutor(BaseStepExecutor):
                         item_to_append = None
                     else:
                         item_to_append = resolved
-                logger.info(f"Item to append (direct): {type(item_to_append).__name__} = {item_to_append}")
+                logger.info(
+                    f"Item to append (direct): {type(item_to_append).__name__} = {item_to_append}"
+                )
             else:
                 # Use template resolution for other paths
                 item_to_append = context.resolve_template(f"{{{{ {item_path} }}}}")
                 # Check if template resolution returned the string "None" (from None value conversion)
                 if item_to_append == "None":
                     item_to_append = None
-                logger.info(f"Item to append (template): {type(item_to_append).__name__} = {item_to_append}")
+                logger.info(
+                    f"Item to append (template): {type(item_to_append).__name__} = {item_to_append}"
+                )
         except Exception as e:
             logger.error(f"Could not resolve item '{item_path}': {e}")
             raise
-        
+
         # Skip None items (e.g., from table rolls that resulted in "none")
         if item_to_append is None:
-            logger.info(f"Skipping None item, not appending to list")
+            logger.info("Skipping None item, not appending to list")
             return current_list
-        
+
         # Append the item and return the new list
         current_list.append(item_to_append)
         logger.info(f"Created new list with {len(current_list)} items")
-        
+
         # Debug: Check what types are in the final list
         for i, item in enumerate(current_list):
             logger.info(f"List item {i}: {type(item).__name__} = {item}")
-        
+
         return current_list
 
     def can_execute(self, step: "StepDefinition") -> bool:

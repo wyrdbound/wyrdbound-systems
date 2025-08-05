@@ -37,17 +37,13 @@ class ChoiceExecutor(BaseStepExecutor):
                 choices = self._generate_choices_from_source(
                     step.choice_source, context, system
                 )
-                
+
                 # Fail the step if no choices were generated from the source
                 if not choices:
                     error_msg = "Failed to generate choices from choice source"
                     logger.error(f"Step {step.id}: {error_msg}")
-                    return StepResult(
-                        step_id=step.id, 
-                        success=False, 
-                        error=error_msg
-                    )
-                
+                    return StepResult(step_id=step.id, success=False, error=error_msg)
+
                 # Extract selection count from choice source
                 if isinstance(step.choice_source, dict):
                     selection_count = step.choice_source.get("selection_count", 1)
@@ -210,15 +206,15 @@ class ChoiceExecutor(BaseStepExecutor):
 
                         choices = []
 
-                        for entry_key, entry_value in table.entries.items():
+                        for _entry_key, entry_value in table.entries.items():
                             # Use the entry value as the choice ID (not the table key)
                             choice_id = str(entry_value)
                             choice_label = str(entry_value)
                             choice_description = ""
                             selected_item_value = entry_value  # Default to just the ID
-                            
+
                             # If table has an entry_type, try to look up the item in compendiums
-                            if hasattr(table, 'entry_type') and table.entry_type:
+                            if hasattr(table, "entry_type") and table.entry_type:
                                 # Try to find the item in compendiums
                                 for comp_id in system.list_compendiums():
                                     comp = system.get_compendium(comp_id)
@@ -227,11 +223,19 @@ class ChoiceExecutor(BaseStepExecutor):
                                         # Use the full object as the selected_item value
                                         selected_item_value = entry_data
                                         # Use the proper name if available
-                                        if isinstance(entry_data, dict) and "name" in entry_data:
+                                        if (
+                                            isinstance(entry_data, dict)
+                                            and "name" in entry_data
+                                        ):
                                             choice_label = entry_data["name"]
                                         # Use the description if available
-                                        if isinstance(entry_data, dict) and "description" in entry_data:
-                                            choice_description = entry_data["description"]
+                                        if (
+                                            isinstance(entry_data, dict)
+                                            and "description" in entry_data
+                                        ):
+                                            choice_description = entry_data[
+                                                "description"
+                                            ]
                                         break
 
                             # Create choice definition
@@ -257,7 +261,11 @@ class ChoiceExecutor(BaseStepExecutor):
                     else:
                         # Provide helpful error message with available tables
                         available_tables = system.list_tables()
-                        table_list = ", ".join(sorted(available_tables)) if available_tables else "none"
+                        table_list = (
+                            ", ".join(sorted(available_tables))
+                            if available_tables
+                            else "none"
+                        )
                         logger.warning(
                             f"Table '{table_name}' not found in system. Available tables: {table_list}"
                         )
@@ -355,10 +363,12 @@ class ChoiceExecutor(BaseStepExecutor):
             flow_id = action_data["flow"]
             inputs = action_data.get("inputs", {})
             logger.info(f"Choice action flow_call: {flow_id} (inputs: {inputs})")
-            
+
             # This should be handled by the engine after choice processing
             # For now, we'll log it but not execute it here
-            logger.warning(f"flow_call action in choice step should be handled at step level, not choice level")
+            logger.warning(
+                "flow_call action in choice step should be handled at step level, not choice level"
+            )
 
         else:
             logger.warning(f"Unknown choice action type: {action_type}")

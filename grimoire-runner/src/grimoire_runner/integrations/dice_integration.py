@@ -68,7 +68,9 @@ class DiceIntegration:
                 expression=expression,
                 breakdown=self._get_roll_breakdown(result),
                 rolls=self._get_individual_rolls(result),
-                detailed_result=str(result),  # Capture the detailed string representation
+                detailed_result=str(
+                    result
+                ),  # Capture the detailed string representation
             )
         except Exception as e:
             logger.error(f"Error rolling with wyrdbound-dice: {e}")

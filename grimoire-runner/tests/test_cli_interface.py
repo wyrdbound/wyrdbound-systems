@@ -1,7 +1,6 @@
 """Tests for the CLI interface."""
 
 import tempfile
-from pathlib import Path
 from unittest.mock import Mock, patch
 
 import pytest
@@ -172,7 +171,7 @@ class TestExecuteCommand:
                 app, ["execute", temp_dir, "--flow", "test_flow"]
             )
 
-        # The command completed (exit code 0 or 1 depending on fallback behavior)  
+        # The command completed (exit code 0 or 1 depending on fallback behavior)
         assert result.exit_code in [0, 1]
         assert "GRIMOIRE Flow Execution" in result.stdout
 
@@ -186,12 +185,14 @@ class TestExecuteCommand:
         )  # Typer returns exit code 2 for missing required options
         # CliRunner with Typer doesn't always capture stderr, so just check exit code
 
+
 class TestBrowseCommand:
     """Test the browse command."""
 
     def setup_method(self):
         """Set up test fixtures."""
         self.runner = CliRunner()
+
 
 class TestListCommand:
     """Test the list command."""

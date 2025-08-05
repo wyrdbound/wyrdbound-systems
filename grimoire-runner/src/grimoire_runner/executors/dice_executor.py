@@ -207,9 +207,7 @@ class DiceExecutor(BaseStepExecutor):
 
                 # Set the value using the unified output system
                 if str(resolved_path).startswith("outputs."):
-                    context.set_output(
-                        str(resolved_path)[8:], resolved_value
-                    )
+                    context.set_output(str(resolved_path)[8:], resolved_value)
                 elif str(resolved_path).startswith("variables."):
                     context.set_variable(str(resolved_path)[10:], resolved_value)
                 else:
