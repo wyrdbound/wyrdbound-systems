@@ -93,6 +93,20 @@ steps:
       - set_value:
           path: "outputs.knave.hit_points.current"
           value: "{{ result }}"
+    next_step: "choose_weapon"
+
+  - id: "choose_weapon"
+    name: "Choose Starting Weapon"
+    type: "player_choice"
+    prompt: "Choose one weapon to start with:"
+    choice_source:
+      table: "weapons"
+    actions:
+      - flow_call:
+          flow: "add_item_to_character"
+          inputs:
+            character: "outputs.knave"
+            item: "{{ selected_item }}"
     next_step: "roll_starting_gear"
 
   - id: "roll_starting_gear"
@@ -144,19 +158,6 @@ steps:
             character: "outputs.knave"
             item: "rations"
             quantity: 2
-
-  - id: "choose_weapon"
-    name: "Choose Starting Weapon"
-    type: "player_choice"
-    prompt: "Choose one weapon to start with:"
-    choice_source:
-      table: "weapons"
-    actions:
-      - flow_call:
-          flow: "add_item_to_character"
-          inputs:
-            character: "outputs.knave"
-            item: "{{ selected_item }}"
 
   - id: "generate_traits"
     name: "Determine Character Traits"

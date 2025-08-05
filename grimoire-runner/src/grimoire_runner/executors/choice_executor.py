@@ -215,6 +215,7 @@ class ChoiceExecutor(BaseStepExecutor):
                             choice_id = str(entry_value)
                             choice_label = str(entry_value)
                             choice_description = ""
+                            selected_item_value = entry_value  # Default to just the ID
                             
                             # If table has an entry_type, try to look up the item in compendiums
                             if hasattr(table, 'entry_type') and table.entry_type:
@@ -223,6 +224,8 @@ class ChoiceExecutor(BaseStepExecutor):
                                     comp = system.get_compendium(comp_id)
                                     if comp and entry_value in comp.entries:
                                         entry_data = comp.entries[entry_value]
+                                        # Use the full object as the selected_item value
+                                        selected_item_value = entry_data
                                         # Use the proper name if available
                                         if isinstance(entry_data, dict) and "name" in entry_data:
                                             choice_label = entry_data["name"]
@@ -240,7 +243,7 @@ class ChoiceExecutor(BaseStepExecutor):
                                     {
                                         "set_value": {
                                             "path": "variables.selected_item",
-                                            "value": entry_value,
+                                            "value": selected_item_value,
                                         }
                                     }
                                 ],
@@ -329,8 +332,15 @@ class ChoiceExecutor(BaseStepExecutor):
             path = action_data["path"]
             value = action_data["value"]
 
-            # Resolve templates
-            resolved_value = context.resolve_template(str(value))
+            # Handle dictionary values specially to avoid string conversion
+            if isinstance(value, dict):
+                # Use dictionary directly without template resolution
+                resolved_value = value
+                logger.info(f"Choice action set_value: Using dict directly for {path}")
+            else:
+                # Resolve templates for non-dict values
+                resolved_value = context.resolve_template(str(value))
+                logger.info(f"Choice action set_value: Resolved template for {path}")
 
             # Set the value
             if path.startswith("outputs."):
@@ -339,6 +349,19 @@ class ChoiceExecutor(BaseStepExecutor):
                 context.set_variable(path[10:], resolved_value)
             else:
                 context.set_output(path, resolved_value)
+
+        elif action_type == "flow_call":
+            # Handle sub-flow calls - similar to table executor
+            flow_id = action_data["flow"]
+            inputs = action_data.get("inputs", {})
+            logger.info(f"Choice action flow_call: {flow_id} (inputs: {inputs})")
+            
+            # This should be handled by the engine after choice processing
+            # For now, we'll log it but not execute it here
+            logger.warning(f"flow_call action in choice step should be handled at step level, not choice level")
+
+        else:
+            logger.warning(f"Unknown choice action type: {action_type}")
 
         # TODO: Add other action types as needed
 

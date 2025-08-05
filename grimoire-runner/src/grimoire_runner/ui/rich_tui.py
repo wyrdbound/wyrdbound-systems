@@ -227,14 +227,56 @@ class RichTUI:
 
                     # Process the choice
                     choice_executor = ChoiceExecutor()
-                    choice_result = choice_executor.process_choice(
-                        selected_choice_id, step, self.context
-                    )
+                    
+                    # For choice_source cases, we need to use the generated choices from step_result
+                    # rather than the original step definition
+                    if step.choice_source and step_result.choices:
+                        # Find the selected choice in the step result's generated choices
+                        selected_choice = None
+                        for choice in step_result.choices:
+                            if choice.id == selected_choice_id:
+                                selected_choice = choice
+                                break
+                        
+                        if selected_choice and selected_choice.actions:
+                            # Execute the choice actions directly since process_choice won't find them in step.choices
+                            for action in selected_choice.actions:
+                                choice_executor._execute_choice_action(action, self.context)
+                            
+                            # Set standard choice variables
+                            self.context.set_variable("user_choice", selected_choice_id)
+                            self.context.set_variable("choice_label", selected_choice.label)
+                            
+                            choice_result = type('StepResult', (), {
+                                'step_id': step.id,
+                                'success': True,
+                                'data': {"choice_id": selected_choice_id, "choice_label": selected_choice.label},
+                                'next_step_id': selected_choice.next_step
+                            })()
+                        else:
+                            choice_result = choice_executor.process_choice(
+                                selected_choice_id, step, self.context
+                            )
+                    else:
+                        choice_result = choice_executor.process_choice(
+                            selected_choice_id, step, self.context
+                        )
 
                     if choice_result and choice_result.next_step_id:
                         step_result.next_step_id = choice_result.next_step_id
 
                     step_result.success = True
+                    
+                    # Execute step-level actions after choice is processed
+                    if step.actions:
+                        self.console.print(f"[cyan]Executing {len(step.actions)} step actions after choice...[/cyan]")
+                        try:
+                            self.engine._execute_actions(step.actions, self.context, choice_result.data if choice_result else {}, self.system)
+                            self.console.print("[green]✅ Step actions executed successfully[/green]")
+                        except Exception as e:
+                            self.console.print(f"[red]❌ Error executing step actions: {e}[/red]")
+                            step_result.success = False
+                            step_result.error = f"Step action execution failed: {e}"
 
         # Show step result
         if step_result.success:

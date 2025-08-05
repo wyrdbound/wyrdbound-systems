@@ -369,10 +369,20 @@ class DerivedFieldManager:
             if field_name.startswith(prefix):
                 # Remove the instance prefix to get the relative field path
                 relative_path = field_name[len(prefix):]
-                logger.info(f"get_computed_values_for_instance({instance_id}): {field_name} -> {relative_path} = {observable_value.value}")
+                value_type = type(observable_value.value).__name__
+                value_preview = str(observable_value.value)[:100] + "..." if len(str(observable_value.value)) > 100 else str(observable_value.value)
+                logger.info(f"get_computed_values_for_instance({instance_id}): {field_name} -> {relative_path} = {value_type}: {value_preview}")
                 
                 # Set the value in the nested structure
-                self._set_nested_value_in_dict(computed_values, relative_path, observable_value.value)
+                # If the value is a string that looks like serialized structured data, parse it
+                if isinstance(observable_value.value, str) and len(observable_value.value) > 10:
+                    logger.debug(f"Checking if {relative_path} value is serialized data: {observable_value.value[:50]}...")
+                final_value = self._try_parse_structured_data(observable_value.value)
+                if final_value is not None:
+                    logger.info(f"Parsed serialized data for {relative_path}: {type(final_value).__name__}")
+                    self._set_nested_value_in_dict(computed_values, relative_path, final_value)
+                else:
+                    self._set_nested_value_in_dict(computed_values, relative_path, observable_value.value)
         
         logger.info(f"get_computed_values_for_instance({instance_id}): final computed_values = {computed_values}")
         return computed_values
@@ -388,8 +398,50 @@ class DerivedFieldManager:
                 current[part] = {}
             current = current[part]
         
-        # Set the final value
-        current[parts[-1]] = value
+        # Set the final value - use generic type-based priority for conflicts
+        final_key = parts[-1]
+        if final_key in current:
+            existing_value = current[final_key]
+            # Generic rule: preserve structured data (lists, dicts) over serialized strings
+            if isinstance(existing_value, (list, dict)) and isinstance(value, str):
+                logger.debug(f"_set_nested_value_in_dict: Preserving existing structured data for {path}, ignoring string value")
+                return
+            # Replace strings with structured data when available
+            elif isinstance(existing_value, str) and isinstance(value, (list, dict)):
+                logger.debug(f"_set_nested_value_in_dict: Replacing string with structured data for {path}")
+        
+        current[final_key] = value
+
+    def _try_parse_structured_data(self, value: Any) -> Any:
+        """Try to parse a value as structured data. Returns None if not valid or not structured."""
+        if not isinstance(value, str):
+            return None
+        
+        # Only try parsing if it looks like structured data
+        if not (value.strip().startswith(("[", "{")) and value.strip().endswith(("]", "}"))):
+            return None
+        
+        # Try JSON first (double quotes)
+        try:
+            import json
+            parsed = json.loads(value)
+            # Only return if it's actually structured data (list or dict)
+            if isinstance(parsed, (list, dict)):
+                return parsed
+        except (json.JSONDecodeError, ValueError):
+            pass
+        
+        # Try Python literal evaluation (single quotes)
+        try:
+            import ast
+            parsed = ast.literal_eval(value)
+            # Only return if it's actually structured data (list or dict)
+            if isinstance(parsed, (list, dict)):
+                return parsed
+        except (ValueError, SyntaxError):
+            pass
+        
+        return None
 
     def _register_attributes_recursive(
         self, attributes: dict[str, Any], path_prefix: str

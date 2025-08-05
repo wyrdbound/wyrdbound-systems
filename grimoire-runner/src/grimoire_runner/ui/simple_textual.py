@@ -286,6 +286,7 @@ class SimpleFlowApp(App):
         # Handle user input if needed
         if step_result.requires_input:
             self.write_log("⏳ Step requires user input...")
+            self.write_log(f"DEBUG: step_result.requires_input={step_result.requires_input}, step.type={step.type}")
 
             if step_result.choices:
                 # Show choice modal
@@ -309,15 +310,31 @@ class SimpleFlowApp(App):
                     # Process the choice
                     from ..executors.choice_executor import ChoiceExecutor
 
+                    self.write_log(f"DEBUG: About to process choice with choice_executor")
                     choice_executor = ChoiceExecutor()
                     choice_result = choice_executor.process_choice(
                         selected_choice, step, self.context
                     )
+                    self.write_log(f"DEBUG: choice_result = {choice_result}")
 
                     if choice_result and choice_result.next_step_id:
                         step_result.next_step_id = choice_result.next_step_id
 
                     step_result.success = True
+                    
+                    # Execute step-level actions after choice is processed
+                    self.write_log(f"DEBUG: step.actions = {step.actions}")
+                    if step.actions:
+                        self.write_log(f"Executing {len(step.actions)} step actions after choice")
+                        try:
+                            self.engine._execute_actions(step.actions, self.context, choice_result.data if choice_result else {}, self.system)
+                            self.write_log("✅ Step actions executed successfully")
+                        except Exception as e:
+                            self.write_log(f"❌ Error executing step actions: {e}")
+                            step_result.success = False
+                            step_result.error = f"Step action execution failed: {e}"
+                    else:
+                        self.write_log("DEBUG: No step actions to execute")
 
         # Log completion
         if step_result.success:

@@ -32,9 +32,9 @@ steps:
     actions:
       - set_value:
           path: "outputs.character.inventory"
-          value: "{{ inputs.character.inventory + inputs.items }}"
+          value: "{{ (inputs.character.inventory | default([])) + inputs.items }}"
       - log_event:
-          message: "Added {{ inputs.items | length }} items to {{ inputs.character.name or 'Unnamed Character' }}: {{ inputs.items | map(attribute='display_name') | join(', ') }}. Inventory: {{ (inputs.character.inventory + inputs.items) | length }} slots used / {{ inputs.character.inventory_capacity }} capacity"
+          message: "Added {{ inputs.items | length }} items to {{ inputs.character.name or 'Unnamed Character' }}: {{ inputs.items | map(attribute='display_name') | join(', ') }}. Inventory: {{ ((inputs.character.inventory | default([])) + inputs.items) | length }} slots used / {{ inputs.character.inventory_capacity }} capacity"
           data:
             character_name: "{{ inputs.character.name }}"
             items_added: "{{ inputs.items | map(attribute='display_name') | list }}"

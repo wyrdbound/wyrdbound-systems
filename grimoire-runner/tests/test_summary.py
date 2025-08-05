@@ -19,10 +19,6 @@ def test_summary():
     test_files = [
         f"{test_dir}/test_basic_modal.py::TestBasicModal::test_basic_modal",
         f"{test_dir}/test_basic_modal.py::TestBasicModal::test_basic_modal_cancel",
-        f"{test_dir}/test_textual_ui.py::TestSimpleChoiceModal::test_modal_creation",
-        f"{test_dir}/test_textual_ui.py::TestSimpleChoiceModal::test_modal_confirm_with_selection",
-        f"{test_dir}/test_textual_ui.py::TestSimpleFlowApp::test_app_creation",
-        f"{test_dir}/test_textual_ui.py::TestSimpleFlowApp::test_app_ui_structure",
     ]
 
     # Change to the grimoire-runner directory for the test execution

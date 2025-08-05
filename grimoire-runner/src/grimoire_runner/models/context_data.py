@@ -127,16 +127,63 @@ class ExecutionContext:
             return default
 
     def _deep_merge_dicts(self, base: dict, overlay: dict) -> dict:
-        """Deep merge two dictionaries, with overlay values taking precedence."""
+        """Deep merge two dictionaries, with overlay values taking precedence.
+        
+        Special handling: If both values are strings but one looks like serialized 
+        structured data, attempt to parse and use the structured version.
+        """
         result = base.copy()
         
         for key, value in overlay.items():
             if key in result and isinstance(result[key], dict) and isinstance(value, dict):
                 result[key] = self._deep_merge_dicts(result[key], value)
+            elif key in result and isinstance(result[key], str) and isinstance(value, str):
+                # Both are strings - check if either looks like serialized structured data
+                base_parsed = self._try_parse_structured_data(result[key])
+                overlay_parsed = self._try_parse_structured_data(value)
+                
+                # Use structured data if available, preferring overlay
+                if overlay_parsed is not None:
+                    result[key] = overlay_parsed
+                elif base_parsed is not None:
+                    result[key] = base_parsed
+                else:
+                    result[key] = value  # Use overlay string value
             else:
                 result[key] = value
         
         return result
+
+    def _try_parse_structured_data(self, value: str) -> Any:
+        """Try to parse a string as structured data. Returns None if not valid."""
+        if not isinstance(value, str):
+            return None
+        
+        # Only try parsing if it looks like structured data
+        if not (value.strip().startswith(("[", "{")) and value.strip().endswith(("]", "}"))):
+            return None
+        
+        # Try JSON first (double quotes)
+        try:
+            import json
+            parsed = json.loads(value)
+            # Only return if it's actually structured data (list or dict)
+            if isinstance(parsed, (list, dict)):
+                return parsed
+        except (json.JSONDecodeError, ValueError):
+            pass
+        
+        # Try Python literal evaluation (single quotes)
+        try:
+            import ast
+            parsed = ast.literal_eval(value)
+            # Only return if it's actually structured data (list or dict)
+            if isinstance(parsed, (list, dict)):
+                return parsed
+        except (ValueError, SyntaxError):
+            pass
+        
+        return None
 
     def set_input(self, path: str, value: Any) -> None:
         """Set an input at the specified path."""
@@ -160,6 +207,8 @@ class ExecutionContext:
 
         try:
             template = self._jinja_env.from_string(template_str)
+            
+            # Start with basic context
             context = {
                 "variables": self.variables,
                 "outputs": self.outputs,
@@ -168,6 +217,28 @@ class ExecutionContext:
                 **self.variables,  # Make variables available at top level too
                 **self.outputs,  # Make outputs available at top level too
             }
+            
+            # If we have a derived field manager, overlay observable values to ensure 
+            # template resolution gets the most current values (including lists, not strings)
+            if self._derived_field_manager:
+                for field_name, observable_value in self._derived_field_manager.observable_values.items():
+                    # Convert qualified field names (e.g., "knave.inventory") to template paths
+                    if "." in field_name:
+                        # Set the observable value directly in the context at the qualified path
+                        context[field_name] = observable_value.value
+                        # Debug log for inventory field
+                        if field_name == "knave.inventory":
+                            logger.info(f"Template context overlay: {field_name} = {type(observable_value.value).__name__} with {len(observable_value.value) if isinstance(observable_value.value, list) else 'non-list'} items")
+            
+            # Debug: check if knave.inventory is in the context and what type it is
+            if "knave.inventory" in context:
+                inventory_value = context["knave.inventory"]
+                logger.info(f"Template context has knave.inventory: {type(inventory_value).__name__}")
+                if isinstance(inventory_value, list):
+                    logger.info(f"Inventory list has {len(inventory_value)} items: {[item.get('slot_cost', 'no_slot_cost') for item in inventory_value if isinstance(item, dict)]}")
+                else:
+                    logger.info(f"Inventory is not a list: {inventory_value}")
+            
             logger.debug(f"Template context for '{template_str}': {context}")
             result = template.render(context)
 

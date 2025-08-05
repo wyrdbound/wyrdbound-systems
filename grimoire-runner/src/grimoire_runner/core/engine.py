@@ -295,7 +295,7 @@ class GrimoireEngine:
             if step.actions and not (
                 result.requires_input and step_type == "player_choice"
             ):
-                self._execute_actions(step.actions, context, result.data)
+                self._execute_actions(step.actions, context, result.data, system)
 
             return result
 
@@ -308,11 +308,12 @@ class GrimoireEngine:
         actions: list[dict[str, Any]],
         context: ExecutionContext,
         step_data: dict[str, Any],
+        system: System | None = None,
     ) -> None:
         """Execute a list of actions."""
         for action in actions:
             try:
-                self._execute_single_action(action, context, step_data)
+                self._execute_single_action(action, context, step_data, system)
             except Exception as e:
                 logger.error(f"Error executing action {action}: {e}")
 
@@ -321,6 +322,7 @@ class GrimoireEngine:
         action: dict[str, Any],
         context: ExecutionContext,
         step_data: dict[str, Any],
+        system: System | None = None,
     ) -> None:
         """Execute a single action."""
         action_type = list(action.keys())[0]
@@ -400,6 +402,60 @@ class GrimoireEngine:
                     logger.error(
                         f"Error swapping values between {path1} and {path2}: {e}"
                     )
+
+            elif action_type == "flow_call":
+                # Handle sub-flow calls
+                flow_id = action_data["flow"]
+                raw_inputs = action_data.get("inputs", {})
+                logger.info(f"Engine action flow_call: {flow_id} (raw inputs: {raw_inputs})")
+                
+                # Resolve input templates using the current context
+                resolved_inputs = {}
+                for input_key, input_value in raw_inputs.items():
+                    if isinstance(input_value, str):
+                        # Resolve any templates in the input value
+                        try:
+                            if input_value == "{{ selected_item }}":
+                                # Special handling for selected_item to preserve object type
+                                selected_item = context.get_variable("selected_item")
+                                logger.info(f"Context selected_item variable: {type(selected_item).__name__} = {selected_item}")
+                                resolved_value = selected_item
+                                logger.info(f"Used direct selected_item access: {type(resolved_value).__name__}")
+                            elif input_value.startswith("{{") and input_value.endswith("}}"):
+                                # This is a template, resolve it
+                                resolved_value = context.resolve_template(input_value)
+                                logger.info(f"Resolved template {input_key}: {input_value} -> {type(resolved_value).__name__}")
+                            elif "outputs." in input_value:
+                                # This is a path reference, resolve it
+                                resolved_value = context.resolve_path_value(input_value)
+                                logger.info(f"Resolved path {input_key}: {input_value} -> {type(resolved_value).__name__}")
+                            else:
+                                # Plain string, use as-is
+                                resolved_value = input_value
+                            resolved_inputs[input_key] = resolved_value
+                        except Exception as e:
+                            logger.error(f"Failed to resolve input {input_key}: {input_value} - {e}")
+                            resolved_inputs[input_key] = input_value
+                    else:
+                        # Non-string values, use as-is
+                        resolved_inputs[input_key] = input_value
+                
+                logger.info(f"Engine action flow_call resolved inputs: {resolved_inputs}")
+                
+                # Import here to avoid circular imports
+                from ..executors.table_executor import TableExecutor
+                
+                # Use the table executor's sub-flow execution logic
+                # since it already handles the template resolution and typing correctly
+                table_executor = TableExecutor()
+                try:
+                    if system:
+                        table_executor._execute_sub_flow(flow_id, resolved_inputs, context, system)
+                        logger.info(f"Successfully executed sub-flow: {flow_id}")
+                    else:
+                        logger.error(f"No system available for sub-flow execution: {flow_id}")
+                except Exception as e:
+                    logger.error(f"Error executing sub-flow {flow_id}: {e}")
 
             else:
                 logger.warning(f"Unknown action type: {action_type}")

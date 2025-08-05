@@ -60,7 +60,8 @@ attributes:
   # --- inventory system ---
   inventory_capacity: { type: int, derived: "$.abilities.constitution.defense" }
   inventory: { type: list, of: Item }
-  slots_used: { type: int, derived: "$.inventory | sum('slot_cost')" }
+  slots_used:
+    { type: int, derived: "$.inventory | map(attribute='slot_cost') | sum" }
 
 validations:
   # Ensure current HP does not exceed max HP
