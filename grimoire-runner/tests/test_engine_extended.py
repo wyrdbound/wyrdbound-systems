@@ -615,56 +615,6 @@ class TestGrimoireEngineExecuteStep:
         # Should not call set_variable when no output variable is specified
         context.set_variable.assert_not_called()
 
-    def test_execute_step_success(self):
-        """Test successful step execution."""
-        # Register a mock executor
-        mock_executor = Mock(spec=BaseStepExecutor)
-        mock_executor.can_execute.return_value = True
-        mock_executor.validate_step.return_value = []
-        mock_executor.execute.return_value = {"output": "test_result"}
-        
-        self.engine.register_executor("test_type", mock_executor)
-        
-        mock_step = Mock(spec=StepDefinition)
-        mock_step.type = "test_type"
-        mock_step.id = "test_step"
-        mock_step.output_variable = "result"
-        
-        context = Mock(spec=ExecutionContext)
-        system = Mock(spec=System)
-        
-        result = self.engine._execute_step(mock_step, context, system)
-        
-        assert result.success
-        assert result.step_id == "test_step"
-        mock_executor.execute.assert_called_once_with(mock_step, context, system)
-        context.set_output.assert_called_once_with("result", {"output": "test_result"})
-
-    def test_execute_step_no_output_variable(self):
-        """Test step execution without output variable."""
-        # Register a mock executor
-        mock_executor = Mock(spec=BaseStepExecutor)
-        mock_executor.can_execute.return_value = True
-        mock_executor.validate_step.return_value = []
-        mock_executor.execute.return_value = {"output": "test_result"}
-        
-        self.engine.register_executor("test_type", mock_executor)
-        
-        mock_step = Mock(spec=StepDefinition)
-        mock_step.type = "test_type"
-        mock_step.id = "test_step"
-        mock_step.output_variable = None
-        
-        context = Mock(spec=ExecutionContext)
-        system = Mock(spec=System)
-        
-        result = self.engine._execute_step(mock_step, context, system)
-        
-        assert result.success
-        assert result.step_id == "test_step"
-        mock_executor.execute.assert_called_once_with(mock_step, context, system)
-        context.set_output.assert_not_called()
-
     def test_execute_step_execution_exception(self):
         """Test step execution that throws an exception."""
         # Register a mock executor that throws an exception
