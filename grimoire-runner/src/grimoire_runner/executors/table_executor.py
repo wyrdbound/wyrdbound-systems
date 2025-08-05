@@ -196,12 +196,12 @@ class TableExecutor(BaseStepExecutor):
                 raise ValueError(f"Flow '{flow_id}' not found in system. Available flows: {flow_list}")
             
             # Execute the sub-flow
-            self._execute_sub_flow(flow_id, inputs, context, system)
+            self._execute_sub_flow(flow_id, inputs, context, system, inputs)
 
         # TODO: Add other action types as needed
 
     def _execute_sub_flow(
-        self, flow_id: str, inputs: dict[str, Any], context: "ExecutionContext", system: "System"
+        self, flow_id: str, inputs: dict[str, Any], context: "ExecutionContext", system: "System", original_inputs: dict[str, Any] = None
     ) -> None:
         """Execute a sub-flow call from within a table action."""
         from ..models.context_data import ExecutionContext
@@ -291,28 +291,30 @@ class TableExecutor(BaseStepExecutor):
             for output_key, output_value in sub_context.outputs.items():
                 logger.info(f"Merging sub-flow output: {output_key} = {type(output_value).__name__}")
                 
-                # Handle character output mapping - if character was passed from outputs.knave,
-                # map the result back to outputs.knave
+                # Intelligently map sub-flow outputs back to main context
+                # If an input was passed from a main context output, map the sub-flow output back to that location
                 target_output_key = output_key
-                if output_key == "character":
-                    # Check if the character input came from outputs.knave
-                    for input_key, input_value in resolved_inputs.items():
-                        if input_key == "character" and isinstance(input_value, str) and input_value == "outputs.knave":
-                            target_output_key = "knave"
-                            logger.info(f"Mapping sub-flow output 'character' back to main context 'knave'")
+                if original_inputs:
+                    for input_key, original_input_value in original_inputs.items():
+                        if (input_key == output_key and 
+                            isinstance(original_input_value, str) and 
+                            original_input_value.startswith("outputs.")):
+                            # Extract the output key from the path (e.g., "outputs.knave" -> "knave")
+                            target_output_key = original_input_value[8:]  # Remove "outputs." prefix
+                            logger.info(f"Mapping sub-flow output '{output_key}' back to main context '{target_output_key}' based on input mapping")
                             break
                 
                 if target_output_key in context.outputs:
-                    # Update existing output (for character updates)
+                    # Update existing output
                     logger.info(f"Updating output {target_output_key} with sub-flow result")
                     
-                    # Special handling for character updates - merge the data properly
+                    # Merge dictionaries if both are dicts, otherwise replace
                     if isinstance(output_value, dict) and isinstance(context.outputs.get(target_output_key), dict):
-                        # For character updates, merge the new data into the existing character
-                        existing_character = context.outputs[target_output_key]
-                        updated_character = {**existing_character, **output_value}
-                        context.outputs[target_output_key] = updated_character
-                        logger.info(f"Merged character data to {target_output_key}: {updated_character}")
+                        # For dictionary updates, merge the new data into the existing data
+                        existing_data = context.outputs[target_output_key]
+                        updated_data = {**existing_data, **output_value}
+                        context.outputs[target_output_key] = updated_data
+                        logger.info(f"Merged data to {target_output_key}: {updated_data}")
                     else:
                         context.outputs[target_output_key] = output_value
                 else:
@@ -320,25 +322,14 @@ class TableExecutor(BaseStepExecutor):
                     logger.info(f"Creating new output {target_output_key}")
                     context.outputs[target_output_key] = output_value
                 
-                # If this is a character update and we have an observable manager, 
-                # trigger observable updates for changed fields
+                # Update observables if available
                 logger.info(f"Checking if observable update needed for {target_output_key}: has_derived_field_manager={hasattr(context, '_derived_field_manager')}")
                 if hasattr(context, '_derived_field_manager') and context._derived_field_manager:
                     logger.info(f"Output value type: {type(output_value)}, existing type: {type(context.outputs.get(target_output_key))}")
                     if isinstance(output_value, dict) and isinstance(context.outputs.get(target_output_key), dict):
-                        # Compare and update changed fields through the observable system
+                        # Update observables for any dictionary data
                         logger.info(f"Updating observables for {target_output_key}")
-                        
-                        # Special handling for character data in different output structures
-                        if target_output_key in ["character", "knave"]:
-                            # Direct character data
-                            self._update_observables_from_dict(context, "", output_value, instance_id="knave")
-                        elif output_key == "outputs" and isinstance(output_value, dict) and "character" in output_value:
-                            # Character data nested under outputs.character
-                            self._update_observables_from_dict(context, "", output_value["character"], instance_id="knave")
-                        else:
-                            # Other data
-                            self._update_observables_from_dict(context, output_key, output_value)
+                        self._update_observables_from_dict(context, "", output_value, instance_id=target_output_key)
                     else:
                         logger.info(f"Skipping observable update - not both dicts")
                 else:

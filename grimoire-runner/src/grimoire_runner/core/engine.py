@@ -415,14 +415,8 @@ class GrimoireEngine:
                     if isinstance(input_value, str):
                         # Resolve any templates in the input value
                         try:
-                            if input_value == "{{ selected_item }}":
-                                # Special handling for selected_item to preserve object type
-                                selected_item = context.get_variable("selected_item")
-                                logger.info(f"Context selected_item variable: {type(selected_item).__name__} = {selected_item}")
-                                resolved_value = selected_item
-                                logger.info(f"Used direct selected_item access: {type(resolved_value).__name__}")
-                            elif input_value.startswith("{{") and input_value.endswith("}}"):
-                                # This is a template, resolve it
+                            if input_value.startswith("{{") and input_value.endswith("}}"):
+                                # This is a template, resolve it while preserving object types
                                 resolved_value = context.resolve_template(input_value)
                                 logger.info(f"Resolved template {input_key}: {input_value} -> {type(resolved_value).__name__}")
                             elif "outputs." in input_value:
@@ -450,7 +444,7 @@ class GrimoireEngine:
                 table_executor = TableExecutor()
                 try:
                     if system:
-                        table_executor._execute_sub_flow(flow_id, resolved_inputs, context, system)
+                        table_executor._execute_sub_flow(flow_id, resolved_inputs, context, system, raw_inputs)
                         logger.info(f"Successfully executed sub-flow: {flow_id}")
                     else:
                         logger.error(f"No system available for sub-flow execution: {flow_id}")
