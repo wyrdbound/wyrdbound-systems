@@ -32,7 +32,7 @@ def test_summary():
             [
                 "-v",
                 "-p",
-                "no:textual-snapshot",
+                # "no:textual-snapshot",
                 "--disable-warnings",  # Suppress warnings to avoid deprecation warnings affecting exit code
                 "--no-cov",  # Disable coverage for the nested pytest run
             ]

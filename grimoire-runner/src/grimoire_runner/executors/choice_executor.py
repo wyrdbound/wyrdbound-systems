@@ -1,9 +1,10 @@
 """Player choice step executor."""
 
 import logging
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from .base import BaseStepExecutor
+from .flow_helper import create_flow_helper
 
 if TYPE_CHECKING:
     from ..models.context_data import ExecutionContext
@@ -15,6 +16,11 @@ logger = logging.getLogger(__name__)
 
 class ChoiceExecutor(BaseStepExecutor):
     """Executor for player choice steps."""
+
+    def __init__(self, engine=None):
+        """Initialize the choice executor with optional engine reference."""
+        self.engine = engine
+        self.flow_helper = create_flow_helper(engine)
 
     def execute(
         self, step: "StepDefinition", context: "ExecutionContext", system: "System"
@@ -289,7 +295,7 @@ class ChoiceExecutor(BaseStepExecutor):
             return []
 
     def process_choice(
-        self, choice_id: str, step: "StepDefinition", context: "ExecutionContext"
+        self, choice_id: str, step: "StepDefinition", context: "ExecutionContext", system: "System" = None
     ) -> "StepResult":
         """Process a user's choice selection."""
         from ..models.flow import StepResult
@@ -315,6 +321,13 @@ class ChoiceExecutor(BaseStepExecutor):
             # Store the choice result
             context.set_variable("user_choice", choice_id)
             context.set_variable("choice_label", selected_choice.label)
+
+            # Execute step-level actions (including flow calls) if present
+            if step.actions and system:
+                logger.info(f"Executing {len(step.actions)} step actions after choice...")
+                for action in step.actions:
+                    self._execute_step_action(action, context, system, {"selected_item": context.get_variable("selected_item")})
+                logger.info("✅ Step actions executed successfully")
 
             logger.info(f"User chose: {selected_choice.label} ({choice_id})")
 
@@ -374,6 +387,17 @@ class ChoiceExecutor(BaseStepExecutor):
             logger.warning(f"Unknown choice action type: {action_type}")
 
         # TODO: Add other action types as needed
+
+    def _execute_step_action(self, action: dict[str, Any], context: "ExecutionContext", system: "System", step_result_data: dict[str, Any] = None) -> None:
+        """Execute a step-level action (including flow calls)."""
+        action_type = list(action.keys())[0]
+        
+        if action_type == "flow_call":
+            # Use the shared flow helper to execute flow calls
+            self.flow_helper.execute_flow_call_action(action, context, system, step_result_data)
+        else:
+            # Handle other action types as needed
+            logger.warning(f"Unhandled step action type: {action_type}")
 
     def can_execute(self, step: "StepDefinition") -> bool:
         """Check if this executor can handle the step."""

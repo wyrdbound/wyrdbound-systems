@@ -106,7 +106,7 @@ steps:
           flow: "add_item_to_character"
           inputs:
             character: "outputs.knave"
-            item: "{{ selected_item }}"
+            item: "{{ result }}"
     next_step: "roll_starting_gear"
 
   - id: "roll_starting_gear"

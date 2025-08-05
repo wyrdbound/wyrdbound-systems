@@ -36,7 +36,7 @@ class GrimoireEngine:
         self.executors = {
             "dice_roll": DiceExecutor(),
             "dice_sequence": DiceExecutor(),
-            "player_choice": ChoiceExecutor(),
+            "player_choice": ChoiceExecutor(self),
             "table_roll": TableExecutor(),
             "llm_generation": LLMExecutor(),
             "completion": FlowExecutor(),
@@ -342,8 +342,15 @@ class GrimoireEngine:
                 path = action_data["path"]
                 value = action_data["value"]
 
-                # Resolve template in value
-                resolved_value = context.resolve_template(str(value))
+                # Handle dictionary values specially to avoid string conversion
+                if isinstance(value, dict):
+                    # Use dictionary directly without template resolution
+                    resolved_value = value
+                    logger.info(f"Action set_value: Using dict directly for {path}")
+                else:
+                    # Resolve template in value for non-dict values
+                    resolved_value = context.resolve_template(str(value))
+                    logger.info(f"Action set_value: Resolved template for {path}")
 
                 # Determine target context
                 if path.startswith("outputs."):
