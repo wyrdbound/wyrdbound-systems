@@ -151,8 +151,7 @@ class DerivedFieldManager:
         logger.info(f"Observable: Setting field {field_name} = {value}")
 
         # First, set the value in the execution context so it's available for template resolution
-        # Use the internal method to avoid recursion
-        self.execution_context._set_nested_value(self.execution_context.outputs, field_name, value)
+        self.execution_context.set_output(field_name, value)
 
         # Then create/update observable which will trigger recomputation
         if field_name not in self.observable_values:
@@ -235,8 +234,8 @@ class DerivedFieldManager:
             result = self.template_resolver(jinja_expr)
             logger.info(f"Field {field} computed to: {result}")
 
-            # Store the result using the qualified field name, avoiding recursion
-            self.execution_context._set_nested_value(self.execution_context.outputs, field, result)
+            # Store the result using the qualified field name
+            self.execution_context.set_output(field, result)
 
             # Create/update observable for this computed field
             if field not in self.observable_values:

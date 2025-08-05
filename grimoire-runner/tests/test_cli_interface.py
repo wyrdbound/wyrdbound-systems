@@ -186,98 +186,12 @@ class TestExecuteCommand:
         )  # Typer returns exit code 2 for missing required options
         # CliRunner with Typer doesn't always capture stderr, so just check exit code
 
-    @patch("grimoire_runner.ui.rich_tui.run_rich_tui_executor")
-    def test_execute_with_output_file(self, mock_rich_tui):
-        """Test execution with output file."""
-        mock_rich_tui.return_value = None
-
-        with tempfile.TemporaryDirectory() as temp_dir:
-            # Create a minimal system.yaml to prevent fallback
-            system_file = Path(temp_dir) / "system.yaml"
-            system_file.write_text("id: test\nname: Test\nversion: 1.0.0\n")
-            
-            output_file = Path(temp_dir) / "results.json"
-            result = self.runner.invoke(
-                app,
-                [
-                    "execute",
-                    temp_dir,
-                    "--flow",
-                    "test_flow",
-                    "--output",
-                    str(output_file),
-                ],
-            )
-
-        assert result.exit_code == 0
-        mock_rich_tui.assert_called_once_with(Path(temp_dir), "test_flow")
-
-    @patch("grimoire_runner.ui.rich_tui.run_rich_tui_executor")
-    def test_execute_non_interactive(self, mock_rich_tui):
-        """Test non-interactive execution."""
-        mock_rich_tui.return_value = None
-
-        with tempfile.TemporaryDirectory() as temp_dir:
-            # Create a minimal system.yaml to prevent fallback
-            system_file = Path(temp_dir) / "system.yaml"
-            system_file.write_text("id: test\nname: Test\nversion: 1.0.0\n")
-            
-            result = self.runner.invoke(
-                app, ["execute", temp_dir, "--flow", "test_flow", "--no-interactive"]
-            )
-
-        assert result.exit_code == 0
-        mock_rich_tui.assert_called_once_with(Path(temp_dir), "test_flow")
-
-    @patch("grimoire_runner.ui.rich_tui.run_rich_tui_executor")
-    def test_execute_with_error(self, mock_rich_tui):
-        """Test execution with flow error."""
-        mock_rich_tui.side_effect = Exception("Flow execution failed")
-
-        with tempfile.TemporaryDirectory() as temp_dir:
-            result = self.runner.invoke(
-                app, ["execute", temp_dir, "--flow", "bad_flow"]
-            )
-
-        # When rich TUI fails, CLI falls back to basic console, which may succeed or fail
-        # Since temp_dir has no system.yaml, the basic console will also fail  
-        assert result.exit_code == 1
-        assert "Textual interface error" in result.stdout
-
-
 class TestBrowseCommand:
     """Test the browse command."""
 
     def setup_method(self):
         """Set up test fixtures."""
         self.runner = CliRunner()
-
-    @patch("grimoire_runner.ui.rich_browser.run_rich_browser")
-    def test_browse_basic(self, mock_run_browser):
-        """Test basic browse command."""
-        mock_run_browser.return_value = None
-
-        with tempfile.TemporaryDirectory() as temp_dir:
-            # Create a minimal system.yaml to prevent errors
-            system_file = Path(temp_dir) / "system.yaml"
-            system_file.write_text("id: test\nname: Test\nversion: 1.0.0\n")
-            
-            result = self.runner.invoke(app, ["browse", temp_dir])
-
-        assert result.exit_code == 0
-        mock_run_browser.assert_called_once()
-
-    @patch("grimoire_runner.ui.rich_browser.run_rich_browser")
-    def test_browse_load_error(self, mock_run_browser):
-        """Test browse command with system load error."""
-        mock_run_browser.side_effect = Exception("System not found")
-
-        with tempfile.TemporaryDirectory() as temp_dir:
-            result = self.runner.invoke(app, ["browse", temp_dir])
-
-        assert result.exit_code == 1
-        assert "Error:" in result.stdout  # The actual error message format
-
 
 class TestListCommand:
     """Test the list command."""

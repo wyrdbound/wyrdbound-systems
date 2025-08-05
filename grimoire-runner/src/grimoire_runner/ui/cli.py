@@ -129,8 +129,12 @@ def execute(
     else:
         logging.basicConfig(level=logging.INFO)
 
-    # Use Rich TUI interface - no fallback, just fix issues in Rich TUI
-    run_rich_tui_executor(system_path, flow)
+    try:
+        # Use Rich TUI interface - no fallback, just fix issues in Rich TUI
+        run_rich_tui_executor(system_path, flow)
+    except Exception as e:
+        console.print(f"[bold red]Textual interface error:[/bold red] {e}")
+        raise typer.Exit(1) from None
 
 
 
