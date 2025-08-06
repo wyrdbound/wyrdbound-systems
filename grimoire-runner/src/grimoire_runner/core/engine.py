@@ -86,107 +86,124 @@ class GrimoireEngine:
 
         logger.info(f"Executing flow: {flow.name} ({flow_id})")
 
-        # Set system metadata in context for templating
-        context.system_metadata = {
-            "id": system.id,
-            "name": system.name,
-            "description": system.description,
-            "version": system.version,
-            "currency": getattr(system, "currency", {}),
-            "credits": getattr(system, "credits", {}),
-        }
+        # Create unique execution namespace for this flow
+        import uuid
+        execution_id = str(uuid.uuid4())[:8]
+        namespace_id = f"flow_{execution_id}"
+        
+        # Create isolated namespace for this flow execution
+        context.create_flow_namespace(namespace_id, flow_id, execution_id)
+        context.set_current_flow_namespace(namespace_id)
 
-        # Initialize flow variables
-        for var_name, var_value in flow.variables.items():
-            context.set_variable(var_name, var_value)
+        try:
+            # Set system metadata in context for templating
+            context.system_metadata = {
+                "id": system.id,
+                "name": system.name,
+                "description": system.description,
+                "version": system.version,
+                "currency": getattr(system, "currency", {}),
+                "credits": getattr(system, "credits", {}),
+            }
 
-        # Initialize observable derived fields from output models
-        for output_def in flow.outputs:
-            if output_def.type in system.models:
-                model = system.models[output_def.type]
-                logger.info(
-                    f"Initializing model observables for {output_def.type} ({output_def.id})"
-                )
-                context.initialize_model_observables(model, output_def.id)
+            # Initialize flow variables in the namespace
+            context.initialize_flow_namespace_variables(namespace_id, flow.variables.copy())
 
-        # Execute all steps
-        step_results = []
-        current_step_id = flow.steps[0].id if flow.steps else None
+            # Initialize observable derived fields from output models
+            for output_def in flow.outputs:
+                if output_def.type in system.models:
+                    model = system.models[output_def.type]
+                    logger.info(
+                        f"Initializing model observables for {output_def.type} ({output_def.id})"
+                    )
+                    context.initialize_model_observables(model, output_def.id)
 
-        while current_step_id:
-            step = flow.get_step(current_step_id)
-            if not step:
-                break
+            # Execute all steps
+            step_results = []
+            current_step_id = flow.steps[0].id if flow.steps else None
 
-            context.current_step = current_step_id
-            context.step_history.append(current_step_id)
+            while current_step_id:
+                step = flow.get_step(current_step_id)
+                if not step:
+                    break
 
-            # Check for breakpoints
-            if self._debug_mode and self._has_breakpoint(flow_id, current_step_id):
-                logger.info(f"Breakpoint hit at step: {current_step_id}")
-                break
+                context.current_step = current_step_id
+                context.step_history.append(current_step_id)
 
-            # Execute the step
-            try:
-                step_result = self._execute_step(step, context, system)
-                step_results.append(step_result)
+                # Check for breakpoints
+                if self._debug_mode and self._has_breakpoint(flow_id, current_step_id):
+                    logger.info(f"Breakpoint hit at step: {current_step_id}")
+                    break
 
-                if not step_result.success:
+                # Execute the step
+                try:
+                    step_result = self._execute_step(step, context, system)
+                    step_results.append(step_result)
+
+                    if not step_result.success:
+                        return FlowResult(
+                            flow_id=flow_id,
+                            success=False,
+                            error=step_result.error,
+                            step_results=step_results,
+                            completed_at_step=current_step_id,
+                        )
+
+                    # Handle user input requirements
+                    if step_result.requires_input:
+                        # In automatic execution, we can't handle user input
+                        # This should be handled by interactive execution
+                        logger.warning(
+                            f"Step {current_step_id} requires user input but we're in automatic mode"
+                        )
+                        break
+
+                    # Determine next step
+                    if step_result.next_step_id:
+                        current_step_id = step_result.next_step_id
+                    else:
+                        current_step_id = flow.get_next_step_id(current_step_id)
+
+                except ValueError:
+                    # Re-raise ValueError exceptions (like missing executors) as they indicate configuration issues
+                    raise
+                except Exception as e:
+                    logger.error(f"Error executing step {current_step_id}: {e}")
                     return FlowResult(
                         flow_id=flow_id,
                         success=False,
-                        error=step_result.error,
+                        error=str(e),
                         step_results=step_results,
                         completed_at_step=current_step_id,
                     )
 
-                # Handle user input requirements
-                if step_result.requires_input:
-                    # In automatic execution, we can't handle user input
-                    # This should be handled by interactive execution
-                    logger.warning(
-                        f"Step {current_step_id} requires user input but we're in automatic mode"
-                    )
-                    break
+            # Compute all derived fields before extracting outputs
+            logger.debug("Computing derived fields after flow execution")
+            context.compute_derived_fields()
 
-                # Determine next step
-                if step_result.next_step_id:
-                    current_step_id = step_result.next_step_id
-                else:
-                    current_step_id = flow.get_next_step_id(current_step_id)
+            # Copy flow outputs from namespace to root level for result
+            context.copy_flow_outputs_to_root(namespace_id)
 
-            except ValueError:
-                # Re-raise ValueError exceptions (like missing executors) as they indicate configuration issues
-                raise
-            except Exception as e:
-                logger.error(f"Error executing step {current_step_id}: {e}")
-                return FlowResult(
-                    flow_id=flow_id,
-                    success=False,
-                    error=str(e),
-                    step_results=step_results,
-                    completed_at_step=current_step_id,
-                )
+            # Extract outputs from the namespace for the result
+            flow_namespace_data = context.get_flow_namespace_data(namespace_id)
+            outputs = flow_namespace_data["outputs"].copy() if flow_namespace_data else {}
 
-        # Compute all derived fields before extracting outputs
-        logger.debug("Computing derived fields after flow execution")
-        context.compute_derived_fields()
+            # Also get the variables from the namespace
+            variables = flow_namespace_data["variables"].copy() if flow_namespace_data else {}
 
-        # Extract outputs based on flow definition
-        outputs = {}
-        for output_def in flow.outputs:
-            output_value = context.get_output(output_def.id)
-            if output_value is not None:
-                outputs[output_def.id] = output_value
+            logger.info(f"Flow execution completed: {flow_id} (namespace: {namespace_id})")
+            return FlowResult(
+                flow_id=flow_id,
+                success=True,
+                outputs=outputs,
+                variables=variables,
+                step_results=step_results,
+            )
 
-        logger.info(f"Flow execution completed: {flow_id}")
-        return FlowResult(
-            flow_id=flow_id,
-            success=True,
-            outputs=outputs,
-            variables=context.variables.copy(),
-            step_results=step_results,
-        )
+        finally:
+            # Clean up the flow namespace
+            context.pop_flow_namespace()
+            logger.debug(f"Cleaned up flow namespace: {namespace_id}")
 
     def step_through_flow(
         self, flow_id: str, context: ExecutionContext, system: System | None = None
@@ -327,8 +344,14 @@ class GrimoireEngine:
         system: System | None = None,
     ) -> None:
         """Execute a single action."""
-        action_type = list(action.keys())[0]
-        action_data = action[action_type]
+        # Handle both old format (key as action type) and new format (type field)
+        if "type" in action and "data" in action:
+            action_type = action["type"]
+            action_data = action["data"]
+        else:
+            # Fallback to old format
+            action_type = list(action.keys())[0]
+            action_data = action[action_type]
 
         # Temporarily add step_data to context for template resolution
         original_values = {}
@@ -352,14 +375,29 @@ class GrimoireEngine:
                     resolved_value = context.resolve_template(str(value))
                     logger.info(f"Action set_value: Resolved template for {path}")
 
-                # Determine target context
-                if path.startswith("outputs."):
-                    context.set_output(path[8:], resolved_value)
-                elif path.startswith("variables."):
-                    context.set_variable(path[10:], resolved_value)
+                # Use namespaced paths to avoid collision during flow execution
+                current_namespace = context.get_current_flow_namespace()
+                
+                if current_namespace:
+                    # Use namespaced path to avoid collision
+                    if path.startswith("outputs."):
+                        namespaced_path = f"{current_namespace}.outputs.{path[8:]}"
+                    elif path.startswith("variables."):
+                        namespaced_path = f"{current_namespace}.variables.{path[10:]}"
+                    else:
+                        # Default to outputs if no prefix specified
+                        namespaced_path = f"{current_namespace}.outputs.{path}"
+                    
+                    context.set_namespaced_value(namespaced_path, resolved_value)
                 else:
-                    # Default to outputs
-                    context.set_output(path, resolved_value)
+                    # Fallback to original behavior for backward compatibility
+                    if path.startswith("outputs."):
+                        context.set_output(path[8:], resolved_value)
+                    elif path.startswith("variables."):
+                        context.set_variable(path[10:], resolved_value)
+                    else:
+                        # Default to outputs
+                        context.set_output(path, resolved_value)
 
             elif action_type == "get_value":
                 # This is typically used in templates, not as a standalone action

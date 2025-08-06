@@ -96,8 +96,14 @@ class FlowExecutor(BaseStepExecutor):
 
     def _execute_action(self, action: dict, context: "ExecutionContext") -> None:
         """Execute a single action within a step."""
-        action_type = list(action.keys())[0]  # Get the action type (first key)
-        action_data = action[action_type]
+        # Handle both old format (key as action type) and new format (type field)  
+        if "type" in action and "data" in action:
+            action_type = action["type"]
+            action_data = action["data"]
+        else:
+            # Fallback to old format
+            action_type = list(action.keys())[0]  # Get the action type (first key)
+            action_data = action[action_type]
 
         logger.info(f"Executing action: {action_type}")
 
@@ -129,7 +135,26 @@ class FlowExecutor(BaseStepExecutor):
 
             try:
                 logger.info(f"Setting {path} = {resolved_value}")
-                context.set_output(path, resolved_value)
+                
+                # Get current flow namespace for proper isolation
+                current_namespace = context.get_current_flow_namespace()
+                
+                if current_namespace:
+                    # Use namespaced path to avoid collision
+                    if path.startswith("outputs."):
+                        namespaced_path = f"{current_namespace}.outputs.{path[8:]}"
+                    elif path.startswith("variables."):
+                        namespaced_path = f"{current_namespace}.variables.{path[10:]}"
+                    else:
+                        # Default to outputs for flow control
+                        namespaced_path = f"{current_namespace}.outputs.{path}"
+                    
+                    context.set_namespaced_value(namespaced_path, resolved_value)
+                    logger.info(f"Set namespaced flow value: {namespaced_path} = {resolved_value}")
+                else:
+                    # Fallback to original behavior for backward compatibility
+                    context.set_output(path, resolved_value)
+                    
                 logger.info(f"Successfully set output {path}")
             except Exception as e:
                 logger.error(f"Failed to set value at {path}: {e}")

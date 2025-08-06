@@ -169,8 +169,14 @@ class TableExecutor(BaseStepExecutor):
         self, action, context: "ExecutionContext", system: "System", result: Any
     ) -> None:
         """Execute a single table action."""
-        action_type = list(action.keys())[0]
-        action_data = action[action_type]
+        # Handle both old format (key as action type) and new format (type field)
+        if "type" in action and "data" in action:
+            action_type = action["type"]
+            action_data = action["data"]
+        else:
+            # Fallback to old format
+            action_type = list(action.keys())[0]
+            action_data = action[action_type]
 
         if action_type == "set_value":
             path = action_data["path"]
@@ -179,13 +185,29 @@ class TableExecutor(BaseStepExecutor):
             # Resolve templates
             resolved_value = context.resolve_template(str(value))
 
-            # Set the value
-            if path.startswith("outputs."):
-                context.set_output(path[8:], resolved_value)
-            elif path.startswith("variables."):
-                context.set_variable(path[10:], resolved_value)
+            # Get current flow namespace for proper isolation
+            current_namespace = context.get_current_flow_namespace()
+            
+            if current_namespace:
+                # Use namespaced path to avoid collision
+                if path.startswith("outputs."):
+                    namespaced_path = f"{current_namespace}.outputs.{path[8:]}"
+                elif path.startswith("variables."):
+                    namespaced_path = f"{current_namespace}.variables.{path[10:]}"
+                else:
+                    # Default to outputs if no prefix specified
+                    namespaced_path = f"{current_namespace}.outputs.{path}"
+                
+                context.set_namespaced_value(namespaced_path, resolved_value)
             else:
-                context.set_output(path, resolved_value)
+                # Fallback to original behavior for backward compatibility
+                if path.startswith("outputs."):
+                    context.set_output(path[8:], resolved_value)
+                elif path.startswith("variables."):
+                    context.set_variable(path[10:], resolved_value)
+                else:
+                    context.set_output(path, resolved_value)
+                logger.info(f"Set non-namespaced value: {path} = {resolved_value}")
 
         elif action_type == "flow_call":
             # Handle sub-flow calls

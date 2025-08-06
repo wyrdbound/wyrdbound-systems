@@ -38,6 +38,11 @@ class ExecutionContext:
     # System metadata for templating
     system_metadata: dict[str, Any] = field(default_factory=dict)
 
+    # Flow namespace isolation
+    flow_namespaces: dict[str, dict[str, Any]] = field(default_factory=dict)
+    current_flow_namespace: str | None = None
+    flow_execution_stack: list[str] = field(default_factory=list)
+
     # Execution tracking
     current_step: str | None = None
     step_history: list[str] = field(default_factory=list)
@@ -224,7 +229,7 @@ class ExecutionContext:
         try:
             template = self._jinja_env.from_string(template_str)
 
-            # Start with basic context
+            # Start with basic context (backward compatibility)
             context = {
                 "variables": self.variables,
                 "outputs": self.outputs,
@@ -233,6 +238,20 @@ class ExecutionContext:
                 **self.variables,  # Make variables available at top level too
                 **self.outputs,  # Make outputs available at top level too
             }
+
+            # Add namespace-aware context if we have an active flow
+            if self.current_flow_namespace and self.current_flow_namespace in self.flow_namespaces:
+                flow_data = self.flow_namespaces[self.current_flow_namespace]
+                # Overlay flow-specific data with precedence over root data
+                context.update({
+                    "variables": {**self.variables, **flow_data["variables"]},
+                    "outputs": {**self.outputs, **flow_data["outputs"]},
+                    "inputs": {**self.inputs, **flow_data["inputs"]},
+                    # Make flow-specific data available at top level too
+                    **flow_data["variables"],
+                    **flow_data["outputs"],
+                })
+                logger.debug(f"Template resolution using namespace: {self.current_flow_namespace}")
 
             # If we have a derived field manager, overlay observable values to ensure
             # template resolution gets the most current values (including lists, not strings)
@@ -316,6 +335,114 @@ class ExecutionContext:
 
             raise KeyError(f"Path '{path}' not found in any context")
 
+    # Flow Namespace Management
+    def create_flow_namespace(self, namespace_id: str, flow_id: str, execution_id: str) -> None:
+        """Create an isolated namespace for flow execution."""
+        self.flow_namespaces[namespace_id] = {
+            "inputs": {},
+            "outputs": {},  
+            "variables": {},
+            "metadata": {
+                "flow_id": flow_id,
+                "execution_id": execution_id,
+                "created_at": datetime.now().isoformat()
+            }
+        }
+        logger.info(f"Created flow namespace: {namespace_id} for flow {flow_id}")
+
+    def set_current_flow_namespace(self, namespace_id: str) -> None:
+        """Set the current active flow namespace."""
+        if namespace_id not in self.flow_namespaces:
+            raise ValueError(f"Flow namespace '{namespace_id}' does not exist")
+        
+        self.current_flow_namespace = namespace_id
+        if namespace_id not in self.flow_execution_stack:
+            self.flow_execution_stack.append(namespace_id)
+        
+        logger.info(f"Set current flow namespace to: {namespace_id}")
+
+    def pop_flow_namespace(self) -> str | None:
+        """Pop the current flow namespace from the execution stack."""
+        if not self.flow_execution_stack:
+            return None
+            
+        popped_namespace = self.flow_execution_stack.pop()
+        self.current_flow_namespace = (
+            self.flow_execution_stack[-1] if self.flow_execution_stack else None
+        )
+        
+        logger.info(f"Popped flow namespace: {popped_namespace}, current: {self.current_flow_namespace}")
+        return popped_namespace
+
+    def get_current_flow_namespace(self) -> str | None:
+        """Get the current active flow namespace ID."""
+        return self.current_flow_namespace
+
+    def set_namespaced_value(self, full_path: str, value: Any) -> None:
+        """Set a value using full namespaced path (e.g., 'flow_abc123.outputs.character.name')."""
+        parts = full_path.split(".", 2)  # Split into namespace, category, path
+        if len(parts) < 3:
+            raise ValueError(f"Invalid namespaced path: {full_path}. Expected format: namespace.category.path")
+        
+        namespace_id, category, path = parts
+        
+        if namespace_id not in self.flow_namespaces:
+            raise ValueError(f"Flow namespace '{namespace_id}' does not exist")
+            
+        if category not in ["inputs", "outputs", "variables"]:
+            raise ValueError(f"Invalid category '{category}'. Must be inputs, outputs, or variables")
+        
+        namespace_data = self.flow_namespaces[namespace_id][category]
+        self._set_nested_value(namespace_data, path, value)
+        
+        logger.info(f"Set namespaced value: {full_path} = {value}")
+
+    def get_namespaced_value(self, full_path: str, default: Any = None) -> Any:
+        """Get a value using full namespaced path."""
+        try:
+            parts = full_path.split(".", 2)
+            if len(parts) < 3:
+                return default
+                
+            namespace_id, category, path = parts
+            
+            if namespace_id not in self.flow_namespaces:
+                return default
+                
+            if category not in ["inputs", "outputs", "variables"]:
+                return default
+            
+            namespace_data = self.flow_namespaces[namespace_id][category]
+            return self._get_nested_value(namespace_data, path)
+        except (KeyError, TypeError):
+            return default
+
+    def copy_flow_outputs_to_root(self, namespace_id: str) -> None:
+        """Copy flow outputs from namespace to root level after completion."""
+        if namespace_id not in self.flow_namespaces:
+            logger.warning(f"Cannot copy outputs: namespace '{namespace_id}' not found")
+            return
+            
+        flow_outputs = self.flow_namespaces[namespace_id]["outputs"]
+        
+        # Deep copy the outputs to avoid reference issues
+        for output_id, output_value in flow_outputs.items():
+            self.set_output(output_id, copy.deepcopy(output_value))
+            logger.info(f"Copied flow output to root: {output_id} = {type(output_value).__name__}")
+
+    def initialize_flow_namespace_variables(self, namespace_id: str, variables: dict[str, Any]) -> None:
+        """Initialize variables in a flow namespace."""
+        if namespace_id not in self.flow_namespaces:
+            raise ValueError(f"Flow namespace '{namespace_id}' does not exist")
+            
+        self.flow_namespaces[namespace_id]["variables"].update(variables)
+        logger.info(f"Initialized {len(variables)} variables in namespace {namespace_id}")
+
+    def get_flow_namespace_data(self, namespace_id: str) -> dict[str, Any] | None:
+        """Get all data for a specific flow namespace."""
+        return self.flow_namespaces.get(namespace_id)
+
+    # Checkpoint and state management
     def create_checkpoint(self, checkpoint_id: str | None = None) -> str:
         """Create a checkpoint for rollback."""
         if checkpoint_id is None:

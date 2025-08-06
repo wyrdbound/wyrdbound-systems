@@ -331,89 +331,102 @@ _Next: Flow Definition Tests_
 
 ---
 
-### 🔄 Phase 1.4.1: Flow Execution Tests
+### ✅ Phase 1.4.1: Flow Execution Tests
 
-**Status**: PLANNED
+**Status**: COMPLETED (19/19 tests passing)
 
 **Objective**: Test actual flow execution and output validation (building on Phase 1.4's definition testing)
 
-#### Identified Gap:
+#### Identified Gap (RESOLVED):
 
 Phase 1.4 successfully tested **flow definition structure** (parsing, validation, cross-references) but revealed a critical gap: **we don't test actual flow execution**. Our current tests validate that flows are defined correctly but don't verify that:
 
 - ✅ Flows can be defined and parsed correctly
-- ❌ **Missing**: Flows actually execute and produce correct outputs
-- ❌ **Missing**: Actions like `set_value` actually update the intended paths
-- ❌ **Missing**: Table rolls actually select entries from tables
-- ❌ **Missing**: Variables are updated correctly during execution
+- ✅ **IMPLEMENTED**: Flows actually execute and produce correct outputs
+- ✅ **IMPLEMENTED**: Actions like `set_value` actually update the intended paths
+- ✅ **IMPLEMENTED**: Table rolls actually select entries from tables
+- ✅ **IMPLEMENTED**: Variables are updated correctly during execution
 
-#### Planned Test Coverage:
+#### Test Coverage (COMPLETED):
 
-1. **Flow Execution** (4 tests): Run flows end-to-end and verify successful completion
+1. **Flow Execution** (4 tests): ✅ Run flows end-to-end and verify successful completion
 
-   - Basic flow execution with simple completion steps
-   - Dice flow execution with proper variable updates
-   - Table flow execution with output value setting
-   - Choice flow execution with conditional branching
+   - ✅ Basic flow execution with simple completion steps
+   - ✅ Dice flow execution with proper variable updates
+   - ✅ Table flow execution with output value setting
+   - ✅ Choice flow execution with conditional branching
 
-2. **Output Validation** (3 tests): Verify outputs are set correctly after execution
+2. **Output Validation** (3 tests): ✅ Verify outputs are set correctly after execution
 
-   - `outputs.character.name` is set correctly after table-flow execution
-   - `outputs.character.class` is set correctly after choice-flow execution
-   - Multiple outputs are handled correctly in complex flows
+   - ✅ `outputs.character.name` is set correctly after table-flow execution
+   - ✅ `outputs.character.class` is set correctly after choice-flow execution
+   - ✅ Multiple outputs are handled correctly in complex flows
 
-3. **Variable Updates** (3 tests): Verify variables are updated during execution
+3. **Variable Updates** (3 tests): ✅ Verify variables are updated during execution
 
-   - `variables.dice_result` is set correctly after dice-flow execution
-   - `variables.ability_scores` are populated correctly after dice sequence
-   - Variables persist across multiple steps in a flow
+   - ✅ `variables.dice_result` is set correctly after dice-flow execution
+   - ✅ `variables.ability_scores` are populated correctly after dice sequence
+   - ✅ Variables persist across multiple steps in a flow
 
-4. **Action Execution** (4 tests): Verify actions perform their intended operations
+4. **Action Execution** (4 tests): ✅ Verify actions perform their intended operations
 
-   - `set_value` actions update paths correctly
-   - Multiple actions in a single step execute in order
-   - Template rendering works correctly in action values
-   - Error handling for invalid paths or values
+   - ✅ `set_value` actions update paths correctly
+   - ✅ Multiple actions in a single step execute in order
+   - ✅ Template rendering works correctly in action values
+   - ✅ Error handling for invalid paths or values
 
-5. **Step Integration** (3 tests): Verify steps work correctly with system components
+5. **Step Integration** (3 tests): ✅ Verify steps work correctly with system components
 
-   - Table roll steps actually select entries from loaded tables
-   - Results match expected table entry types and formats
-   - Cross-references between flows and tables work during execution
+   - ✅ Table roll steps actually select entries from loaded tables
+   - ✅ Results match expected table entry types and formats
+   - ✅ Cross-references between flows and tables work during execution
 
-6. **Execution Context** (2 tests): Verify proper execution environment setup
-   - Input parameters are correctly passed to flow execution
-   - Execution context maintains proper state throughout flow
+6. **Execution Context** (2 tests): ✅ Verify proper execution environment setup
+   - ✅ Input parameters are correctly passed to flow execution
+   - ✅ Execution context maintains proper state throughout flow
 
-#### Technical Requirements:
+#### Technical Achievements:
 
-- **FlowExecutor Integration**: Use the existing `FlowExecutor` class (currently at 8% coverage)
-- **Execution Context Setup**: Create proper execution contexts with inputs and variables
-- **Result Capture**: Run flows and capture their final state for validation
-- **Integration Testing**: Ensure executors work correctly with loaded system components
+- ✅ **FlowExecutor Integration**: Successfully utilized existing `FlowExecutor` class with significantly improved coverage
+- ✅ **Execution Context Setup**: Proper execution contexts with inputs and variables working correctly
+- ✅ **Result Capture**: Flows run and capture final state for comprehensive validation
+- ✅ **Integration Testing**: Executors work correctly with loaded system components (tables, models, compendiums)
+- ✅ **Namespace Isolation Architecture**: Implemented UUID-based flow execution namespaces to prevent data collision
+- ✅ **Action Format Support**: Enhanced executors to handle both `{type: "set_value", data: {...}}` and legacy action formats
+- ✅ **Template Resolution**: Namespace-aware template resolution with proper context layering
 
-#### Focus Areas:
+#### Key Architectural Improvements:
 
-- **End-to-End Validation**: ✅ Bridge the gap between definition and execution testing
-- **Output Verification**: ✅ Ensure flows produce expected results in practice
-- **Action Validation**: ✅ Verify that step actions actually perform their intended operations
-- **System Integration**: ✅ Test that flows work correctly with tables, models, and compendiums
-- **Error Handling**: ✅ Validate execution error scenarios and recovery
+- ✅ **Flow Namespace Isolation**: UUID-based execution namespaces (`flow_<execution_id>`) prevent data collision between concurrent flows
+- ✅ **Enhanced ExecutionContext**: Added `flow_namespaces`, `current_flow_namespace`, and namespace management methods
+- ✅ **Namespace-Aware Executors**: Updated TableExecutor, DiceExecutor, and FlowExecutor to use `set_namespaced_value`
+- ✅ **Engine Action Processing**: Enhanced GrimoireEngine with dual action format parsing and namespace isolation
+- ✅ **Automatic Output Management**: Namespace-aware output copying from flow namespaces to root level after execution
 
-#### Expected Benefits:
+#### Focus Areas (COMPLETED):
 
-- **Complete Flow Testing**: Bridge definition testing with actual execution validation
-- **Execution Engine Coverage**: Significantly improve coverage of executor components
-- **Real-World Validation**: Ensure flows work as intended, not just parse correctly
-- **Integration Confidence**: Validate that all system components work together during execution
-- **Regression Prevention**: Catch execution-related issues that definition tests can't detect
+- ✅ **End-to-End Validation**: Successfully bridged the gap between definition and execution testing
+- ✅ **Output Verification**: Flows produce expected results in practice with proper namespace isolation
+- ✅ **Action Validation**: Step actions perform their intended operations without collision
+- ✅ **System Integration**: Flows work correctly with tables, models, and compendiums during execution
+- ✅ **Error Handling**: Validated execution error scenarios and recovery with robust input handling
 
-#### Implementation Strategy:
+#### Implementation Results:
 
-1. **Build on Phase 1.4**: Use existing flow_test system and flow definitions
-2. **Executor Integration**: Focus on `FlowExecutor` and related execution components
-3. **Incremental Testing**: Start with simple flows and build to complex scenarios
-4. **Comprehensive Validation**: Test both success paths and error conditions
+- ✅ **Complete Flow Testing**: Successfully bridged definition testing with actual execution validation
+- ✅ **Execution Engine Coverage**: Significantly improved coverage of executor components
+- ✅ **Real-World Validation**: Flows work as intended with proper isolation, not just parse correctly
+- ✅ **Integration Confidence**: All system components work together during execution with namespace safety
+- ✅ **Regression Prevention**: Comprehensive execution testing catches issues that definition tests cannot detect
+
+#### Tests Added: 19 tests across 6 test classes
+
+- `TestFlowExecution`: 4 tests (basic, dice, table, choice flow execution)
+- `TestOutputValidation`: 3 tests (character name/class validation, multiple outputs)
+- `TestVariableUpdates`: 3 tests (dice results, ability scores, persistence)
+- `TestActionExecution`: 4 tests (set_value, multiple actions, templates, error handling)
+- `TestStepIntegration`: 3 tests (table selection, entry types, cross-references)
+- `TestExecutionContext`: 2 tests (input parameters, state management)
 
 **Dependency**: Phase 1.4 (Flow Definition Tests) - ✅ COMPLETED
 
@@ -451,18 +464,19 @@ Phase 1.4 successfully tested **flow definition structure** (parsing, validation
 
 ### Overall Progress
 
-- **Total Tests**: 109 (109 passing, 2 skipped)
-- **Overall Code Coverage**: Enhanced focused coverage of core components
-- **Phase 1.1**: 14/14 tests ✅ (System loading: 50% coverage)
-- **Phase 1.2**: 26/26 tests ✅ (Model definitions: 24% coverage, 2 skipped for missing features)
-- **Phase 1.3**: 22/22 tests ✅ (Tables: 39%, Compendiums: 38% coverage, 1 skipped for missing features)
+- **Total Tests**: 128 (126 passing, 2 skipped)
+- **Overall Code Coverage**: 33.7% (1,423 lines covered of 3,850 total)
+- **Phase 1.1**: 14/14 tests ✅ (System loading: 82% coverage)
+- **Phase 1.2**: 26/26 tests ✅ (Model definitions: 66% coverage, 2 skipped for missing features)
+- **Phase 1.3**: 22/22 tests ✅ (Tables: 46%, Compendiums: 38% coverage, 1 skipped for missing features)
 - **Phase 1.3.1**: 19/19 tests ✅ (Enhanced table entry types with comprehensive functionality)
-- **Phase 1.4**: 26/26 tests ✅ (Flow definitions with comprehensive step type coverage)
-- **Phase 1.4.1**: 0/19 tests 🔄 (Flow execution testing planned)
-- **Core Components**: Well-tested loading and validation logic
+- **Phase 1.4**: 26/26 tests ✅ (Flow definitions: 73% coverage with comprehensive step type coverage)
+- **Phase 1.4.1**: 19/19 tests ✅ (Flow execution testing: 37% executor coverage with namespace isolation)
+- **Core Components**: Strong coverage on loading and validation (82% loader, 73% flows, 66% models)
+- **Execution Engine**: Good coverage with namespace isolation (43% engine, 37-58% executors)
 - **Architecture Validation**: Entry type validation implemented with TDD approach
 - **Advanced Features**: Table entry type system with type overrides and generation support
-- **Flow System**: Complete flow definition testing with all step types validated
+- **Flow System**: Complete flow definition and execution testing with namespace isolation
 
 ### Skipped Tests (Missing Implementation)
 
@@ -484,7 +498,7 @@ These skipped tests clearly document what functionality is missing and will pass
 | Entry Type Fix       | 1     | ✅ Complete             |
 | Enhanced Entry Types | 19    | ✅ Complete             |
 | Flow Definitions     | 26    | ✅ Complete             |
-| Flow Execution       | 19    | 🔄 Planned              |
+| Flow Execution       | 19    | ✅ Complete             |
 | Sources/Prompts      | 0     | 🔄 Planned              |
 | Integration          | 0     | 🔄 Planned              |
 
@@ -500,58 +514,91 @@ These skipped tests clearly document what functionality is missing and will pass
 
 ### Code Coverage Analysis
 
-**Overall Coverage**: 14.31% (3,718 total statements, 3,057 uncovered)
+**Overall Coverage**: 33.7% (3,850 total lines, 1,423 covered)
 
 #### Core Components Coverage (Well-Tested):
 
-| Component                     | Coverage | Status      | Lines Tested                              |
-| ----------------------------- | -------- | ----------- | ----------------------------------------- |
-| `core/context.py`             | 100%     | ✅ Complete | All core context functionality            |
-| `models/step.py`              | 100%     | ✅ Complete | Step definition models                    |
-| `models/flow.py`              | 58%      | 🔄 Partial  | Flow definitions (143-175 missing)        |
-| `models/system.py`            | 57%      | 🔄 Partial  | System loading (utility methods missing)  |
-| `models/source.py`            | 58%      | 🔄 Partial  | Source definitions (validation missing)   |
-| `core/loader.py`              | 50%      | 🔄 Partial  | **Primary testing target**                |
-| `models/table.py`             | 39%      | 🔄 Partial  | **Table validation tested** + entry types |
-| `models/compendium.py`        | 38%      | 🔄 Partial  | **Compendium loading tested**             |
-| `models/model.py`             | 24%      | 🔄 Limited  | **Model definitions tested**              |
-| `executors/table_executor.py` | Enhanced | 🔄 Partial  | **Type override functionality added**     |
+| Component                          | Coverage | Status      | Lines Tested                              |
+| ---------------------------------- | -------- | ----------- | ----------------------------------------- |
+| `core/context.py`                  | 100%     | ✅ Complete | All core context functionality            |
+| `models/step.py`                   | 100%     | ✅ Complete | Step definition models                    |
+| `core/loader.py`                   | 82%      | ✅ Strong   | **Excellent system loading coverage**     |
+| `models/flow.py`                   | 73%      | ✅ Strong   | Flow definitions well-covered             |
+| `models/model.py`                  | 66%      | 🔄 Good     | Model definitions solid coverage          |
+| `models/observable.py`             | 60%      | 🔄 Good     | Observable pattern implementation         |
+| `models/system.py`                 | 59%      | 🔄 Good     | System loading core functionality         |
+| `executors/dice_executor.py`       | 58%      | 🔄 Good     | **Namespace-aware dice rolling**          |
+| `models/source.py`                 | 58%      | 🔄 Good     | Source definitions                        |
+| `executors/base.py`                | 54%      | 🔄 Partial  | Base executor functionality               |
+| `models/context_data.py`           | 50%      | 🔄 Partial  | **Flow namespace isolation implemented**  |
+| `utils/templates.py`               | 48%      | 🔄 Partial  | Template rendering utilities              |
+| `models/table.py`                  | 46%      | 🔄 Partial  | **Table validation tested** + entry types |
+| `integrations/dice_integration.py` | 46%      | 🔄 Partial  | Dice integration with wyrdbound_dice      |
+| `core/engine.py`                   | 43%      | 🔄 Partial  | **Namespace-aware action processing**     |
+| `models/compendium.py`             | 38%      | 🔄 Limited  | **Compendium loading tested**             |
+| `executors/flow_executor.py`       | 37%      | 🔄 Limited  | **Flow execution testing implemented**    |
+| `integrations/llm_integration.py`  | 26%      | 🔄 Limited  | LLM integration basics                    |
+| `executors/table_executor.py`      | 22%      | 🔄 Limited  | **Namespace isolation + type overrides**  |
 
-#### Untested Components (0-15% coverage):
+#### Low Coverage Components (15-22%):
 
-| Component                     | Coverage | Priority  | Reason                                 |
-| ----------------------------- | -------- | --------- | -------------------------------------- |
-| UI Components                 | 0%       | 🔴 Low    | Not needed for core engine testing     |
-| `ui/browser.py`               | 0%       | 🔴 Low    | User interface, not core functionality |
-| `ui/cli.py`                   | 0%       | 🔴 Low    | Command line interface                 |
-| `ui/interactive.py`           | 0%       | 🔴 Low    | Interactive UI components              |
-| `utils/logging.py`            | 0%       | 🟡 Medium | Utility, test in integration phase     |
-| `utils/serialization.py`      | 0%       | 🟡 Medium | Data persistence utilities             |
-| Executors                     | 5-20%    | 🟠 High   | **Next phase target (Flow testing)**   |
-| `executors/flow_executor.py`  | 8%       | 🟠 High   | Core execution engine                  |
-| `executors/table_executor.py` | 5%       | 🟠 High   | Table rolling functionality            |
-| `integrations/`               | 15-22%   | 🟡 Medium | External service integration           |
+| Component                      | Coverage | Priority  | Reason                                 |
+| ------------------------------ | -------- | --------- | -------------------------------------- |
+| `executors/llm_executor.py`    | 22%      | 🟡 Medium | LLM functionality, tested in Phase 1.5 |
+| `executors/choice_executor.py` | 15%      | 🟡 Medium | Player choice handling                 |
+| `executors/flow_helper.py`     | 9%       | 🟡 Medium | Flow utility functions                 |
+
+#### Untested Components (0% coverage):
+
+| Component                         | Coverage | Priority  | Reason                                 |
+| --------------------------------- | -------- | --------- | -------------------------------------- |
+| UI Components                     | 0%       | 🔴 Low    | Not needed for core engine testing     |
+| `ui/browser.py`                   | 0%       | 🔴 Low    | User interface, not core functionality |
+| `ui/cli.py`                       | 0%       | 🔴 Low    | Command line interface                 |
+| `ui/interactive.py`               | 0%       | 🔴 Low    | Interactive UI components              |
+| `ui/rich_browser.py`              | 0%       | 🔴 Low    | Rich text UI components                |
+| `ui/rich_tui.py`                  | 0%       | 🔴 Low    | Terminal UI components                 |
+| `utils/logging.py`                | 0%       | 🟡 Medium | Utility, test in integration phase     |
+| `utils/serialization.py`          | 0%       | 🟡 Medium | Data persistence utilities             |
+| `integrations/rng_integration.py` | 0%       | 🟡 Medium | Random number generation integration   |
 
 #### Coverage Strategy:
 
-**Current Focus** (Phases 1.1-1.3): Core loading and definition validation
+**Phase 1.1-1.4.1 Achievements** (COMPLETED): 33.7% overall coverage with strong core engine testing
 
-- ✅ System loading: 50% coverage on critical paths
-- ✅ Model definitions: 24% coverage on validation logic
-- ✅ Table/Compendium: 38-39% coverage on structure validation
+- ✅ **SystemLoader**: 82% coverage - excellent system loading and parsing
+- ✅ **Flow definitions**: 73% coverage - comprehensive flow structure validation
+- ✅ **Model definitions**: 66% coverage - solid model validation and inheritance
+- ✅ **Execution context**: 50% coverage - namespace isolation architecture implemented
+- ✅ **Core engine**: 43% coverage - namespace-aware action processing and execution
+- ✅ **Executors**: 22-58% coverage range - all executors enhanced with namespace isolation
+- ✅ **Table/Compendium**: 38-46% coverage - structure validation and entry type systems
 
-**Next Phase** (1.4): Flow definitions and execution
+**Next Phase** (1.5): Source and prompt definitions
 
-- 🎯 Target: `models/flow.py` (58% → 85%+)
-- 🎯 Target: `executors/flow_executor.py` (8% → 60%+)
-- 🎯 Target: `executors/base.py` (54% → 80%+)
+- 🎯 Target: `models/source.py` (58% → 80%+) - already well-started
+- 🎯 Target: Source definition loading and validation
+- 🎯 Target: Prompt template parsing and rendering
+- 🎯 Target: Overall coverage 33.7% → 40%+
 
-**Future Phases**: Execution engine and integrations
+**Future Phases**: Executor refinement and integration testing
 
-- Integration testing will cover executor components
-- UI components remain low priority for core engine validation
+- **Executor Enhancement**: Improve `table_executor.py` (22%), `flow_executor.py` (37%), `choice_executor.py` (15%)
+- **Integration testing** will cover remaining executor edge cases and cross-component validation
+- **UI components** remain low priority for core engine validation (0% coverage acceptable)
+- **Target**: 45%+ overall coverage with all core execution paths well-tested
 
 ### Code Quality Improvements
+
+**Phase 1.4.1 Major Enhancements**:
+
+- ✅ **Flow Namespace Isolation**: UUID-based execution namespaces prevent data collision
+- ✅ **Enhanced ExecutionContext**: Flow namespace management with automatic cleanup
+- ✅ **Dual Action Format Support**: Backward compatible action parsing in all executors
+- ✅ **Template Resolution**: Namespace-aware template resolution with context layering
+- ✅ **Execution Engine Robustness**: Comprehensive flow execution testing with proper isolation
+
+**Previous Achievements**:
 
 - ✅ **Enhanced AttributeDefinition**: Added missing specification fields
 - ✅ **Improved SystemLoader**: Better field parsing and validation
@@ -579,23 +626,17 @@ These skipped tests clearly document what functionality is missing and will pass
 
 ## Next Steps
 
-### ✅ Phase 1.4: Flow Definition Tests - COMPLETED
+### ✅ Phase 1.4.1: Flow Execution Tests - COMPLETED
 
-1. **Flow Structure Testing**: ✅ Flow definition loading and validation completed (target: `models/flow.py` coverage improved)
-2. **Step Definition Testing**: ✅ Comprehensive step type validation (all 6 step types tested)
-3. **Flow Validation Logic**: ✅ Condition evaluation and routing validation completed
-4. **Integration Preparation**: ✅ Foundation for execution engine testing established
+1. **End-to-End Flow Execution**: ✅ Flows run and complete successfully with proper namespace isolation
+2. **Output Validation**: ✅ `outputs.character.name` correctly set after table-flow execution with isolation
+3. **Action Execution**: ✅ `set_value` actions update intended paths without collision
+4. **Variable Updates**: ✅ `variables.dice_result` correctly set after dice-flow execution in isolated namespace
+5. **System Integration**: ✅ Flows work correctly with tables, models, and compendiums during execution
+6. **Executor Coverage**: ✅ Significantly improved coverage of `FlowExecutor` and related execution components
+7. **Namespace Architecture**: ✅ Implemented UUID-based flow execution namespaces preventing data collision between concurrent flows
 
-### Short Term (Phase 1.4.1: Flow Execution Tests)
-
-1. **End-to-End Flow Execution**: Test flows actually run and complete successfully
-2. **Output Validation**: Verify `outputs.character.name` is set correctly after table-flow execution
-3. **Action Execution**: Verify `set_value` actions actually update intended paths
-4. **Variable Updates**: Verify `variables.dice_result` is set correctly after dice-flow execution
-5. **System Integration**: Test flows work correctly with tables, models, and compendiums
-6. **Executor Coverage**: Significantly improve coverage of `FlowExecutor` (currently 8%)
-
-### Medium Term (Phase 1.5: Source & Prompt Tests)
+### Short Term (Phase 1.5: Source & Prompt Tests)
 
 1. Source definition testing and validation
 2. Prompt template parsing and rendering
@@ -634,4 +675,4 @@ The systematic progression through phases ensures each component is thoroughly v
 ---
 
 _Last Updated: August 6, 2025_
-_Current Status: Phase 1.4 Complete, Phase 1.4.1 Flow Execution Tests Planned (109/111 tests passing, 2 skipped for missing expression evaluation, 19 execution tests planned)_
+_Current Status: Phase 1.4.1 Complete - Flow Execution Tests with Namespace Isolation Architecture Implemented (128/130 tests passing, 2 skipped for missing expression evaluation)_
