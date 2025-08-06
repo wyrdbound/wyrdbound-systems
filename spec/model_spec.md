@@ -167,27 +167,36 @@ attributes:
 
 ## Validations
 
-Validation rules ensure that model instances satisfy business logic constraints:
+Validation rules ensure that model instances satisfy business logic constraints. Each validation rule includes both an expression and a descriptive message:
 
 ```yaml
 validations:
-  # Simple comparisons
-  - "$current_hp <= $max_hp"
-  - "$level >= 1"
-
-  # Complex expressions
-  - "$inventory | sum('weight') <= $carrying_capacity"
-  - "$abilities.strength.score >= 3 && $abilities.strength.score <= 18"
+  - expression: "$.current_hit_points <= $.max_hit_points"
+    message: "Current HP cannot exceed maximum HP"
+  - expression: "$.level >= 1"
+    message: "Character level must be at least 1"
+  - expression: "$.inventory | sum('weight') <= $.carrying_capacity"
+    message: "Inventory weight cannot exceed carrying capacity"
+  - expression: "$.abilities.strength.score >= 3 && $.abilities.strength.score <= 18"
+    message: "Strength score must be between 3 and 18"
 ```
+
+### Validation Rule Fields
+
+Each validation rule must include:
+
+- **`expression`** (required): Boolean expression that must evaluate to true for valid instances
+- **`message`** (required): Human-readable error message displayed when validation fails
 
 ### Validation Syntax
 
-Validations use the same expression syntax as derived attributes and must evaluate to boolean results. Common patterns include:
+Validation expressions use the same syntax as derived attributes and must evaluate to boolean results. Common patterns include:
 
 - **Comparisons**: `<=`, `>=`, `<`, `>`, `==`, `!=`
 - **Logical operators**: `&&` (and), `||` (or), `!` (not)
-- **Function calls**: `sum()`, `count()`, `contains()`
-- **Attribute references**: `$attribute.path`
+- **Function calls**: `sum()`, `count()`, `contains()`, `length`
+- **Attribute references**: `$.attribute.path`
+- **Collection operations**: `| sum('property')`, `| count()`, `| max('property')`
 
 ## File Naming and Location
 
@@ -230,9 +239,12 @@ attributes:
   carrying_capacity: { type: int, derived: "$abilities.strength.score * 10" }
 
 validations:
-  - "$current_hit_points <= $max_hit_points"
-  - "$inventory | sum('weight') <= $carrying_capacity"
-  - "$level >= 1"
+  - expression: "$.current_hit_points <= $.max_hit_points"
+    message: "Current HP cannot exceed maximum HP"
+  - expression: "$.inventory | sum('weight') <= $.carrying_capacity"
+    message: "Inventory weight cannot exceed carrying capacity"
+  - expression: "$.level >= 1"
+    message: "Character level must be at least 1"
 ```
 
 ## Validation Rules

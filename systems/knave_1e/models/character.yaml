@@ -60,12 +60,12 @@ attributes:
 
   # --- inventory system ---
   inventory_capacity: { type: int, derived: "$.abilities.constitution.defense" }
-  inventory: { type: list, of: Item }
+  inventory: { type: list, of: item }
   slots_used:
     { type: int, derived: "$.inventory | map(attribute='slot_cost') | sum" }
 
 validations:
-  # Ensure current HP does not exceed max HP
-  - "$hit_points.current <= $hit_points.max"
-  # Ensure item slots do not exceed inventory capacity
-  - "$slots_used <= $inventory_capacity"
+  - expression: "$.hit_points.current <= $.hit_points.max"
+    message: "Current HP cannot exceed maximum HP"
+  - expression: "$.slots_used <= $.inventory_capacity"
+    message: "Item slots used cannot exceed inventory capacity"
