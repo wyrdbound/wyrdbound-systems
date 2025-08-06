@@ -1,0 +1,13 @@
+kind: "table"
+id: "simple_traits"
+name: "Simple Traits"
+version: "1.0"
+roll: "1d6"
+description: "Simple character traits for testing"
+entries:
+  1: "Brave"
+  2: "Clever"
+  3: "Kind"
+  4: "Strong"
+  5: "Quick"
+  6: "Wise"

@@ -43,6 +43,11 @@ roll: "2d10"       # Roll two ten-sided dice and sum them
 roll: "1d20"       # Roll one twenty-sided die
 roll: "3d6"        # Roll three six-sided dice and sum them
 
+# Custom-sided dice (any number of faces)
+roll: "1d3"        # Roll one three-sided die
+roll: "2d7"        # Roll two seven-sided dice
+roll: "1d30"       # Roll one thirty-sided die
+
 # Dice with modifiers
 roll: "1d6+3"      # Roll 1d6 and add 3
 roll: "2d4-1"      # Roll 2d4 and subtract 1
@@ -55,15 +60,14 @@ roll: "PERC"       # Alias for percentile roll
 
 ### Supported Dice Types
 
-The system supports standard tabletop RPG dice:
+The system supports any number of faces on dice, not just standard polyhedral dice:
 
-- **d4**: Four-sided die (1-4)
-- **d6**: Six-sided die (1-6)
-- **d8**: Eight-sided die (1-8)
-- **d10**: Ten-sided die (1-10)
-- **d12**: Twelve-sided die (1-12)
-- **d20**: Twenty-sided die (1-20)
-- **d100**: Percentile die (1-100)
+- **Standard RPG Dice**: d4, d6, d8, d10, d12, d20, d100
+- **Custom Dice**: Any number of faces (d2, d3, d5, d7, d13, d30, etc.)
+- **Multiple Dice**: Any number of dice (1d6, 2d6, 10d6, etc.)
+- **Modifiers**: Addition and subtraction (+3, -2, etc.)
+
+The underlying dice engine (wyrdbound-dice) supports arbitrary face counts, so tables can use any dice expression that fits the content being generated.
 
 ## Entries
 

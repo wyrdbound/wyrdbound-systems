@@ -1,0 +1,23 @@
+kind: "table"
+id: "complex_results"
+name: "Complex Results"
+version: "1.0"
+roll: "1d4"
+description: "Table with complex object entries"
+entries:
+  1:
+    name: "Magic Sword"
+    type: "weapon"
+    power: 5
+  2:
+    name: "Healing Potion"
+    type: "consumable"
+    effect: "heal 2d4+2"
+  3:
+    name: "Gold Coins"
+    type: "currency"
+    amount: 100
+  4:
+    name: "Ancient Scroll"
+    type: "knowledge"
+    content: "Lost spell formula"

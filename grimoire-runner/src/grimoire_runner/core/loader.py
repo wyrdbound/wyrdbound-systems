@@ -251,6 +251,20 @@ class SystemLoader:
             except Exception as e:
                 logger.error(f"Failed to load table {table_file}: {e}")
 
+    def _validate_system_components(self, system: System) -> None:
+        """Validate system components that require cross-references."""
+        # Validate tables with access to system models
+        validation_errors = []
+        
+        for table_id, table in system.tables.items():
+            table_errors = table.validate_with_system(system)
+            for error in table_errors:
+                validation_errors.append(f"Table '{table_id}': {error}")
+        
+        if validation_errors:
+            error_msg = "System validation failed:\n" + "\n".join(validation_errors)
+            raise ValueError(error_msg)
+
     def _load_flows(self, system_path: Path, system: System) -> None:
         """Load flow definitions."""
         flows_dir = system_path / "flows"

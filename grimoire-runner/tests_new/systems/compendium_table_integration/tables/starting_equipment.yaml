@@ -1,0 +1,12 @@
+kind: "table"
+id: "starting_equipment"
+name: "Starting Equipment"
+version: "1.0"
+roll: "1d4"
+description: "Random starting equipment selection"
+entry_type: "gear"
+entries:
+  1: "dagger"
+  2: "rope"
+  3: "torch"
+  4: "leather_armor"

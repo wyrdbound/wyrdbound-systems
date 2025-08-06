@@ -1,0 +1,16 @@
+id: "weapon"
+kind: "model"
+name: "Weapon"
+description: "Simple weapon model for compendium testing"
+attributes:
+  name:
+    type: str
+  damage:
+    type: str
+  weapon_type:
+    type: str
+    enum: ["melee", "ranged"]
+  cost:
+    type: int
+    range: "0.."
+    default: 0

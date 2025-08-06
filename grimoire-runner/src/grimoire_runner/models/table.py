@@ -103,9 +103,52 @@ class TableDefinition:
 
         # Validate roll expression format (basic check)
         if self.roll:
-            if not any(
-                d in self.roll for d in ["d4", "d6", "d8", "d10", "d12", "d20", "d100"]
-            ):
-                errors.append(f"Invalid roll expression: '{self.roll}'")
+            # Use wyrdbound_dice to validate the expression
+            try:
+                from wyrdbound_dice import roll
+                # Try to parse the expression (don't execute, just validate syntax)
+                # We'll use a simple test roll to validate the expression is parseable
+                roll(self.roll)
+            except Exception as e:
+                errors.append(f"Invalid roll expression: '{self.roll}' ({str(e)})")
 
+        # Basic entry_type validation (without model details)
+        if self.entry_type != "str":
+            for entry_key, entry_value in self.entries.items():
+                # Check for obvious type mismatches
+                if self.entry_type not in ["str", "int", "float", "bool"]:
+                    # entry_type appears to reference a model, entries should be dicts
+                    if not isinstance(entry_value, dict):
+                        errors.append(
+                            f"Entry '{entry_key}' has entry_type '{self.entry_type}' but contains "
+                            f"{type(entry_value).__name__} instead of model instance (dict)"
+                        )
+
+        return errors
+
+    def validate_with_system(self, system) -> list[str]:
+        """Validate the table definition with access to system models."""
+        errors = self.validate()  # Start with basic validation
+        
+        # If entry_type is specified and not the default "str", validate entries against the model
+        if self.entry_type != "str" and self.entry_type in system.models:
+            model = system.models[self.entry_type]
+            
+            # Validate each entry against the model
+            for entry_key, entry_value in self.entries.items():
+                if isinstance(entry_value, dict):
+                    # Entry is a dictionary - validate it as a model instance
+                    entry_errors = model.validate_instance(entry_value)
+                    for error in entry_errors:
+                        errors.append(f"Entry '{entry_key}': {error}")
+                else:
+                    # Entry is not a dictionary - this is a type mismatch
+                    errors.append(
+                        f"Entry '{entry_key}' has entry_type '{self.entry_type}' but contains "
+                        f"{type(entry_value).__name__} instead of model instance"
+                    )
+        elif self.entry_type != "str" and self.entry_type not in system.models:
+            # entry_type references a model that doesn't exist
+            errors.append(f"entry_type '{self.entry_type}' references unknown model")
+        
         return errors

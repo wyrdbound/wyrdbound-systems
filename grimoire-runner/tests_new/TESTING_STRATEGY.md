@@ -133,19 +133,69 @@ tests_new/
 
 ---
 
-### 🔄 Phase 1.3: Compendium & Table Tests
+### ✅ Phase 1.3: Compendium & Table Tests
 
-**Status**: PLANNED
-
+**Status**: COMPLETED (21/21 tests passing)  
 **Objective**: Test compendium and table definition loading and validation
 
-**Planned Coverage**:
+#### Test Structure:
 
-- Compendium definition structure and metadata
-- Table definition loading and validation
-- Cross-references between models and compendiums
-- Data integrity and consistency checks
-- Complex table structures and relationships
+- test_compendium_table_definitions.py ✅
+  - Basic compendium loading and structure tests ✅
+  - Basic table loading and structure tests ✅
+  - Model validation for compendium entries ✅
+  - Cross-references between models and compendiums ✅
+  - Table entry type validation and cross-references ✅
+  - Error handling for malformed definitions ✅
+
+#### Focus Areas:
+
+- **Compendium Loading**: ✅ Test compendium definition loading and validation
+- **Table Loading**: ✅ Test table definition loading and validation
+- **Model Integration**: ✅ Ensure compendium entries validate against their models
+- **Cross-References**: ✅ Validate references between tables and compendiums
+- **Error Handling**: ✅ Test malformed compendium and table definitions
+
+#### Test Coverage:
+
+1. **Basic Compendium Loading** (3 tests): System loading, structure validation, entry format
+2. **Basic Table Loading** (4 tests): System loading, structure validation, range entries, complex objects
+3. **Compendium Validation** (3 tests): Model validation, optional attributes, validation methods
+4. **Table Validation** (2 tests): Validation methods, roll expression validation
+5. **Integration Testing** (3 tests): Cross-system loading, entry_type references, cross-validation
+6. **Error Handling** (4 tests): Entry_type validation gap, missing models, invalid expressions, empty entries
+7. **Utility Functions** (2 tests): Programmatic creation helpers
+
+#### Key Achievements:
+
+- **Compendium System**: Full loading and validation of content collections
+- **Table System**: Complete table loading with range and complex entry support
+- **Model Integration**: Validated compendium entries against model constraints
+- **Cross-References**: Tested table-compendium integration with entry_type validation
+- **Robust Error Handling**: Comprehensive error case coverage
+- **Test Infrastructure**: Created reusable minimal test systems for compendium/table testing
+
+#### Architectural Decisions:
+
+- **Minimal Test Systems**: Created three focused test systems (compendium_test, table_test, compendium_table_integration)
+- **Separation of Concerns**: Isolated compendium testing from table testing for clarity
+- **Integration Testing**: Dedicated system for testing cross-references between components
+- **Programmatic Creation**: Utility tests for creating test data structures
+
+#### Lessons Learned:
+
+- CompendiumDefinition and TableDefinition classes handle complex validation scenarios well
+- Cross-reference validation between tables and compendiums works as expected (entry IDs match)
+- Roll expression validation provides helpful error messages for invalid dice expressions
+- **DESIGN GAP FIXED**: `entry_type` field in tables now properly validates entry content
+  - Previously, tables with `entry_type: "gear"` could contain string references without validation
+  - TDD approach was used to implement proper entry_type validation
+  - `TableDefinition.validate()` now detects basic type mismatches (strings/ints vs. model instances)
+  - `TableDefinition.validate_with_system()` provides comprehensive model validation when system context is available
+  - Fixed dice validation to use wyrdbound_dice library instead of restrictive regex patterns
+  - **Result**: Enhanced type safety and better error messages for table definition issues
+
+_Next: Flow Definition Tests_
 
 ---
 
@@ -197,11 +247,12 @@ tests_new/
 
 ### Overall Progress
 
-- **Total Tests**: 35 passing
+- **Total Tests**: 57 passing
 - **Phase 1.1**: 14/14 tests ✅
 - **Phase 1.2**: 21/21 tests ✅
-- **Code Coverage**: Core loading and model functionality
-- **Architecture Validation**: AttributeDefinition vs dictionary approach resolved
+- **Phase 1.3**: 21/21 tests ✅
+- **Code Coverage**: Core loading, model, compendium, and table functionality
+- **Architecture Validation**: Entry type validation implemented with TDD approach
 
 ### Test Distribution
 
@@ -209,8 +260,9 @@ tests_new/
 | ----------------- | ----- | ----------- |
 | System Loading    | 14    | ✅ Complete |
 | Model Definitions | 21    | ✅ Complete |
-| Compendiums       | 0     | 🔄 Planned  |
-| Tables            | 0     | 🔄 Planned  |
+| Compendiums       | 11    | ✅ Complete |
+| Tables            | 10    | ✅ Complete |
+| Entry Type Fix    | 1     | ✅ Complete |
 | Flows             | 0     | 🔄 Planned  |
 | Sources/Prompts   | 0     | 🔄 Planned  |
 | Integration       | 0     | 🔄 Planned  |
@@ -279,4 +331,4 @@ The systematic progression through phases ensures each component is thoroughly v
 ---
 
 _Last Updated: August 5, 2025_
-_Current Status: Phase 1.2 Complete (35/35 tests passing)_
+_Current Status: Phase 1.3 Complete with Entry Type Validation Fix (57/57 tests passing)_

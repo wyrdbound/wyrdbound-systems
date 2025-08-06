@@ -1,0 +1,5 @@
+id: "table_test"
+kind: "system"
+name: "Table Test System"
+description: "Test system for table loading and validation"
+version: "1.0"

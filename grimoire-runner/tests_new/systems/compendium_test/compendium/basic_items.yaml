@@ -1,0 +1,19 @@
+kind: "compendium"
+id: "basic_items"
+name: "Basic Items"
+model: "basic_item"
+entries:
+  rope:
+    name: "Rope (50ft)"
+    cost: 200
+    weight: 10.0
+    description: "Fifty feet of hemp rope"
+  torch:
+    name: "Torch"
+    cost: 10
+    weight: 1.0
+    description: "A wooden torch with pitch wrapping"
+  rations:
+    name: "Trail Rations"
+    cost: 50
+    weight: 2.0
