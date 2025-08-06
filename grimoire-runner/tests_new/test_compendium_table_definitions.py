@@ -166,6 +166,26 @@ class TestCompendiumValidation:
             # Check enum constraints
             assert entry_data["weapon_type"] in ["melee", "ranged"]
 
+    @pytest.mark.skip(reason="ModelDefinition.validate_instance() with custom validation not yet implemented")
+    def test_compendium_model_validation_with_validation_engine(self, test_systems_dir):
+        """TODO: Test compendium entries using proper model validation engine."""
+        loader = SystemLoader()
+        system = loader.load_system(test_systems_dir / "compendium_test")
+        
+        # Get compendium and model
+        weapons_compendium = system.compendiums["basic_weapons"]
+        weapon_model = system.models["weapon"]
+        
+        # When model validation is fully implemented, this should work:
+        for entry_id, entry_data in weapons_compendium.entries.items():
+            # This should validate the entry against the weapon model
+            # errors = weapon_model.validate_instance(entry_data)
+            # assert len(errors) == 0, f"Entry '{entry_id}' should be valid: {errors}"
+            pass
+        
+        # For now, this test documents the expected behavior
+        assert True, "Proper model validation not yet implemented"
+
     def test_optional_attributes_in_compendium(self, test_systems_dir):
         """Test that optional attributes are handled correctly."""
         loader = SystemLoader()

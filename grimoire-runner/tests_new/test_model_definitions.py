@@ -297,6 +297,146 @@ class TestValidationRules:
         assert name_validation.message == "Character name cannot be empty"
 
 
+class TestValidationExecution:
+    """Test execution of validation rules on model instances."""
+
+    def test_validation_success_with_valid_instance(self, test_systems_dir):
+        """Test that valid instances pass basic validation (custom validation not yet implemented)."""
+        loader = SystemLoader()
+        system = loader.load_system(test_systems_dir / "model_validations")
+        character_model = system.models["validated_character"]
+        
+        # Create a valid character instance
+        valid_character = {
+            "name": "Test Character",
+            "max_hit_points": 20,
+            "current_hit_points": 15,
+            "armor_class_base": 12,
+            "dexterity_modifier": 2
+        }
+        
+        # Validate the instance (basic validation only - custom validation TODO)
+        errors = character_model.validate_instance(valid_character)
+        assert len(errors) == 0, f"Valid instance should not have errors: {errors}"
+
+    def test_validation_basic_type_checking(self, test_systems_dir):
+        """Test that basic type and range validation works."""
+        loader = SystemLoader()
+        system = loader.load_system(test_systems_dir / "model_validations")
+        character_model = system.models["validated_character"]
+        
+        # Create character with invalid type (string instead of int for HP)
+        invalid_character = {
+            "name": "Test Character",
+            "max_hit_points": "twenty",  # Invalid: should be int
+            "current_hit_points": 15,
+            "armor_class_base": 12,
+            "dexterity_modifier": 2
+        }
+        
+        # Validate the instance
+        errors = character_model.validate_instance(invalid_character)
+        assert len(errors) > 0, "Type mismatch should cause validation errors"
+        
+        # Check that the error mentions type validation
+        error_text = " ".join(errors)
+        assert "integer" in error_text.lower()
+
+    def test_derived_attributes_not_required(self, test_systems_dir):
+        """Test that derived attributes are not required in instance data."""
+        loader = SystemLoader()
+        system = loader.load_system(test_systems_dir / "model_validations")
+        character_model = system.models["validated_character"]
+        
+        # Create character without providing derived attributes
+        character_without_derived = {
+            "name": "Test Character",
+            "max_hit_points": 20,
+            "current_hit_points": 15,
+            "armor_class_base": 12,
+            "dexterity_modifier": 2
+            # Note: armor_class and is_unconscious are derived, not provided
+        }
+        
+        # Should not require derived attributes to be provided
+        errors = character_model.validate_instance(character_without_derived)
+        assert len(errors) == 0, f"Derived attributes should not be required: {errors}"
+
+    @pytest.mark.skip(reason="Custom validation rule execution not yet implemented - see TODO in ModelDefinition.validate_instance()")
+    def test_custom_validation_rules_not_yet_implemented(self, test_systems_dir):
+        """TODO: Custom validation rule execution is not yet implemented."""
+        loader = SystemLoader()
+        system = loader.load_system(test_systems_dir / "model_validations")
+        character_model = system.models["validated_character"]
+        
+        # Verify validation rules are loaded correctly
+        assert len(character_model.validations) == 2
+        assert character_model.validations[0].expression == "$.current_hit_points <= $.max_hit_points"
+        assert character_model.validations[1].expression == "$.name.length > 0"
+        
+        # Create character that SHOULD fail custom validation (current_hp > max_hp)
+        invalid_character = {
+            "name": "Test Character",
+            "max_hit_points": 10,
+            "current_hit_points": 15,  # This SHOULD fail custom validation
+            "armor_class_base": 12,
+            "dexterity_modifier": 2
+        }
+        
+        # When expression evaluation is implemented, this should fail validation
+        errors = character_model.validate_instance(invalid_character)
+        
+        # This test is skipped because custom validation is not implemented yet
+        # When implemented, this assertion should be changed to:
+        # assert len(errors) > 0, "Should fail validation: current_hp > max_hp"
+        # assert "Current HP cannot exceed maximum HP" in " ".join(errors)
+        
+        # For now, this documents the expected behavior when implemented
+        assert len(errors) == 0, "Currently passes because custom validation not implemented"
+
+    @pytest.mark.skip(reason="Derived attribute calculation not yet implemented - see TODO in ModelDefinition.validate_instance()")
+    def test_derived_attribute_calculation_not_yet_implemented(self, test_systems_dir):
+        """TODO: Derived attribute calculation is not yet implemented."""
+        loader = SystemLoader()
+        system = loader.load_system(test_systems_dir / "model_validations")
+        character_model = system.models["validated_character"]
+        
+        # Create character with base attributes but no derived attributes
+        character_data = {
+            "name": "Test Character",
+            "max_hit_points": 20,
+            "current_hit_points": 15,
+            "armor_class_base": 12,
+            "dexterity_modifier": 2
+            # armor_class and is_unconscious should be calculated automatically
+        }
+        
+        # When derived attribute calculation is implemented:
+        # calculated_instance = character_model.calculate_derived_attributes(character_data)
+        # assert calculated_instance["armor_class"] == 14  # 12 + 2
+        # assert calculated_instance["is_unconscious"] == False  # current_hp > 0
+        
+        # For now, this test documents the expected behavior
+        assert "armor_class" not in character_data, "Derived attributes not yet calculated"
+        assert "is_unconscious" not in character_data, "Derived attributes not yet calculated"
+
+    def test_validation_rules_parsing_works(self, test_systems_dir):
+        """Test that validation rules are correctly parsed from YAML."""
+        loader = SystemLoader()
+        system = loader.load_system(test_systems_dir / "model_validations")
+        character_model = system.models["validated_character"]
+        
+        # Check first validation rule
+        hp_validation = character_model.validations[0]
+        assert hp_validation.expression == "$.current_hit_points <= $.max_hit_points"
+        assert hp_validation.message == "Current HP cannot exceed maximum HP"
+        
+        # Check second validation rule  
+        name_validation = character_model.validations[1]
+        assert name_validation.expression == "$.name.length > 0"
+        assert name_validation.message == "Character name cannot be empty"
+
+
 class TestModelLoadingEdgeCases:
     """Test edge cases and error handling in model loading."""
 

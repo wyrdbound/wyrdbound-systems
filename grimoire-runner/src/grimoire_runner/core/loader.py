@@ -189,13 +189,17 @@ class SystemLoader:
             if isinstance(attr_data, dict):
                 if "type" in attr_data:
                     # This is an attribute definition
+                    # Derived attributes should not be required since they're calculated
+                    is_derived = "derived" in attr_data
+                    required = attr_data.get("required", not is_derived)
+                    
                     parsed_attrs[attr_name] = AttributeDefinition(
                         type=attr_data["type"],
                         default=attr_data.get("default"),
                         range=attr_data.get("range"),
                         enum=attr_data.get("enum"),
                         derived=attr_data.get("derived"),
-                        required=attr_data.get("required", True),
+                        required=required,
                         description=attr_data.get("description"),
                         of=attr_data.get("of"),
                         optional=attr_data.get("optional"),

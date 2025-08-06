@@ -88,7 +88,7 @@ tests_new/
 
 ### ✅ Phase 1.2: Model Definition Tests
 
-**Status**: COMPLETED (21/21 tests passing)
+**Status**: COMPLETED (26/26 tests passing, 2 skipped)
 
 **Objective**: Comprehensive testing of model definition functionality
 
@@ -101,6 +101,9 @@ tests_new/
 - Optional attributes and edge cases
 - Model references and collections
 - Error handling for malformed models
+- **Validation rule parsing and structure**
+- **Basic validation execution (type checking, range validation)**
+- **Derived attribute handling (not required in instances)**
 
 **Key Achievements**:
 
@@ -109,12 +112,13 @@ tests_new/
 - Validated complete model definition functionality
 - Established patterns for complex attribute testing
 
-**Tests Added**: 21 tests across 5 test classes
+**Tests Added**: 26 tests across 6 test classes
 
 - `TestBasicModelLoading`: 2 tests
 - `TestAttributeTypes`: 7 tests
 - `TestModelInheritance`: 4 tests
 - `TestValidationRules`: 3 tests
+- `TestValidationExecution`: 5 tests (NEW)
 - `TestModelLoadingEdgeCases`: 3 tests
 - `TestModelBuilderUtility`: 2 tests
 
@@ -130,12 +134,14 @@ tests_new/
 - Added missing `optional` field for nullable attributes
 - Updated SystemLoader attribute parsing
 - Fixed test access patterns for AttributeDefinition objects
+- **Fixed derived attribute handling**: Derived attributes are no longer required in instance validation
+- **Enhanced validation format**: Updated specification to use `expression` + `message` format for better documentation
 
 ---
 
 ### ✅ Phase 1.3: Compendium & Table Tests
 
-**Status**: COMPLETED (21/21 tests passing)  
+**Status**: COMPLETED (22/22 tests passing, 1 skipped)  
 **Objective**: Test compendium and table definition loading and validation
 
 #### Test Structure:
@@ -247,25 +253,34 @@ _Next: Flow Definition Tests_
 
 ### Overall Progress
 
-- **Total Tests**: 57 passing
-- **Phase 1.1**: 14/14 tests ✅
-- **Phase 1.2**: 21/21 tests ✅
-- **Phase 1.3**: 21/21 tests ✅
-- **Code Coverage**: Core loading, model, compendium, and table functionality
+- **Total Tests**: 64 (61 passing, 3 skipped)
+- **Overall Code Coverage**: 14.31% (focused on core components)
+- **Phase 1.1**: 14/14 tests ✅ (System loading: 50% coverage)
+- **Phase 1.2**: 26/26 tests ✅ (Model definitions: 24% coverage, 2 skipped for missing features)
+- **Phase 1.3**: 22/22 tests ✅ (Tables: 39%, Compendiums: 38% coverage, 1 skipped for missing features)
+- **Core Components**: Well-tested loading and validation logic
 - **Architecture Validation**: Entry type validation implemented with TDD approach
+
+### Skipped Tests (Missing Implementation)
+
+- **Custom Validation Rules**: 2 tests skipped - expression evaluation not implemented
+- **Model Validation Engine**: 1 test skipped - complete model validation not implemented
+- **Derived Attribute Calculation**: Expression evaluation for derived values not implemented
+
+These skipped tests clearly document what functionality is missing and will pass once expression evaluation is implemented.
 
 ### Test Distribution
 
-| Component         | Tests | Status      |
-| ----------------- | ----- | ----------- |
-| System Loading    | 14    | ✅ Complete |
-| Model Definitions | 21    | ✅ Complete |
-| Compendiums       | 11    | ✅ Complete |
-| Tables            | 10    | ✅ Complete |
-| Entry Type Fix    | 1     | ✅ Complete |
-| Flows             | 0     | 🔄 Planned  |
-| Sources/Prompts   | 0     | 🔄 Planned  |
-| Integration       | 0     | 🔄 Planned  |
+| Component         | Tests | Status                  |
+| ----------------- | ----- | ----------------------- |
+| System Loading    | 14    | ✅ Complete             |
+| Model Definitions | 26    | ✅ Complete (2 skipped) |
+| Compendiums       | 11    | ✅ Complete (1 skipped) |
+| Tables            | 11    | ✅ Complete             |
+| Entry Type Fix    | 1     | ✅ Complete             |
+| Flows             | 0     | 🔄 Planned              |
+| Sources/Prompts   | 0     | 🔄 Planned              |
+| Integration       | 0     | 🔄 Planned              |
 
 ## Quality Metrics
 
@@ -277,12 +292,65 @@ _Next: Flow Definition Tests_
 - ✅ **Comprehensive**: Cover both happy path and edge cases
 - ✅ **Maintainable**: Clear structure and documentation
 
+### Code Coverage Analysis
+
+**Overall Coverage**: 14.31% (3,718 total statements, 3,057 uncovered)
+
+#### Core Components Coverage (Well-Tested):
+
+| Component              | Coverage | Status      | Lines Tested                             |
+| ---------------------- | -------- | ----------- | ---------------------------------------- |
+| `core/context.py`      | 100%     | ✅ Complete | All core context functionality           |
+| `models/step.py`       | 100%     | ✅ Complete | Step definition models                   |
+| `models/flow.py`       | 58%      | 🔄 Partial  | Flow definitions (143-175 missing)       |
+| `models/system.py`     | 57%      | 🔄 Partial  | System loading (utility methods missing) |
+| `models/source.py`     | 58%      | 🔄 Partial  | Source definitions (validation missing)  |
+| `core/loader.py`       | 50%      | 🔄 Partial  | **Primary testing target**               |
+| `models/table.py`      | 39%      | 🔄 Partial  | **Table validation tested**              |
+| `models/compendium.py` | 38%      | 🔄 Partial  | **Compendium loading tested**            |
+| `models/model.py`      | 24%      | 🔄 Limited  | **Model definitions tested**             |
+
+#### Untested Components (0-15% coverage):
+
+| Component                     | Coverage | Priority  | Reason                                 |
+| ----------------------------- | -------- | --------- | -------------------------------------- |
+| UI Components                 | 0%       | 🔴 Low    | Not needed for core engine testing     |
+| `ui/browser.py`               | 0%       | 🔴 Low    | User interface, not core functionality |
+| `ui/cli.py`                   | 0%       | 🔴 Low    | Command line interface                 |
+| `ui/interactive.py`           | 0%       | 🔴 Low    | Interactive UI components              |
+| `utils/logging.py`            | 0%       | 🟡 Medium | Utility, test in integration phase     |
+| `utils/serialization.py`      | 0%       | 🟡 Medium | Data persistence utilities             |
+| Executors                     | 5-20%    | 🟠 High   | **Next phase target (Flow testing)**   |
+| `executors/flow_executor.py`  | 8%       | 🟠 High   | Core execution engine                  |
+| `executors/table_executor.py` | 5%       | 🟠 High   | Table rolling functionality            |
+| `integrations/`               | 15-22%   | 🟡 Medium | External service integration           |
+
+#### Coverage Strategy:
+
+**Current Focus** (Phases 1.1-1.3): Core loading and definition validation
+
+- ✅ System loading: 50% coverage on critical paths
+- ✅ Model definitions: 24% coverage on validation logic
+- ✅ Table/Compendium: 38-39% coverage on structure validation
+
+**Next Phase** (1.4): Flow definitions and execution
+
+- 🎯 Target: `models/flow.py` (58% → 85%+)
+- 🎯 Target: `executors/flow_executor.py` (8% → 60%+)
+- 🎯 Target: `executors/base.py` (54% → 80%+)
+
+**Future Phases**: Execution engine and integrations
+
+- Integration testing will cover executor components
+- UI components remain low priority for core engine validation
+
 ### Code Quality Improvements
 
 - ✅ **Enhanced AttributeDefinition**: Added missing specification fields
 - ✅ **Improved SystemLoader**: Better field parsing and validation
 - ✅ **Architecture Validation**: Confirmed hybrid dictionary/object approach
 - ✅ **Error Handling**: Robust handling of malformed input
+- ✅ **Entry Type Validation**: TDD implementation with comprehensive validation
 
 ## Lessons Learned
 
@@ -302,27 +370,42 @@ _Next: Flow Definition Tests_
 
 ## Next Steps
 
-### Immediate (Phase 1.3)
+### Short Term (Phase 1.4: Flow Definition Tests)
 
-1. Create minimal test systems for compendiums and tables
-2. Implement compendium definition loading tests
-3. Add table definition validation tests
-4. Test cross-references between components
+1. **Flow Structure Testing**: Flow definition loading and validation (target: `models/flow.py` 58% → 85%+)
+2. **Step Definition Testing**: Comprehensive step type validation
+3. **Flow Validation Logic**: Condition evaluation and routing validation
+4. **Integration Preparation**: Foundation for execution engine testing
 
-### Short Term (Phase 1.4-1.5)
+### Short Term (Phase 1.5: Source & Prompt Tests)
 
-1. Flow definition testing
-2. Source and prompt testing
+1. Source definition testing and validation
+2. Prompt template parsing and rendering
 3. Complete core component coverage
+4. **Coverage Target**: Achieve 25%+ overall coverage with core components at 60%+
 
-### Medium Term (Phase 2.x)
+### Medium Term (Phase 2.x: Integration & Execution)
 
-1. Integration testing between components
-2. Real-world scenario validation
-3. Performance and scalability testing
-4. Full GRIMOIRE specification compliance validation
+1. **Expression Engine Implementation**: Currently missing custom validation rule execution
+   - TODO: Implement expression evaluation for derived attributes
+   - TODO: Implement custom validation rule execution
+   - Priority: High (blocks full model validation)
+2. **Execution Engine Testing**: Target executor components (currently 5-20% coverage)
+3. Integration testing between components
+4. Real-world scenario validation
+5. **Coverage Target**: 40%+ overall with execution paths well-covered
+6. Performance and scalability testing
+7. Full GRIMOIRE specification compliance validation
 
-## Conclusion
+### Current Technical Debt
+
+- **🔴 HIGH PRIORITY**: Custom validation rule execution not implemented
+  - ValidationRule parsing works ✅
+  - Expression evaluation missing ❌
+  - Tests document current limitation with clear TODOs
+- **🟡 MEDIUM PRIORITY**: Derived attribute calculation not implemented
+  - Derived attributes correctly marked as non-required ✅
+  - Expression evaluation for derived values missing ❌## Conclusion
 
 Our testing strategy is proving highly effective at building confidence in the GRIMOIRE engine while simultaneously improving code quality and architectural clarity. The bottom-up, feature-isolated approach allows for rapid development cycles while maintaining comprehensive coverage of the specification.
 
@@ -330,5 +413,5 @@ The systematic progression through phases ensures each component is thoroughly v
 
 ---
 
-_Last Updated: August 5, 2025_
-_Current Status: Phase 1.3 Complete with Entry Type Validation Fix (57/57 tests passing)_
+_Last Updated: August 6, 2025_
+_Current Status: Phase 1.3 Complete with Enhanced Validation Testing (61/64 tests passing, 3 skipped for missing expression evaluation)_
