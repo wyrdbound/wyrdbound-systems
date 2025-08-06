@@ -136,6 +136,7 @@ tests_new/
 - Fixed test access patterns for AttributeDefinition objects
 - **Fixed derived attribute handling**: Derived attributes are no longer required in instance validation
 - **Enhanced validation format**: Updated specification to use `expression` + `message` format for better documentation
+- **DISCOVERED: Derived attributes are fully implemented**: Investigation revealed that derived attributes work correctly via `DerivedFieldManager` and `ObservableValue` classes with automatic reactive updates
 
 ---
 
@@ -253,7 +254,7 @@ _Next: Flow Definition Tests_
 
 ### Overall Progress
 
-- **Total Tests**: 64 (61 passing, 3 skipped)
+- **Total Tests**: 64 (62 passing, 2 skipped)
 - **Overall Code Coverage**: 14.31% (focused on core components)
 - **Phase 1.1**: 14/14 tests ✅ (System loading: 50% coverage)
 - **Phase 1.2**: 26/26 tests ✅ (Model definitions: 24% coverage, 2 skipped for missing features)
@@ -263,11 +264,12 @@ _Next: Flow Definition Tests_
 
 ### Skipped Tests (Missing Implementation)
 
-- **Custom Validation Rules**: 2 tests skipped - expression evaluation not implemented
+- **Custom Validation Rules**: 1 test skipped - expression evaluation not implemented
 - **Model Validation Engine**: 1 test skipped - complete model validation not implemented
-- **Derived Attribute Calculation**: Expression evaluation for derived values not implemented
 
 These skipped tests clearly document what functionality is missing and will pass once expression evaluation is implemented.
+
+**IMPORTANT CLARIFICATION**: Derived attributes ARE fully implemented and working in the execution engine via `DerivedFieldManager` and `ObservableValue` classes. The confusion comes from the fact that `ModelDefinition` is for schema validation only - derived attribute calculation happens during flow execution, not during model validation.
 
 ### Test Distribution
 
@@ -403,9 +405,11 @@ These skipped tests clearly document what functionality is missing and will pass
   - ValidationRule parsing works ✅
   - Expression evaluation missing ❌
   - Tests document current limitation with clear TODOs
-- **🟡 MEDIUM PRIORITY**: Derived attribute calculation not implemented
-  - Derived attributes correctly marked as non-required ✅
-  - Expression evaluation for derived values missing ❌## Conclusion
+- **✅ DERIVED ATTRIBUTES ARE FULLY IMPLEMENTED**: Derived attribute calculation works correctly
+  - DerivedFieldManager and ObservableValue classes fully functional ✅
+  - Expression evaluation works in flow execution context ✅
+  - Only missing expression evaluation in ModelDefinition validation context ❌
+  - ModelDefinition is for schema validation only - derived calculation happens in execution engine## Conclusion
 
 Our testing strategy is proving highly effective at building confidence in the GRIMOIRE engine while simultaneously improving code quality and architectural clarity. The bottom-up, feature-isolated approach allows for rapid development cycles while maintaining comprehensive coverage of the specification.
 
@@ -414,4 +418,4 @@ The systematic progression through phases ensures each component is thoroughly v
 ---
 
 _Last Updated: August 6, 2025_
-_Current Status: Phase 1.3 Complete with Enhanced Validation Testing (61/64 tests passing, 3 skipped for missing expression evaluation)_
+_Current Status: Phase 1.3 Complete with Enhanced Validation Testing (62/64 tests passing, 2 skipped for missing expression evaluation)_
