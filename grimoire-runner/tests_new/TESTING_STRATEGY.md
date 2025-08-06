@@ -331,6 +331,94 @@ _Next: Flow Definition Tests_
 
 ---
 
+### 🔄 Phase 1.4.1: Flow Execution Tests
+
+**Status**: PLANNED
+
+**Objective**: Test actual flow execution and output validation (building on Phase 1.4's definition testing)
+
+#### Identified Gap:
+
+Phase 1.4 successfully tested **flow definition structure** (parsing, validation, cross-references) but revealed a critical gap: **we don't test actual flow execution**. Our current tests validate that flows are defined correctly but don't verify that:
+
+- ✅ Flows can be defined and parsed correctly
+- ❌ **Missing**: Flows actually execute and produce correct outputs
+- ❌ **Missing**: Actions like `set_value` actually update the intended paths
+- ❌ **Missing**: Table rolls actually select entries from tables
+- ❌ **Missing**: Variables are updated correctly during execution
+
+#### Planned Test Coverage:
+
+1. **Flow Execution** (4 tests): Run flows end-to-end and verify successful completion
+
+   - Basic flow execution with simple completion steps
+   - Dice flow execution with proper variable updates
+   - Table flow execution with output value setting
+   - Choice flow execution with conditional branching
+
+2. **Output Validation** (3 tests): Verify outputs are set correctly after execution
+
+   - `outputs.character.name` is set correctly after table-flow execution
+   - `outputs.character.class` is set correctly after choice-flow execution
+   - Multiple outputs are handled correctly in complex flows
+
+3. **Variable Updates** (3 tests): Verify variables are updated during execution
+
+   - `variables.dice_result` is set correctly after dice-flow execution
+   - `variables.ability_scores` are populated correctly after dice sequence
+   - Variables persist across multiple steps in a flow
+
+4. **Action Execution** (4 tests): Verify actions perform their intended operations
+
+   - `set_value` actions update paths correctly
+   - Multiple actions in a single step execute in order
+   - Template rendering works correctly in action values
+   - Error handling for invalid paths or values
+
+5. **Step Integration** (3 tests): Verify steps work correctly with system components
+
+   - Table roll steps actually select entries from loaded tables
+   - Results match expected table entry types and formats
+   - Cross-references between flows and tables work during execution
+
+6. **Execution Context** (2 tests): Verify proper execution environment setup
+   - Input parameters are correctly passed to flow execution
+   - Execution context maintains proper state throughout flow
+
+#### Technical Requirements:
+
+- **FlowExecutor Integration**: Use the existing `FlowExecutor` class (currently at 8% coverage)
+- **Execution Context Setup**: Create proper execution contexts with inputs and variables
+- **Result Capture**: Run flows and capture their final state for validation
+- **Integration Testing**: Ensure executors work correctly with loaded system components
+
+#### Focus Areas:
+
+- **End-to-End Validation**: ✅ Bridge the gap between definition and execution testing
+- **Output Verification**: ✅ Ensure flows produce expected results in practice
+- **Action Validation**: ✅ Verify that step actions actually perform their intended operations
+- **System Integration**: ✅ Test that flows work correctly with tables, models, and compendiums
+- **Error Handling**: ✅ Validate execution error scenarios and recovery
+
+#### Expected Benefits:
+
+- **Complete Flow Testing**: Bridge definition testing with actual execution validation
+- **Execution Engine Coverage**: Significantly improve coverage of executor components
+- **Real-World Validation**: Ensure flows work as intended, not just parse correctly
+- **Integration Confidence**: Validate that all system components work together during execution
+- **Regression Prevention**: Catch execution-related issues that definition tests can't detect
+
+#### Implementation Strategy:
+
+1. **Build on Phase 1.4**: Use existing flow_test system and flow definitions
+2. **Executor Integration**: Focus on `FlowExecutor` and related execution components
+3. **Incremental Testing**: Start with simple flows and build to complex scenarios
+4. **Comprehensive Validation**: Test both success paths and error conditions
+
+**Dependency**: Phase 1.4 (Flow Definition Tests) - ✅ COMPLETED
+
+---
+
 ### 🔄 Phase 1.5: Source & Prompt Tests
 
 **Status**: PLANNED
@@ -370,6 +458,7 @@ _Next: Flow Definition Tests_
 - **Phase 1.3**: 22/22 tests ✅ (Tables: 39%, Compendiums: 38% coverage, 1 skipped for missing features)
 - **Phase 1.3.1**: 19/19 tests ✅ (Enhanced table entry types with comprehensive functionality)
 - **Phase 1.4**: 26/26 tests ✅ (Flow definitions with comprehensive step type coverage)
+- **Phase 1.4.1**: 0/19 tests 🔄 (Flow execution testing planned)
 - **Core Components**: Well-tested loading and validation logic
 - **Architecture Validation**: Entry type validation implemented with TDD approach
 - **Advanced Features**: Table entry type system with type overrides and generation support
@@ -395,6 +484,7 @@ These skipped tests clearly document what functionality is missing and will pass
 | Entry Type Fix       | 1     | ✅ Complete             |
 | Enhanced Entry Types | 19    | ✅ Complete             |
 | Flow Definitions     | 26    | ✅ Complete             |
+| Flow Execution       | 19    | 🔄 Planned              |
 | Sources/Prompts      | 0     | 🔄 Planned              |
 | Integration          | 0     | 🔄 Planned              |
 
@@ -496,7 +586,16 @@ These skipped tests clearly document what functionality is missing and will pass
 3. **Flow Validation Logic**: ✅ Condition evaluation and routing validation completed
 4. **Integration Preparation**: ✅ Foundation for execution engine testing established
 
-### Short Term (Phase 1.5: Source & Prompt Tests)
+### Short Term (Phase 1.4.1: Flow Execution Tests)
+
+1. **End-to-End Flow Execution**: Test flows actually run and complete successfully
+2. **Output Validation**: Verify `outputs.character.name` is set correctly after table-flow execution
+3. **Action Execution**: Verify `set_value` actions actually update intended paths
+4. **Variable Updates**: Verify `variables.dice_result` is set correctly after dice-flow execution
+5. **System Integration**: Test flows work correctly with tables, models, and compendiums
+6. **Executor Coverage**: Significantly improve coverage of `FlowExecutor` (currently 8%)
+
+### Medium Term (Phase 1.5: Source & Prompt Tests)
 
 1. Source definition testing and validation
 2. Prompt template parsing and rendering
@@ -535,4 +634,4 @@ The systematic progression through phases ensures each component is thoroughly v
 ---
 
 _Last Updated: August 6, 2025_
-_Current Status: Phase 1.4 Complete with Flow Definition Tests (109/111 tests passing, 2 skipped for missing expression evaluation)_
+_Current Status: Phase 1.4 Complete, Phase 1.4.1 Flow Execution Tests Planned (109/111 tests passing, 2 skipped for missing expression evaluation, 19 execution tests planned)_
