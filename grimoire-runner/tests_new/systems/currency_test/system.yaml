@@ -1,0 +1,23 @@
+id: "currency_test"
+kind: "system"
+name: "Currency Test System"
+description: "System for testing currency mechanics"
+version: "1.0"
+currency:
+  base_unit: "copper"
+  denominations:
+    cp:
+      name: "copper"
+      symbol: "cp"
+      value: 1
+      weight: 0.05
+    sp:
+      name: "silver"
+      symbol: "sp"
+      value: 10
+      weight: 0.05
+    gp:
+      name: "gold"
+      symbol: "gp"
+      value: 100
+      weight: 0.05

@@ -1,0 +1,5 @@
+id: "minimal_basic"
+kind: "system"
+name: "Minimal Basic System"
+description: "Simplest possible valid GRIMOIRE system for testing basic system loading"
+version: "1.0"

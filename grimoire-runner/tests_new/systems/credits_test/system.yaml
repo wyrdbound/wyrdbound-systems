@@ -1,0 +1,11 @@
+id: "credits_test"
+kind: "system"
+name: "Credits Test System"
+description: "System for testing credits and attribution handling"
+version: "1.0"
+default_source: "test_rulebook"
+credits:
+  author: "Test Author"
+  license: "CC BY 4.0"
+  publisher: "Test Publishing"
+  source_url: "https://example.com/test-game"
