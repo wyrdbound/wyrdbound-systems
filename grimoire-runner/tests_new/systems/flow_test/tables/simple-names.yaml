@@ -1,0 +1,12 @@
+# Basic table for testing
+kind: "table"
+id: "simple-names"
+name: "Simple Names"
+roll: "1d4"
+description: "Simple names for testing"
+
+entries:
+  1: "Alice"
+  2: "Bob"
+  3: "Charlie"
+  4: "Diana"

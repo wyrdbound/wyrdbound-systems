@@ -1,0 +1,47 @@
+# Flow with player choices
+id: "choice-flow"
+type: "flow"
+name: "Player Choice Flow"
+description: "Flow demonstrating player choice mechanics"
+
+variables:
+  chosen_class: ""
+
+outputs:
+  - id: "character"
+    type: "character"
+
+steps:
+  - id: "character-class"
+    name: "Choose Character Class"
+    type: "player_choice"
+    prompt: "What class would you like to play?"
+    choices:
+      - id: "warrior"
+        label: "Warrior"
+        description: "Strong melee fighter"
+        actions:
+          - type: "set_value"
+            data:
+              path: "outputs.character.class"
+              value: "warrior"
+        next_step: "warrior-setup"
+      - id: "mage"
+        label: "Mage"
+        description: "Powerful spellcaster"
+        actions:
+          - type: "set_value"
+            data:
+              path: "outputs.character.class"
+              value: "mage"
+        next_step: "mage-setup"
+
+  - id: "warrior-setup"
+    name: "Warrior Setup"
+    type: "completion"
+    prompt: "You have chosen the path of the warrior!"
+
+  - id: "mage-setup"
+    name: "Mage Setup"
+    type: "completion"
+    prompt: "You have chosen the path of magic!"
