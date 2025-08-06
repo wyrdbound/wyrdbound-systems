@@ -1,0 +1,5 @@
+id: "model_validations"
+kind: "system"
+name: "Model Validations Test System"
+description: "System for testing validation rules and derived attributes"
+version: "1.0"

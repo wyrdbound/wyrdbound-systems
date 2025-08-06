@@ -1,0 +1,15 @@
+id: "weapon"
+kind: "model"
+name: "Weapon"
+description: "Weapon model extending base entity"
+extends: ["base_entity"]
+attributes:
+  damage:
+    type: roll
+  weapon_type:
+    type: str
+    enum: ["melee", "ranged"]
+  cost:
+    type: int
+    range: "0.."
+    default: 0

@@ -1,0 +1,12 @@
+id: "base_entity"
+kind: "model"
+name: "Base Entity"
+description: "Base model that other models can extend"
+attributes:
+  id:
+    type: str
+  name:
+    type: str
+  description:
+    type: str
+    optional: true

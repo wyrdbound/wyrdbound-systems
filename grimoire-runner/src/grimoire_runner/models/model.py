@@ -15,6 +15,8 @@ class AttributeDefinition:
     derived: str | None = None  # Formula for derived attributes
     required: bool = True
     description: str | None = None
+    of: str | None = None  # Element type for list/map attributes
+    optional: bool | None = None  # Whether attribute can be null/undefined
 
 
 @dataclass

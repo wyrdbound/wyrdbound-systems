@@ -197,6 +197,8 @@ class SystemLoader:
                         derived=attr_data.get("derived"),
                         required=attr_data.get("required", True),
                         description=attr_data.get("description"),
+                        of=attr_data.get("of"),
+                        optional=attr_data.get("optional"),
                     )
                 else:
                     # This is a nested attribute group

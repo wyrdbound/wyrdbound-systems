@@ -1,0 +1,17 @@
+id: "container"
+kind: "model"
+name: "Container"
+description: "Container model testing model references and nested structures"
+attributes:
+  name:
+    type: str
+  capacity:
+    type: int
+    range: "1.."
+    default: 10
+  contents:
+    type: list
+    of: item
+  is_magical:
+    type: bool
+    default: false

@@ -1,0 +1,20 @@
+id: "item"
+kind: "model"
+name: "Basic Item"
+description: "Simple item model for testing collections and references"
+attributes:
+  name:
+    type: str
+  cost:
+    type: int
+    range: "0.."
+    default: 0
+  weight:
+    type: float
+    range: "0.."
+    default: 0.0
+  tags:
+    type: list
+    of: str
+  properties:
+    type: map
