@@ -1,0 +1,12 @@
+id: "weapon"
+kind: "model"
+name: "Weapon"
+description: "Basic weapon model"
+attributes:
+  name:
+    type: str
+  damage:
+    type: str
+  cost:
+    type: int
+    default: 0

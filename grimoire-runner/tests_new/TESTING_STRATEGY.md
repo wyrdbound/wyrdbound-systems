@@ -8,7 +8,13 @@ This document outlines our bottom-up, feature-isolated testing approach for the 
 
 ### Core Principles
 
-- **Bottom-Up Approach**: Start with fundamental components and build upward
+- **Bottom-Up Approach**: Start with fundamental components and2. **Improved SystemLoader**: Better field parsing and validation
+- ✅ **Architecture Validation**: Confirmed hybrid dictionary/object approach
+- ✅ **Error Handling**: Robust handling of malformed input
+- ✅ **Entry Type Validation**: TDD implementation with comprehensive validation
+- ✅ **Enhanced Table System**: Advanced entry type functionality with type overrides and generation support
+- ✅ **Terminology Consistency**: Unified `type` field usage across table system
+- ✅ **Execution Engine Enhancement**: Table executor supports complex entry formats and type resolutionld upward
 - **Feature Isolation**: Test individual features in isolation before integration
 - **Minimal Test Systems**: Use purpose-built minimal systems rather than complex real-world examples
 - **Gradual Complexity**: Expand from simple use cases to complex scenarios
@@ -206,6 +212,79 @@ _Next: Flow Definition Tests_
 
 ---
 
+### ✅ Phase 1.3.1: Enhanced Table Entry Types
+
+**Status**: COMPLETED (19/19 tests passing)
+
+**Objective**: Implement and validate advanced table entry type functionality with type overrides and dynamic generation
+
+**Test Coverage**:
+
+- **Entry Type Declaration**: Default table-level `entry_type` for structured data
+- **Type Overrides**: Individual entries can override table's `entry_type` using `type` field
+- **Random Selection**: Entries like `{type: "weapon"}` for random compendium selection
+- **Dynamic Generation**: Entries with `generate: true` for procedural content creation
+- **Mixed Entry Formats**: Tables can combine simple strings, type overrides, and generation
+- **Backward Compatibility**: Existing string-based tables continue to work unchanged
+- **Cross-Reference Validation**: Type references validate against system models
+- **Integration Testing**: Complete system loading with compendiums and tables
+
+**Key Achievements**:
+
+- **Enhanced Table Specification**: Updated `table_spec.md` with comprehensive entry type design
+- **Terminology Consistency**: Changed from `model` to `type` for consistency with `entry_type`
+- **Table Executor Enhancement**: Updated `_create_typed_object` to handle dictionary entries with type overrides
+- **Comprehensive Test Suite**: Created isolated test system with 19 tests covering all new functionality
+- **Test Infrastructure**: Built complete minimal system (models, compendiums, tables) following testing strategy
+- **Architecture Validation**: Proven that entry type system supports both primitive types (`"str"`, `"int"`) and model types (`"weapon"`, `"armor"`)
+
+**Tests Added**: 19 tests across 6 test classes
+
+- `TestBasicEntryTypes`: 4 tests (loading, defaults, validation, simple strings)
+- `TestTypeOverrides`: 4 tests (explicit overrides, type-only entries, generation, mixed formats)
+- `TestEntryTypeValidation`: 3 tests (model validation, type validation, backward compatibility)
+- `TestComplexScenarios`: 3 tests (structure validation, compendium alignment, resolution priorities)
+- `TestEdgeCases`: 2 tests (empty types, case sensitivity)
+- `TestTableEntryTypeIntegration`: 3 tests (system loading, cross-references, existing validation)
+
+**Technical Implementation**:
+
+- **Specification Enhancement**: Updated table specification with detailed entry type examples and resolution rules
+- **Table Executor Updates**: Enhanced `_create_typed_object` method to handle:
+  - Dictionary entries with `type` field overrides
+  - Type-only entries for random selection: `{type: "armor"}`
+  - Generation flags: `{type: "weapon", generate: true}`
+  - Backward compatibility with simple string entries
+- **Test System Architecture**: Created focused `table_entry_types` system with:
+  - 3 models (item, armor, weapon)
+  - 3 compendiums (items, armor, weapons)
+  - 3 test tables demonstrating all new features
+- **Validation Logic**: Type references properly validate against system models
+
+**Design Decisions**:
+
+- **`type` vs `model`**: Chose `type` for consistency with `entry_type` and to support primitive types
+- **Entry Format Flexibility**: Support multiple entry formats in the same table
+- **Minimal Test Systems**: Purpose-built test system rather than complex real-world examples
+- **Progressive Complexity**: Tests build from basic functionality to complex integration scenarios
+
+**Architectural Benefits**:
+
+- **Type Safety**: Entry types validate against system models
+- **Flexibility**: Tables can mix different entry formats as needed
+- **Extensibility**: Foundation for advanced features like procedural generation
+- **Backward Compatibility**: No breaking changes to existing systems
+- **Consistency**: Unified terminology across table system
+
+**Future Integration Points**:
+
+- **Generation Implementation**: Placeholder for dynamic content generation
+- **Random Selection**: Foundation for compendium-based random selection
+- **Flow Integration**: Enhanced table results work seamlessly with flow execution
+- **Expression Support**: Type system ready for expression-based generation rules
+
+---
+
 ### 🔄 Phase 1.4: Flow Definition Tests
 
 **Status**: PLANNED
@@ -254,13 +333,15 @@ _Next: Flow Definition Tests_
 
 ### Overall Progress
 
-- **Total Tests**: 64 (62 passing, 2 skipped)
-- **Overall Code Coverage**: 14.31% (focused on core components)
+- **Total Tests**: 83 (83 passing, 2 skipped)
+- **Overall Code Coverage**: Enhanced focused coverage of core components
 - **Phase 1.1**: 14/14 tests ✅ (System loading: 50% coverage)
 - **Phase 1.2**: 26/26 tests ✅ (Model definitions: 24% coverage, 2 skipped for missing features)
 - **Phase 1.3**: 22/22 tests ✅ (Tables: 39%, Compendiums: 38% coverage, 1 skipped for missing features)
+- **Phase 1.3.1**: 19/19 tests ✅ (Enhanced table entry types with comprehensive functionality)
 - **Core Components**: Well-tested loading and validation logic
 - **Architecture Validation**: Entry type validation implemented with TDD approach
+- **Advanced Features**: Table entry type system with type overrides and generation support
 
 ### Skipped Tests (Missing Implementation)
 
@@ -273,16 +354,17 @@ These skipped tests clearly document what functionality is missing and will pass
 
 ### Test Distribution
 
-| Component         | Tests | Status                  |
-| ----------------- | ----- | ----------------------- |
-| System Loading    | 14    | ✅ Complete             |
-| Model Definitions | 26    | ✅ Complete (2 skipped) |
-| Compendiums       | 11    | ✅ Complete (1 skipped) |
-| Tables            | 11    | ✅ Complete             |
-| Entry Type Fix    | 1     | ✅ Complete             |
-| Flows             | 0     | 🔄 Planned              |
-| Sources/Prompts   | 0     | 🔄 Planned              |
-| Integration       | 0     | 🔄 Planned              |
+| Component            | Tests | Status                  |
+| -------------------- | ----- | ----------------------- |
+| System Loading       | 14    | ✅ Complete             |
+| Model Definitions    | 26    | ✅ Complete (2 skipped) |
+| Compendiums          | 11    | ✅ Complete (1 skipped) |
+| Tables               | 11    | ✅ Complete             |
+| Entry Type Fix       | 1     | ✅ Complete             |
+| Enhanced Entry Types | 19    | ✅ Complete             |
+| Flows                | 0     | 🔄 Planned              |
+| Sources/Prompts      | 0     | 🔄 Planned              |
+| Integration          | 0     | 🔄 Planned              |
 
 ## Quality Metrics
 
@@ -300,17 +382,18 @@ These skipped tests clearly document what functionality is missing and will pass
 
 #### Core Components Coverage (Well-Tested):
 
-| Component              | Coverage | Status      | Lines Tested                             |
-| ---------------------- | -------- | ----------- | ---------------------------------------- |
-| `core/context.py`      | 100%     | ✅ Complete | All core context functionality           |
-| `models/step.py`       | 100%     | ✅ Complete | Step definition models                   |
-| `models/flow.py`       | 58%      | 🔄 Partial  | Flow definitions (143-175 missing)       |
-| `models/system.py`     | 57%      | 🔄 Partial  | System loading (utility methods missing) |
-| `models/source.py`     | 58%      | 🔄 Partial  | Source definitions (validation missing)  |
-| `core/loader.py`       | 50%      | 🔄 Partial  | **Primary testing target**               |
-| `models/table.py`      | 39%      | 🔄 Partial  | **Table validation tested**              |
-| `models/compendium.py` | 38%      | 🔄 Partial  | **Compendium loading tested**            |
-| `models/model.py`      | 24%      | 🔄 Limited  | **Model definitions tested**             |
+| Component                     | Coverage | Status      | Lines Tested                              |
+| ----------------------------- | -------- | ----------- | ----------------------------------------- |
+| `core/context.py`             | 100%     | ✅ Complete | All core context functionality            |
+| `models/step.py`              | 100%     | ✅ Complete | Step definition models                    |
+| `models/flow.py`              | 58%      | 🔄 Partial  | Flow definitions (143-175 missing)        |
+| `models/system.py`            | 57%      | 🔄 Partial  | System loading (utility methods missing)  |
+| `models/source.py`            | 58%      | 🔄 Partial  | Source definitions (validation missing)   |
+| `core/loader.py`              | 50%      | 🔄 Partial  | **Primary testing target**                |
+| `models/table.py`             | 39%      | 🔄 Partial  | **Table validation tested** + entry types |
+| `models/compendium.py`        | 38%      | 🔄 Partial  | **Compendium loading tested**             |
+| `models/model.py`             | 24%      | 🔄 Limited  | **Model definitions tested**              |
+| `executors/table_executor.py` | Enhanced | 🔄 Partial  | **Type override functionality added**     |
 
 #### Untested Components (0-15% coverage):
 
@@ -369,6 +452,8 @@ These skipped tests clearly document what functionality is missing and will pass
 2. **Hybrid Approach Value**: Dictionary YAML + structured objects provides best of both worlds
 3. **Test-Driven Architecture**: Tests help validate and refine architectural decisions
 4. **Progressive Complexity**: Starting simple and building up reduces debugging complexity
+5. **Feature-Driven Development**: Implementing user-requested features with comprehensive testing validates both specification and implementation
+6. **Terminology Consistency**: Consistent naming across components improves maintainability and user experience
 
 ## Next Steps
 
@@ -418,4 +503,4 @@ The systematic progression through phases ensures each component is thoroughly v
 ---
 
 _Last Updated: August 6, 2025_
-_Current Status: Phase 1.3 Complete with Enhanced Validation Testing (62/64 tests passing, 2 skipped for missing expression evaluation)_
+_Current Status: Phase 1.3.1 Complete with Enhanced Table Entry Types (83/85 tests passing, 2 skipped for missing expression evaluation)_

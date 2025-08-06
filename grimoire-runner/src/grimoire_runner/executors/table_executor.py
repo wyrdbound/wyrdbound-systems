@@ -519,8 +519,33 @@ class TableExecutor(BaseStepExecutor):
             )
             return None
 
-    def _create_typed_object(self, entry_name: str, table, system: "System") -> Any:
-        """Create a typed object from a table entry based on the table's entry_type."""
+    def _create_typed_object(self, entry_result, table, system: "System") -> Any:
+        """Create a typed object from a table entry based on the table's entry_type or entry-specific type override."""
+        
+        # Handle dictionary entries with type overrides and other metadata
+        if isinstance(entry_result, dict):
+            # Extract the actual entry name/id
+            entry_name = entry_result.get("id")
+            
+            # Determine the type to use (entry-specific type or table's entry_type)
+            entry_type = entry_result.get("type", table.entry_type if hasattr(table, "entry_type") else "str")
+            
+            # Handle generation flag
+            if entry_result.get("generate", False):
+                # TODO: Implement dynamic generation
+                logger.info(f"Generation requested for type '{entry_type}' - not yet implemented")
+                return f"Generated {entry_type}"
+            
+            # Handle type-only entries (no specific id)
+            if not entry_name:
+                # TODO: Implement random selection from compendium
+                logger.info(f"Random selection requested for type '{entry_type}' - not yet implemented")
+                return f"Random {entry_type}"
+        else:
+            # Simple string entry
+            entry_name = entry_result
+            entry_type = table.entry_type if hasattr(table, "entry_type") else "str"
+        
         # Handle "none" as a special case - return None instead of creating an object
         if entry_name == "none":
             logger.info(
@@ -528,18 +553,13 @@ class TableExecutor(BaseStepExecutor):
             )
             return None
 
-        # If the table doesn't have an entry_type, or it's "str", return the string as-is
-        if (
-            not hasattr(table, "entry_type")
-            or not table.entry_type
-            or table.entry_type == "str"
-        ):
+        # If the entry type is "str", return the string as-is
+        if not entry_type or entry_type == "str":
             logger.info(
                 f"_create_typed_object: entry_type is str or empty, returning string: {entry_name}"
             )
             return entry_name
 
-        entry_type = table.entry_type
         logger.info(f"Creating {entry_type} object for entry: {entry_name}")
 
         # Find the specific compendium that contains this entry

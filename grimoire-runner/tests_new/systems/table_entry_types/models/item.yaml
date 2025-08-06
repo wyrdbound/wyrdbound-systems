@@ -1,0 +1,13 @@
+id: "item"
+kind: "model"
+name: "Generic Item"
+description: "Generic item model"
+attributes:
+  name:
+    type: str
+  category:
+    type: str
+    default: "miscellaneous"
+  cost:
+    type: int
+    default: 0

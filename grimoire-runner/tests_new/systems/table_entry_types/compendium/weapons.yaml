@@ -1,0 +1,17 @@
+kind: "compendium"
+id: "weapons"
+name: "Weapons Compendium"
+model: "weapon"
+entries:
+  - id: "longsword"
+    name: "Longsword"
+    damage: "1d8"
+    cost: 15
+  - id: "dagger"
+    name: "Dagger"
+    damage: "1d4"
+    cost: 2
+  - id: "steel-sword"
+    name: "Steel Sword"
+    damage: "1d8+1"
+    cost: 25

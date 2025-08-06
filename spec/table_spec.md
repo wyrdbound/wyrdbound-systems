@@ -62,12 +62,12 @@ roll: "PERC"       # Alias for percentile roll
 
 The system supports any number of faces on dice, not just standard polyhedral dice:
 
-- **Standard RPG Dice**: d4, d6, d8, d10, d12, d20, d100
-- **Custom Dice**: Any number of faces (d2, d3, d5, d7, d13, d30, etc.)
+- **Standard RPG Dice**: 1d4, 1d6, 1d8, 1d10, 1d12, 1d20, 1d100
+- **Custom Dice**: Any number of faces (1d2, 1d3, 1d5, 1d7, 1d13, 1d30, etc.)
 - **Multiple Dice**: Any number of dice (1d6, 2d6, 10d6, etc.)
 - **Modifiers**: Addition and subtraction (+3, -2, etc.)
 
-The underlying dice engine (wyrdbound-dice) supports arbitrary face counts, so tables can use any dice expression that fits the content being generated.
+The underlying dice engine ([wyrdbound-dice](https://github.com/wyrdbound/wyrdbound-dice)) supports arbitrary face counts, so tables can use any dice expression that fits the content being generated.
 
 ## Entries
 
@@ -236,19 +236,111 @@ entries:
   96-100: "Legendary" # 5% chance
 ```
 
-## Cross-References
+## Cross-References and Dynamic Generation
 
-Tables can reference other game content:
+Tables can reference compendium content and support dynamic generation through several mechanisms:
+
+### Entry Type Declaration
+
+The `entry_type` field at the top level specifies the default model type for all entries:
+
+```yaml
+kind: "table"
+id: "starting-gear"
+name: "Starting Gear"
+roll: "1d20"
+entry_type: "item" # Default model type for entries
+entries:
+  1: "longsword" # Uses entry_type (item) for compendium lookup
+  2: "leather" # Uses entry_type (item) for compendium lookup
+  3: { id: "steel-sword", type: "weapon" } # Overrides entry_type
+```
+
+- **Default**: `entry_type` defaults to `"str"` for simple string values
+- **Model References**: Set to a model ID (e.g., `"armor"`, `"weapon"`, `"item"`) for structured data
+- **Overrides**: Individual entries can override the table's `entry_type`
+
+### Entry Formats
+
+#### Simple ID Reference
 
 ```yaml
 entries:
-  1:
-    item_id: "longsword" # Reference to compendium entry
-    condition: "worn"
-  2:
-    model: "weapon" # Reference to model type
-    generate: true # Indicates dynamic generation needed
+  1: "longsword" # Uses table's entry_type for compendium lookup
 ```
+
+#### Explicit Type Override
+
+```yaml
+entries:
+  1: { id: "longsword", type: "weapon" } # Overrides table's entry_type
+  2: { id: "leather-armor", type: "armor" }
+```
+
+#### Random Selection from Type
+
+```yaml
+entries:
+  1: { type: "weapon" } # Random weapon from compendium
+  2: { type: "armor" } # Random armor from compendium
+```
+
+#### Dynamic Generation
+
+```yaml
+entries:
+  1: { generate: true } # Generate using table's entry_type
+  2: { type: "weapon", generate: true } # Generate new weapon
+  3: { type: "armor", generate: true } # Generate new armor
+```
+
+### Complete Example
+
+```yaml
+kind: "table"
+id: "starting-gear"
+name: "Starting Gear"
+roll: "1d20"
+entry_type: "item" # Default model type
+entries:
+  # Simple references (uses entry_type: item)
+  1: "longsword"
+  2: "leather-armor"
+  3: "backpack"
+
+  # Explicit type overrides
+  4: { id: "steel-sword", type: "weapon" }
+  5: { id: "plate-mail", type: "armor" }
+
+  # Random selections from specific types
+  10: { type: "weapon" } # Random weapon from compendium
+  11: { type: "armor" } # Random armor from compendium
+  12: { type: "item" } # Random item from compendium
+
+  # Dynamic generation
+  17: { type: "item" } # Random existing item
+  18: { generate: true } # Generate new item (uses entry_type)
+  19: { type: "armor", generate: true } # Generate new armor
+  20: { type: "weapon", generate: true } # Generate new weapon
+```
+
+### Resolution Rules
+
+1. **Simple String**: Uses table's `entry_type` for compendium lookup
+2. **Explicit ID**: If `type` specified, uses that type; otherwise uses `entry_type`
+3. **Random Selection**: If no `id` but `type` specified, selects random compendium entry for that type
+4. **Generation**: If `generate: true`, engine attempts to create new content based on:
+   - Existing compendium entries for the specified type
+   - Model structure and constraints
+   - System-specific generation rules
+
+### Backward Compatibility
+
+This design maintains full backward compatibility:
+
+- Existing tables without `entry_type` continue to work (defaults to `"str"`)
+- Simple string entries continue to work as before
+- Complex object entries continue to work as before
 
 ## File Naming and Location
 

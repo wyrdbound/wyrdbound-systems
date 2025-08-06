@@ -1,0 +1,17 @@
+kind: "compendium"
+id: "armor"
+name: "Armor Compendium"
+model: "armor"
+entries:
+  - id: "leather"
+    name: "Leather Armor"
+    defense: 11
+    cost: 10
+  - id: "chainmail"
+    name: "Chainmail"
+    defense: 13
+    cost: 50
+  - id: "plate"
+    name: "Plate Armor"
+    defense: 16
+    cost: 1500

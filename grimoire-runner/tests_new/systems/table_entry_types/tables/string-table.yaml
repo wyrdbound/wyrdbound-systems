@@ -1,0 +1,10 @@
+# Table without entry_type (defaults to str)
+kind: "table"
+id: "string-table"
+name: "String Results"
+roll: "1d4"
+entries:
+  1: "Simple string"
+  2: "Another string"
+  3: { type: "weapon" } # Should work even without entry_type
+  4: { generate: true } # Should work with default str type
