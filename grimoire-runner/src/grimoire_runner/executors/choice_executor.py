@@ -391,7 +391,7 @@ class ChoiceExecutor(BaseStepExecutor):
     def _execute_step_action(self, action: dict[str, Any], context: "ExecutionContext", system: "System", step_result_data: dict[str, Any] = None) -> None:
         """Execute a step-level action (including flow calls)."""
         action_type = list(action.keys())[0]
-        
+
         if action_type == "flow_call":
             # Use the shared flow helper to execute flow calls
             self.flow_helper.execute_flow_call_action(action, context, system, step_result_data)

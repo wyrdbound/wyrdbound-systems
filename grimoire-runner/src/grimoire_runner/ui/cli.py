@@ -123,6 +123,8 @@ def execute(
     ),
 ):
     """Execute a complete flow with enhanced visual output."""
+    # TODO: Implement interactive mode functionality
+    _ = interactive  # Currently unused - planned for future implementation
     if verbose:
         logging.basicConfig(level=logging.DEBUG)
     else:

@@ -192,7 +192,7 @@ class SystemLoader:
                     # Derived attributes should not be required since they're calculated
                     is_derived = "derived" in attr_data
                     required = attr_data.get("required", not is_derived)
-                    
+
                     parsed_attrs[attr_name] = AttributeDefinition(
                         type=attr_data["type"],
                         default=attr_data.get("default"),
@@ -259,12 +259,12 @@ class SystemLoader:
         """Validate system components that require cross-references."""
         # Validate tables with access to system models
         validation_errors = []
-        
+
         for table_id, table in system.tables.items():
             table_errors = table.validate_with_system(system)
             for error in table_errors:
                 validation_errors.append(f"Table '{table_id}': {error}")
-        
+
         if validation_errors:
             error_msg = "System validation failed:\n" + "\n".join(validation_errors)
             raise ValueError(error_msg)

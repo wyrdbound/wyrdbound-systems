@@ -90,7 +90,7 @@ class GrimoireEngine:
         import uuid
         execution_id = str(uuid.uuid4())[:8]
         namespace_id = f"flow_{execution_id}"
-        
+
         # Create isolated namespace for this flow execution
         context.create_flow_namespace(namespace_id, flow_id, execution_id)
         context.set_current_flow_namespace(namespace_id)
@@ -377,7 +377,7 @@ class GrimoireEngine:
 
                 # Use namespaced paths to avoid collision during flow execution
                 current_namespace = context.get_current_flow_namespace()
-                
+
                 if current_namespace:
                     # Use namespaced path to avoid collision
                     if path.startswith("outputs."):
@@ -387,7 +387,7 @@ class GrimoireEngine:
                     else:
                         # Default to outputs if no prefix specified
                         namespaced_path = f"{current_namespace}.outputs.{path}"
-                    
+
                     context.set_namespaced_value(namespaced_path, resolved_value)
                 else:
                     # Fallback to original behavior for backward compatibility

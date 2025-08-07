@@ -129,11 +129,11 @@ class TableDefinition:
     def validate_with_system(self, system) -> list[str]:
         """Validate the table definition with access to system models."""
         errors = self.validate()  # Start with basic validation
-        
+
         # If entry_type is specified and not the default "str", validate entries against the model
         if self.entry_type != "str" and self.entry_type in system.models:
             model = system.models[self.entry_type]
-            
+
             # Validate each entry against the model
             for entry_key, entry_value in self.entries.items():
                 if isinstance(entry_value, dict):
@@ -150,5 +150,5 @@ class TableDefinition:
         elif self.entry_type != "str" and self.entry_type not in system.models:
             # entry_type references a model that doesn't exist
             errors.append(f"entry_type '{self.entry_type}' references unknown model")
-        
+
         return errors

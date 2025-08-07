@@ -194,7 +194,7 @@ class DiceExecutor(BaseStepExecutor):
 
         try:
             # Execute the action (simplified version)
-            # Handle both old format (key as action type) and new format (type field)  
+            # Handle both old format (key as action type) and new format (type field)
             if "type" in action and "data" in action:
                 action_type = action["type"]
                 action_data = action["data"]
@@ -213,7 +213,7 @@ class DiceExecutor(BaseStepExecutor):
 
                 # Get current flow namespace for proper isolation
                 current_namespace = context.get_current_flow_namespace()
-                
+
                 if current_namespace:
                     # Use namespaced path to avoid collision
                     if str(resolved_path).startswith("outputs."):
@@ -223,7 +223,7 @@ class DiceExecutor(BaseStepExecutor):
                     else:
                         # Default to variables for dice results
                         namespaced_path = f"{current_namespace}.variables.{resolved_path}"
-                    
+
                     context.set_namespaced_value(namespaced_path, resolved_value)
                     logger.info(f"Set namespaced dice value: {namespaced_path} = {resolved_value}")
                 else:

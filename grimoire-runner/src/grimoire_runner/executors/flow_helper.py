@@ -5,7 +5,6 @@ from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from ..models.context_data import ExecutionContext
-    from ..models.flow import StepResult
     from ..models.system import System
 
 logger = logging.getLogger(__name__)
@@ -137,7 +136,7 @@ class FlowExecutionHelper:
         try:
             import json
             parsed = json.loads(value)
-            if isinstance(parsed, (list, dict)):
+            if isinstance(parsed, list | dict):
                 return parsed
         except (json.JSONDecodeError, ValueError):
             pass
@@ -146,7 +145,7 @@ class FlowExecutionHelper:
         try:
             import ast
             parsed = ast.literal_eval(value)
-            if isinstance(parsed, (list, dict)):
+            if isinstance(parsed, list | dict):
                 return parsed
         except (ValueError, SyntaxError):
             pass
@@ -190,7 +189,7 @@ class FlowExecutionHelper:
 
         if result.success:
             logger.info(f"Sub-flow '{flow_name}' completed successfully")
-            
+
             # Copy sub-flow outputs back to main context
             # This allows the main flow to access results from the sub-flow
             for output_key, output_value in sub_context.outputs.items():

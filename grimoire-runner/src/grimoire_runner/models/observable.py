@@ -329,9 +329,7 @@ class DerivedFieldManager:
 
         return result
 
-    def register_model_attributes(
-        self, model_def: "ModelDefinition", instance_data: dict[str, Any]
-    ) -> None:
+    def register_model_attributes(self, model_def: "ModelDefinition") -> None:
         """Register all attributes from a model, including derived fields."""
         logger.debug(f"Registering model attributes for: {model_def.name}")
 
@@ -350,7 +348,7 @@ class DerivedFieldManager:
             f"Initializing observable system for model {getattr(model_def, 'id', 'unknown')} with instance_id: {instance_id}"
         )
         self.current_instance_id = instance_id
-        self.register_model_attributes(model_def, {})
+        self.register_model_attributes(model_def)
 
     def compute_all_derived_fields(self) -> None:
         """Compute all registered derived fields based on current context values."""

@@ -187,7 +187,7 @@ class TableExecutor(BaseStepExecutor):
 
             # Get current flow namespace for proper isolation
             current_namespace = context.get_current_flow_namespace()
-            
+
             if current_namespace:
                 # Use namespaced path to avoid collision
                 if path.startswith("outputs."):
@@ -197,7 +197,7 @@ class TableExecutor(BaseStepExecutor):
                 else:
                     # Default to outputs if no prefix specified
                     namespaced_path = f"{current_namespace}.outputs.{path}"
-                
+
                 context.set_namespaced_value(namespaced_path, resolved_value)
             else:
                 # Fallback to original behavior for backward compatibility
@@ -543,21 +543,21 @@ class TableExecutor(BaseStepExecutor):
 
     def _create_typed_object(self, entry_result, table, system: "System") -> Any:
         """Create a typed object from a table entry based on the table's entry_type or entry-specific type override."""
-        
+
         # Handle dictionary entries with type overrides and other metadata
         if isinstance(entry_result, dict):
             # Extract the actual entry name/id
             entry_name = entry_result.get("id")
-            
+
             # Determine the type to use (entry-specific type or table's entry_type)
             entry_type = entry_result.get("type", table.entry_type if hasattr(table, "entry_type") else "str")
-            
+
             # Handle generation flag
             if entry_result.get("generate", False):
                 # TODO: Implement dynamic generation
                 logger.info(f"Generation requested for type '{entry_type}' - not yet implemented")
                 return f"Generated {entry_type}"
-            
+
             # Handle type-only entries (no specific id)
             if not entry_name:
                 # TODO: Implement random selection from compendium
@@ -567,7 +567,7 @@ class TableExecutor(BaseStepExecutor):
             # Simple string entry
             entry_name = entry_result
             entry_type = table.entry_type if hasattr(table, "entry_type") else "str"
-        
+
         # Handle "none" as a special case - return None instead of creating an object
         if entry_name == "none":
             logger.info(

@@ -69,9 +69,7 @@ class ModelDefinition:
 
         return None
 
-    def get_all_attributes(
-        self, include_inherited: bool = True
-    ) -> dict[str, AttributeDefinition]:
+    def get_all_attributes(self) -> dict[str, AttributeDefinition]:
         """Get all attributes, optionally including inherited ones."""
         # TODO: Implement inheritance resolution
         all_attrs = {}
