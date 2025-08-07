@@ -240,18 +240,25 @@ class ExecutionContext:
             }
 
             # Add namespace-aware context if we have an active flow
-            if self.current_flow_namespace and self.current_flow_namespace in self.flow_namespaces:
+            if (
+                self.current_flow_namespace
+                and self.current_flow_namespace in self.flow_namespaces
+            ):
                 flow_data = self.flow_namespaces[self.current_flow_namespace]
                 # Overlay flow-specific data with precedence over root data
-                context.update({
-                    "variables": {**self.variables, **flow_data["variables"]},
-                    "outputs": {**self.outputs, **flow_data["outputs"]},
-                    "inputs": {**self.inputs, **flow_data["inputs"]},
-                    # Make flow-specific data available at top level too
-                    **flow_data["variables"],
-                    **flow_data["outputs"],
-                })
-                logger.debug(f"Template resolution using namespace: {self.current_flow_namespace}")
+                context.update(
+                    {
+                        "variables": {**self.variables, **flow_data["variables"]},
+                        "outputs": {**self.outputs, **flow_data["outputs"]},
+                        "inputs": {**self.inputs, **flow_data["inputs"]},
+                        # Make flow-specific data available at top level too
+                        **flow_data["variables"],
+                        **flow_data["outputs"],
+                    }
+                )
+                logger.debug(
+                    f"Template resolution using namespace: {self.current_flow_namespace}"
+                )
 
             # If we have a derived field manager, overlay observable values to ensure
             # template resolution gets the most current values (including lists, not strings)
@@ -336,7 +343,9 @@ class ExecutionContext:
             raise KeyError(f"Path '{path}' not found in any context")
 
     # Flow Namespace Management
-    def create_flow_namespace(self, namespace_id: str, flow_id: str, execution_id: str) -> None:
+    def create_flow_namespace(
+        self, namespace_id: str, flow_id: str, execution_id: str
+    ) -> None:
         """Create an isolated namespace for flow execution."""
         self.flow_namespaces[namespace_id] = {
             "inputs": {},
@@ -345,8 +354,8 @@ class ExecutionContext:
             "metadata": {
                 "flow_id": flow_id,
                 "execution_id": execution_id,
-                "created_at": datetime.now().isoformat()
-            }
+                "created_at": datetime.now().isoformat(),
+            },
         }
         logger.info(f"Created flow namespace: {namespace_id} for flow {flow_id}")
 
@@ -371,7 +380,9 @@ class ExecutionContext:
             self.flow_execution_stack[-1] if self.flow_execution_stack else None
         )
 
-        logger.info(f"Popped flow namespace: {popped_namespace}, current: {self.current_flow_namespace}")
+        logger.info(
+            f"Popped flow namespace: {popped_namespace}, current: {self.current_flow_namespace}"
+        )
         return popped_namespace
 
     def get_current_flow_namespace(self) -> str | None:
@@ -382,7 +393,9 @@ class ExecutionContext:
         """Set a value using full namespaced path (e.g., 'flow_abc123.outputs.character.name')."""
         parts = full_path.split(".", 2)  # Split into namespace, category, path
         if len(parts) < 3:
-            raise ValueError(f"Invalid namespaced path: {full_path}. Expected format: namespace.category.path")
+            raise ValueError(
+                f"Invalid namespaced path: {full_path}. Expected format: namespace.category.path"
+            )
 
         namespace_id, category, path = parts
 
@@ -390,7 +403,9 @@ class ExecutionContext:
             raise ValueError(f"Flow namespace '{namespace_id}' does not exist")
 
         if category not in ["inputs", "outputs", "variables"]:
-            raise ValueError(f"Invalid category '{category}'. Must be inputs, outputs, or variables")
+            raise ValueError(
+                f"Invalid category '{category}'. Must be inputs, outputs, or variables"
+            )
 
         namespace_data = self.flow_namespaces[namespace_id][category]
         self._set_nested_value(namespace_data, path, value)
@@ -428,15 +443,21 @@ class ExecutionContext:
         # Deep copy the outputs to avoid reference issues
         for output_id, output_value in flow_outputs.items():
             self.set_output(output_id, copy.deepcopy(output_value))
-            logger.info(f"Copied flow output to root: {output_id} = {type(output_value).__name__}")
+            logger.info(
+                f"Copied flow output to root: {output_id} = {type(output_value).__name__}"
+            )
 
-    def initialize_flow_namespace_variables(self, namespace_id: str, variables: dict[str, Any]) -> None:
+    def initialize_flow_namespace_variables(
+        self, namespace_id: str, variables: dict[str, Any]
+    ) -> None:
         """Initialize variables in a flow namespace."""
         if namespace_id not in self.flow_namespaces:
             raise ValueError(f"Flow namespace '{namespace_id}' does not exist")
 
         self.flow_namespaces[namespace_id]["variables"].update(variables)
-        logger.info(f"Initialized {len(variables)} variables in namespace {namespace_id}")
+        logger.info(
+            f"Initialized {len(variables)} variables in namespace {namespace_id}"
+        )
 
     def get_flow_namespace_data(self, namespace_id: str) -> dict[str, Any] | None:
         """Get all data for a specific flow namespace."""

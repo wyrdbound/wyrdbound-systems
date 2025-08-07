@@ -88,6 +88,7 @@ class GrimoireEngine:
 
         # Create unique execution namespace for this flow
         import uuid
+
         execution_id = str(uuid.uuid4())[:8]
         namespace_id = f"flow_{execution_id}"
 
@@ -107,7 +108,9 @@ class GrimoireEngine:
             }
 
             # Initialize flow variables in the namespace
-            context.initialize_flow_namespace_variables(namespace_id, flow.variables.copy())
+            context.initialize_flow_namespace_variables(
+                namespace_id, flow.variables.copy()
+            )
 
             # Initialize observable derived fields from output models
             for output_def in flow.outputs:
@@ -186,12 +189,18 @@ class GrimoireEngine:
 
             # Extract outputs from the namespace for the result
             flow_namespace_data = context.get_flow_namespace_data(namespace_id)
-            outputs = flow_namespace_data["outputs"].copy() if flow_namespace_data else {}
+            outputs = (
+                flow_namespace_data["outputs"].copy() if flow_namespace_data else {}
+            )
 
             # Also get the variables from the namespace
-            variables = flow_namespace_data["variables"].copy() if flow_namespace_data else {}
+            variables = (
+                flow_namespace_data["variables"].copy() if flow_namespace_data else {}
+            )
 
-            logger.info(f"Flow execution completed: {flow_id} (namespace: {namespace_id})")
+            logger.info(
+                f"Flow execution completed: {flow_id} (namespace: {namespace_id})"
+            )
             return FlowResult(
                 flow_id=flow_id,
                 success=True,

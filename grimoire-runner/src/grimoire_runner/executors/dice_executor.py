@@ -217,15 +217,23 @@ class DiceExecutor(BaseStepExecutor):
                 if current_namespace:
                     # Use namespaced path to avoid collision
                     if str(resolved_path).startswith("outputs."):
-                        namespaced_path = f"{current_namespace}.outputs.{str(resolved_path)[8:]}"
+                        namespaced_path = (
+                            f"{current_namespace}.outputs.{str(resolved_path)[8:]}"
+                        )
                     elif str(resolved_path).startswith("variables."):
-                        namespaced_path = f"{current_namespace}.variables.{str(resolved_path)[10:]}"
+                        namespaced_path = (
+                            f"{current_namespace}.variables.{str(resolved_path)[10:]}"
+                        )
                     else:
                         # Default to variables for dice results
-                        namespaced_path = f"{current_namespace}.variables.{resolved_path}"
+                        namespaced_path = (
+                            f"{current_namespace}.variables.{resolved_path}"
+                        )
 
                     context.set_namespaced_value(namespaced_path, resolved_value)
-                    logger.info(f"Set namespaced dice value: {namespaced_path} = {resolved_value}")
+                    logger.info(
+                        f"Set namespaced dice value: {namespaced_path} = {resolved_value}"
+                    )
                 else:
                     # Fallback to original behavior for backward compatibility
                     if str(resolved_path).startswith("outputs."):

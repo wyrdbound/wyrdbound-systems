@@ -118,7 +118,9 @@ class FlowExecutionHelper:
             )
             return resolved
         except Exception as e:
-            logger.error(f"Failed to resolve flow input template '{input_template}': {e}")
+            logger.error(
+                f"Failed to resolve flow input template '{input_template}': {e}"
+            )
             raise
 
     def _try_parse_structured_data(self, value: str) -> Any:
@@ -135,6 +137,7 @@ class FlowExecutionHelper:
         # Try JSON first (double quotes)
         try:
             import json
+
             parsed = json.loads(value)
             if isinstance(parsed, list | dict):
                 return parsed
@@ -144,6 +147,7 @@ class FlowExecutionHelper:
         # Try Python literal evaluation (single quotes)
         try:
             import ast
+
             parsed = ast.literal_eval(value)
             if isinstance(parsed, list | dict):
                 return parsed
@@ -184,7 +188,9 @@ class FlowExecutionHelper:
                 sub_context.set_variable(var_name, var_value)
 
         # Execute the sub-flow
-        logger.info(f"Executing sub-flow '{flow_name}' with inputs: {list(flow_inputs.keys())}")
+        logger.info(
+            f"Executing sub-flow '{flow_name}' with inputs: {list(flow_inputs.keys())}"
+        )
         result = self.engine.execute_flow(flow_name, sub_context, system)
 
         if result.success:

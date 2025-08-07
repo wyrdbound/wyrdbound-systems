@@ -550,18 +550,24 @@ class TableExecutor(BaseStepExecutor):
             entry_name = entry_result.get("id")
 
             # Determine the type to use (entry-specific type or table's entry_type)
-            entry_type = entry_result.get("type", table.entry_type if hasattr(table, "entry_type") else "str")
+            entry_type = entry_result.get(
+                "type", table.entry_type if hasattr(table, "entry_type") else "str"
+            )
 
             # Handle generation flag
             if entry_result.get("generate", False):
                 # TODO: Implement dynamic generation
-                logger.info(f"Generation requested for type '{entry_type}' - not yet implemented")
+                logger.info(
+                    f"Generation requested for type '{entry_type}' - not yet implemented"
+                )
                 return f"Generated {entry_type}"
 
             # Handle type-only entries (no specific id)
             if not entry_name:
                 # TODO: Implement random selection from compendium
-                logger.info(f"Random selection requested for type '{entry_type}' - not yet implemented")
+                logger.info(
+                    f"Random selection requested for type '{entry_type}' - not yet implemented"
+                )
                 return f"Random {entry_type}"
         else:
             # Simple string entry

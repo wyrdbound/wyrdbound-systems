@@ -31,20 +31,20 @@ def create_yaml_file(directory: Path, filename: str, content: Dict[str, Any]) ->
     """Helper function to create a YAML file in a directory."""
     directory.mkdir(parents=True, exist_ok=True)
     file_path = directory / filename
-    with open(file_path, 'w') as f:
+    with open(file_path, "w") as f:
         yaml.dump(content, f, default_flow_style=False, sort_keys=False)
     return file_path
 
 
 def load_yaml_file(file_path: Path) -> Dict[str, Any]:
     """Helper function to load and parse a YAML file."""
-    with open(file_path, 'r') as f:
+    with open(file_path, "r") as f:
         return yaml.safe_load(f)
 
 
 class SystemBuilder:
     """Builder class for creating test systems programmatically."""
-    
+
     def __init__(self, system_id: str, base_dir: Path):
         self.system_id = system_id
         self.base_dir = base_dir
@@ -53,32 +53,32 @@ class SystemBuilder:
             "id": system_id,
             "kind": "system",
             "name": f"Test System: {system_id}",
-            "version": "1.0"
+            "version": "1.0",
         }
-    
+
     def with_description(self, description: str):
         """Add a description to the system."""
         self.system_def["description"] = description
         return self
-    
+
     def with_currency(self, base_unit: str, denominations: Dict[str, Any]):
         """Add currency system to the system."""
         self.system_def["currency"] = {
             "base_unit": base_unit,
-            "denominations": denominations
+            "denominations": denominations,
         }
         return self
-    
+
     def with_credits(self, **credits):
         """Add credits information to the system."""
         self.system_def["credits"] = credits
         return self
-    
+
     def with_default_source(self, source_id: str):
         """Add default source reference."""
         self.system_def["default_source"] = source_id
         return self
-    
+
     def build(self) -> Path:
         """Create the system files and return the system directory path."""
         create_yaml_file(self.system_dir, "system.yaml", self.system_def)
@@ -88,6 +88,8 @@ class SystemBuilder:
 @pytest.fixture
 def system_builder(temp_system_dir):
     """Factory fixture for creating test systems."""
+
     def _builder(system_id: str) -> SystemBuilder:
         return SystemBuilder(system_id, temp_system_dir)
+
     return _builder

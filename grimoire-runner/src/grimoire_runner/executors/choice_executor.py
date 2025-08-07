@@ -295,7 +295,11 @@ class ChoiceExecutor(BaseStepExecutor):
             return []
 
     def process_choice(
-        self, choice_id: str, step: "StepDefinition", context: "ExecutionContext", system: "System" = None
+        self,
+        choice_id: str,
+        step: "StepDefinition",
+        context: "ExecutionContext",
+        system: "System" = None,
     ) -> "StepResult":
         """Process a user's choice selection."""
         from ..models.flow import StepResult
@@ -324,9 +328,16 @@ class ChoiceExecutor(BaseStepExecutor):
 
             # Execute step-level actions (including flow calls) if present
             if step.actions and system:
-                logger.info(f"Executing {len(step.actions)} step actions after choice...")
+                logger.info(
+                    f"Executing {len(step.actions)} step actions after choice..."
+                )
                 for action in step.actions:
-                    self._execute_step_action(action, context, system, {"selected_item": context.get_variable("selected_item")})
+                    self._execute_step_action(
+                        action,
+                        context,
+                        system,
+                        {"selected_item": context.get_variable("selected_item")},
+                    )
                 logger.info("✅ Step actions executed successfully")
 
             logger.info(f"User chose: {selected_choice.label} ({choice_id})")
@@ -388,13 +399,21 @@ class ChoiceExecutor(BaseStepExecutor):
 
         # TODO: Add other action types as needed
 
-    def _execute_step_action(self, action: dict[str, Any], context: "ExecutionContext", system: "System", step_result_data: dict[str, Any] = None) -> None:
+    def _execute_step_action(
+        self,
+        action: dict[str, Any],
+        context: "ExecutionContext",
+        system: "System",
+        step_result_data: dict[str, Any] = None,
+    ) -> None:
         """Execute a step-level action (including flow calls)."""
         action_type = list(action.keys())[0]
 
         if action_type == "flow_call":
             # Use the shared flow helper to execute flow calls
-            self.flow_helper.execute_flow_call_action(action, context, system, step_result_data)
+            self.flow_helper.execute_flow_call_action(
+                action, context, system, step_result_data
+            )
         else:
             # Handle other action types as needed
             logger.warning(f"Unhandled step action type: {action_type}")

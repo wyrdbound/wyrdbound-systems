@@ -35,7 +35,7 @@ jobs:
           source .venv/bin/activate
           cd grimoire-runner
           echo "::group::🧪 Running Tests with Coverage (including performance tests)"
-          python -m pytest tests/ \
+          python -m pytest new_tests/ \
             --cov=grimoire_runner \
             --cov-report=term-missing \
             --cov-report=html \
@@ -76,7 +76,7 @@ jobs:
           source .venv/bin/activate
           cd grimoire-runner
           echo "::group::🔍 Ruff Linting"
-          if ruff check src/ tests/ --output-format=github; then
+          if ruff check src/ new_tests/ --output-format=github; then
             echo "✅ No linting issues found!"
           else
             echo "⚠️ Linting issues found - see annotations above"
@@ -90,7 +90,7 @@ jobs:
           source .venv/bin/activate
           cd grimoire-runner
           echo "::group::🎨 Code Formatting"
-          if ruff format --check src/ tests/; then
+          if ruff format --check src/ new_tests/; then
             echo "✅ Code formatting is correct!"
           else
             echo "❌ Code formatting issues found"
@@ -104,7 +104,7 @@ jobs:
           source .venv/bin/activate
           cd grimoire-runner
           echo "::group::📦 Import Sorting"
-          if ruff check --select I src/ tests/; then
+          if ruff check --select I src/ new_tests/; then
             echo "✅ Import sorting is correct!"
           else
             echo "⚠️ Import sorting issues found"

@@ -150,7 +150,9 @@ class FlowExecutor(BaseStepExecutor):
                         namespaced_path = f"{current_namespace}.outputs.{path}"
 
                     context.set_namespaced_value(namespaced_path, resolved_value)
-                    logger.info(f"Set namespaced flow value: {namespaced_path} = {resolved_value}")
+                    logger.info(
+                        f"Set namespaced flow value: {namespaced_path} = {resolved_value}"
+                    )
                 else:
                     # Fallback to original behavior for backward compatibility
                     context.set_output(path, resolved_value)

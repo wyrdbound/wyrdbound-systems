@@ -152,7 +152,9 @@ class DerivedFieldManager:
 
         # First, set the value directly in the execution context outputs to avoid recursion
         # We use _set_nested_value directly instead of set_output to prevent circular calls
-        self.execution_context._set_nested_value(self.execution_context.outputs, field_name, value)
+        self.execution_context._set_nested_value(
+            self.execution_context.outputs, field_name, value
+        )
 
         # Then create/update observable which will trigger recomputation
         if field_name not in self.observable_values:
@@ -242,7 +244,9 @@ class DerivedFieldManager:
             logger.info(f"Field {field} computed to: {result}")
 
             # Store the result directly in outputs to avoid circular calls to set_output
-            self.execution_context._set_nested_value(self.execution_context.outputs, field, result)
+            self.execution_context._set_nested_value(
+                self.execution_context.outputs, field, result
+            )
 
             # Create/update observable for this computed field
             if field not in self.observable_values:

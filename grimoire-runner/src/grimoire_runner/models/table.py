@@ -106,6 +106,7 @@ class TableDefinition:
             # Use wyrdbound_dice to validate the expression
             try:
                 from wyrdbound_dice import roll
+
                 # Try to parse the expression (don't execute, just validate syntax)
                 # We'll use a simple test roll to validate the expression is parseable
                 roll(self.roll)
