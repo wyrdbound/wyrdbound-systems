@@ -1,0 +1,5 @@
+id: "prompt_test"
+kind: "system"
+name: "Prompt Test System"
+description: "Minimal system for testing prompt definition loading"
+version: "1.0"

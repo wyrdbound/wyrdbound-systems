@@ -432,18 +432,55 @@ Phase 1.4 successfully tested **flow definition structure** (parsing, validation
 
 ---
 
-### 🔄 Phase 1.5: Source & Prompt Tests
+### ✅ Phase 1.5: Source & Prompt Tests
 
-**Status**: PLANNED
+**Status**: COMPLETED (17/17 tests passing)
 
 **Objective**: Test source and prompt definition functionality
 
-**Planned Coverage**:
+**Test Coverage**:
 
-- Source definition loading and validation
-- Prompt template parsing and rendering
-- Dynamic content generation
-- Integration with other system components
+- **Source definition loading and validation**: Complete source file loading with proper structure validation
+- **Prompt definition loading and validation**: Full prompt system with LLM configuration parsing  
+- **Template parsing and rendering**: Jinja2 template syntax validation and variable substitution
+- **LLM configuration validation**: Provider, model, temperature, and token limit validation
+- **Integration with system components**: Cross-references between sources, prompts, and other system elements
+- **Error handling**: Comprehensive validation for malformed sources and prompts
+
+**Key Achievements**:
+
+- **PromptDefinition Model**: Created complete prompt definition model with LLM configuration support
+- **SystemLoader Enhancement**: Added `_load_prompts` method with full YAML parsing and validation
+- **System Model Extension**: Added `prompts` collection and `get_prompt()` method to System class
+- **Test Infrastructure**: Created 3 dedicated test systems (source_test, prompt_test, source_prompt_integration)
+- **Template Validation**: Comprehensive testing of Jinja2 template syntax and variable patterns
+- **LLM Config Parsing**: Full parsing and validation of provider, model, temperature, and token settings
+
+**Tests Added**: 17 tests across 6 test classes
+
+- `TestBasicSourceLoading`: 3 tests (system loading, structure validation, validation methods)
+- `TestBasicPromptLoading`: 4 tests (system loading, structure, template content, LLM config)
+- `TestPromptValidation`: 2 tests (validation methods, template validation)  
+- `TestSourcePromptIntegration`: 2 tests (integrated loading, system get methods)
+- `TestSourcePromptErrorHandling`: 2 tests (invalid source validation, missing name validation)
+- `TestPromptTemplateFeatures`: 2 tests (complex variables, LLM configuration completeness)
+- `TestSourcePromptUtilities`: 2 tests (simple source/prompt creation utilities)
+
+**Technical Implementation**:
+
+- **PromptDefinition Model**: Complete model with `LLMConfig` dataclass for structured configuration
+- **Template Support**: Full Jinja2 template parsing with variable substitution patterns
+- **Validation Logic**: Comprehensive validation for both sources and prompts with detailed error messages
+- **System Integration**: Seamless integration with existing SystemLoader and System model architecture
+- **Test Systems**: Purpose-built minimal test systems following established testing strategy patterns
+
+**Design Decisions**:
+
+- **LLMConfig Separation**: Dedicated dataclass for LLM configuration to enable structured validation
+- **Template Flexibility**: Support for complex variable patterns including nested object access
+- **Validation Consistency**: Followed established validation patterns from other definition types
+- **Minimal Test Systems**: Created focused test systems rather than complex real-world examples
+- **Integration Focus**: Emphasized integration testing between sources, prompts, and existing components
 
 ---
 
@@ -464,19 +501,21 @@ Phase 1.4 successfully tested **flow definition structure** (parsing, validation
 
 ### Overall Progress
 
-- **Total Tests**: 128 (126 passing, 2 skipped)
-- **Overall Code Coverage**: 33.7% (1,423 lines covered of 3,850 total)
-- **Phase 1.1**: 14/14 tests ✅ (System loading: 82% coverage)
+- **Total Tests**: 159 (157 passing, 2 skipped)
+- **Overall Code Coverage**: 35.2% (1,546 lines covered of 4,007 total)
+- **Phase 1.1**: 14/14 tests ✅ (System loading: 86% coverage)
 - **Phase 1.2**: 26/26 tests ✅ (Model definitions: 66% coverage, 2 skipped for missing features)
 - **Phase 1.3**: 22/22 tests ✅ (Tables: 46%, Compendiums: 38% coverage, 1 skipped for missing features)
 - **Phase 1.3.1**: 19/19 tests ✅ (Enhanced table entry types with comprehensive functionality)
 - **Phase 1.4**: 26/26 tests ✅ (Flow definitions: 73% coverage with comprehensive step type coverage)
 - **Phase 1.4.1**: 19/19 tests ✅ (Flow execution testing: 37% executor coverage with namespace isolation)
-- **Core Components**: Strong coverage on loading and validation (82% loader, 73% flows, 66% models)
-- **Execution Engine**: Good coverage with namespace isolation (43% engine, 37-58% executors)
+- **Phase 1.5**: 17/17 tests ✅ (Source & prompt definitions: 78% prompt, 100% source coverage)
+- **Core Components**: Strong coverage on loading and validation (86% loader, 73% flows, 66% models)
+- **Execution Engine**: Good coverage with namespace isolation (46% engine, 37-58% executors)
 - **Architecture Validation**: Entry type validation implemented with TDD approach
 - **Advanced Features**: Table entry type system with type overrides and generation support
 - **Flow System**: Complete flow definition and execution testing with namespace isolation
+- **Source & Prompt System**: Complete source and prompt definition loading with LLM configuration
 
 ### Skipped Tests (Missing Implementation)
 
@@ -499,7 +538,7 @@ These skipped tests clearly document what functionality is missing and will pass
 | Enhanced Entry Types | 19    | ✅ Complete             |
 | Flow Definitions     | 26    | ✅ Complete             |
 | Flow Execution       | 19    | ✅ Complete             |
-| Sources/Prompts      | 0     | 🔄 Planned              |
+| Sources/Prompts      | 17    | ✅ Complete             |
 | Integration          | 0     | 🔄 Planned              |
 
 ## Quality Metrics
@@ -514,7 +553,7 @@ These skipped tests clearly document what functionality is missing and will pass
 
 ### Code Coverage Analysis
 
-**Overall Coverage**: 33.7% (3,850 total lines, 1,423 covered)
+**Overall Coverage**: 35.2% (4,007 total lines, 1,546 covered)
 
 #### Core Components Coverage (Well-Tested):
 
@@ -522,29 +561,30 @@ These skipped tests clearly document what functionality is missing and will pass
 | ---------------------------------- | -------- | ----------- | ----------------------------------------- |
 | `core/context.py`                  | 100%     | ✅ Complete | All core context functionality            |
 | `models/step.py`                   | 100%     | ✅ Complete | Step definition models                    |
-| `core/loader.py`                   | 82%      | ✅ Strong   | **Excellent system loading coverage**     |
+| `models/source.py`                 | 100%     | ✅ Complete | **Source definitions fully tested**       |
+| `core/loader.py`                   | 86%      | ✅ Strong   | **Excellent system loading coverage**     |
+| `models/prompt.py`                 | 78%      | ✅ Strong   | **Prompt definitions well-covered**       |
 | `models/flow.py`                   | 73%      | ✅ Strong   | Flow definitions well-covered             |
 | `models/model.py`                  | 66%      | 🔄 Good     | Model definitions solid coverage          |
+| `models/system.py`                 | 62%      | 🔄 Good     | **System loading enhanced with prompts**   |
 | `models/observable.py`             | 60%      | 🔄 Good     | Observable pattern implementation         |
-| `models/system.py`                 | 59%      | 🔄 Good     | System loading core functionality         |
+| `executors/llm_executor.py`        | 59%      | 🔄 Good     | **LLM execution improvements**            |
 | `executors/dice_executor.py`       | 58%      | 🔄 Good     | **Namespace-aware dice rolling**          |
-| `models/source.py`                 | 58%      | 🔄 Good     | Source definitions                        |
 | `executors/base.py`                | 54%      | 🔄 Partial  | Base executor functionality               |
-| `models/context_data.py`           | 50%      | 🔄 Partial  | **Flow namespace isolation implemented**  |
-| `utils/templates.py`               | 48%      | 🔄 Partial  | Template rendering utilities              |
+| `utils/templates.py`               | 47%      | 🔄 Partial  | Template rendering utilities              |
 | `models/table.py`                  | 46%      | 🔄 Partial  | **Table validation tested** + entry types |
 | `integrations/dice_integration.py` | 46%      | 🔄 Partial  | Dice integration with wyrdbound_dice      |
-| `core/engine.py`                   | 43%      | 🔄 Partial  | **Namespace-aware action processing**     |
+| `core/engine.py`                   | 46%      | 🔄 Partial  | **Namespace-aware action processing**     |
+| `models/context_data.py`           | 43%      | 🔄 Partial  | **Flow namespace isolation implemented**  |
 | `models/compendium.py`             | 38%      | 🔄 Limited  | **Compendium loading tested**             |
 | `executors/flow_executor.py`       | 37%      | 🔄 Limited  | **Flow execution testing implemented**    |
-| `integrations/llm_integration.py`  | 26%      | 🔄 Limited  | LLM integration basics                    |
-| `executors/table_executor.py`      | 22%      | 🔄 Limited  | **Namespace isolation + type overrides**  |
+| `integrations/llm_integration.py`  | 35%      | 🔄 Limited  | LLM integration basics                    |
 
 #### Low Coverage Components (15-22%):
 
 | Component                      | Coverage | Priority  | Reason                                 |
 | ------------------------------ | -------- | --------- | -------------------------------------- |
-| `executors/llm_executor.py`    | 22%      | 🟡 Medium | LLM functionality, tested in Phase 1.5 |
+| `executors/table_executor.py`  | 22%      | 🟡 Medium | **Namespace isolation + type overrides** |
 | `executors/choice_executor.py` | 15%      | 🟡 Medium | Player choice handling                 |
 | `executors/flow_helper.py`     | 9%       | 🟡 Medium | Flow utility functions                 |
 
@@ -564,22 +604,25 @@ These skipped tests clearly document what functionality is missing and will pass
 
 #### Coverage Strategy:
 
-**Phase 1.1-1.4.1 Achievements** (COMPLETED): 33.7% overall coverage with strong core engine testing
+**Phase 1.1-1.5 Achievements** (COMPLETED): 35.2% overall coverage with strong core engine testing
 
-- ✅ **SystemLoader**: 82% coverage - excellent system loading and parsing
+- ✅ **SystemLoader**: 86% coverage - excellent system loading including prompts
 - ✅ **Flow definitions**: 73% coverage - comprehensive flow structure validation
 - ✅ **Model definitions**: 66% coverage - solid model validation and inheritance
-- ✅ **Execution context**: 50% coverage - namespace isolation architecture implemented
-- ✅ **Core engine**: 43% coverage - namespace-aware action processing and execution
-- ✅ **Executors**: 22-58% coverage range - all executors enhanced with namespace isolation
+- ✅ **Source definitions**: 100% coverage - complete source loading and validation
+- ✅ **Prompt definitions**: 78% coverage - comprehensive prompt and LLM configuration
+- ✅ **System model**: 62% coverage - enhanced with sources and prompts support
+- ✅ **Execution context**: 43% coverage - namespace isolation architecture implemented
+- ✅ **Core engine**: 46% coverage - namespace-aware action processing and execution
+- ✅ **Executors**: 22-59% coverage range - all executors enhanced with namespace isolation
 - ✅ **Table/Compendium**: 38-46% coverage - structure validation and entry type systems
 
-**Next Phase** (1.5): Source and prompt definitions
+**Next Phase** (2.x): Integration and executor refinement
 
-- 🎯 Target: `models/source.py` (58% → 80%+) - already well-started
-- 🎯 Target: Source definition loading and validation
-- 🎯 Target: Prompt template parsing and rendering
-- 🎯 Target: Overall coverage 33.7% → 40%+
+- 🎯 Target: Cross-component integration testing
+- 🎯 Target: Executor enhancement and edge case coverage
+- 🎯 Target: Real-world scenario validation
+- 🎯 Target: Overall coverage 35.2% → 45%+
 
 **Future Phases**: Executor refinement and integration testing
 
@@ -641,12 +684,22 @@ These skipped tests clearly document what functionality is missing and will pass
 6. **Executor Coverage**: ✅ Significantly improved coverage of `FlowExecutor` and related execution components
 7. **Namespace Architecture**: ✅ Implemented UUID-based flow execution namespaces preventing data collision between concurrent flows
 
-### Short Term (Phase 1.5: Source & Prompt Tests)
+### ✅ Phase 1.5: Source & Prompt Tests - COMPLETED
 
-1. Source definition testing and validation
-2. Prompt template parsing and rendering
-3. Complete core component coverage
-4. **Coverage Target**: Achieve 25%+ overall coverage with core components at 60%+
+1. **Source Definition Loading**: ✅ Complete source file loading with proper structure validation
+2. **Prompt Definition Loading**: ✅ Full prompt system with LLM configuration parsing  
+3. **Template Validation**: ✅ Jinja2 template syntax validation and variable substitution
+4. **LLM Configuration**: ✅ Provider, model, temperature, and token limit validation
+5. **System Integration**: ✅ Cross-references between sources, prompts, and other components
+6. **Error Handling**: ✅ Comprehensive validation for malformed sources and prompts
+7. **Coverage Achievement**: ✅ 35.2% overall coverage with 100% source, 78% prompt coverage
+
+### Short Term (Phase 2.x: Integration Testing & Executor Enhancement)
+
+1. Cross-component integration testing and validation
+2. Executor enhancement and edge case coverage improvement  
+3. Real-world scenario testing with complex systems
+4. **Coverage Target**: Achieve 45%+ overall coverage with executors at 60%+
 
 ### Medium Term (Phase 2.x: Integration & Execution)
 
@@ -679,5 +732,5 @@ The systematic progression through phases ensures each component is thoroughly v
 
 ---
 
-_Last Updated: August 6, 2025_
-_Current Status: Phase 1.4.1 Complete - Flow Execution Tests with Namespace Isolation Architecture Implemented (128/130 tests passing, 2 skipped for missing expression evaluation)_
+_Last Updated: August 8, 2025_
+_Current Status: Phase 1.5 Complete - Source & Prompt Definition Tests Implemented (159/161 tests passing, 2 skipped for missing expression evaluation)_

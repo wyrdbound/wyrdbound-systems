@@ -1,0 +1,5 @@
+id: "source_test"
+kind: "system"
+name: "Source Test System"
+description: "Minimal system for testing source definition loading"
+version: "1.0"

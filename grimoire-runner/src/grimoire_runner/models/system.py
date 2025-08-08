@@ -6,6 +6,7 @@ from pathlib import Path
 from .compendium import CompendiumDefinition
 from .flow import FlowDefinition
 from .model import ModelDefinition
+from .prompt import PromptDefinition
 from .source import SourceDefinition
 from .table import TableDefinition
 
@@ -62,6 +63,7 @@ class System:
     compendiums: dict[str, CompendiumDefinition] = field(default_factory=dict)
     tables: dict[str, TableDefinition] = field(default_factory=dict)
     sources: dict[str, SourceDefinition] = field(default_factory=dict)
+    prompts: dict[str, PromptDefinition] = field(default_factory=dict)
 
     # Internal fields
     _system_path: Path | None = field(default=None, repr=False)
@@ -85,6 +87,10 @@ class System:
     def get_source(self, source_id: str) -> SourceDefinition | None:
         """Get a source definition by ID."""
         return self.sources.get(source_id)
+
+    def get_prompt(self, prompt_id: str) -> PromptDefinition | None:
+        """Get a prompt definition by ID."""
+        return self.prompts.get(prompt_id)
 
     def list_flows(self) -> list[str]:
         """Get a list of all available flow IDs."""

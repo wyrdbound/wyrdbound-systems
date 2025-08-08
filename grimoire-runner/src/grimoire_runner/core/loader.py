@@ -19,6 +19,7 @@ from ..models.flow import (
     TableRollDefinition,
 )
 from ..models.model import AttributeDefinition, ModelDefinition, ValidationRule
+from ..models.prompt import PromptDefinition
 from ..models.source import SourceDefinition
 from ..models.system import Credits, Currency, CurrencyDenomination, System
 from ..models.table import TableDefinition
@@ -61,6 +62,7 @@ class SystemLoader:
 
         # Load all other components
         self._load_sources(system_path, system)
+        self._load_prompts(system_path, system)
         self._load_models(system_path, system)
         self._load_compendiums(system_path, system)
         self._load_tables(system_path, system)
@@ -126,6 +128,26 @@ class SystemLoader:
 
             except Exception as e:
                 logger.error(f"Failed to load source {source_file}: {e}")
+
+    def _load_prompts(self, system_path: Path, system: System) -> None:
+        """Load prompt definitions."""
+        prompts_dir = system_path / "prompts"
+        if not prompts_dir.exists():
+            return
+
+        for prompt_file in prompts_dir.glob("*.yaml"):
+            try:
+                with open(prompt_file, encoding="utf-8") as f:
+                    data = yaml.safe_load(f)
+
+                prompt = PromptDefinition(**data)
+                # Use prompt ID as key, falling back to name if no ID
+                prompt_key = prompt.id or prompt.name
+                system.prompts[prompt_key] = prompt
+                logger.debug(f"Loaded prompt: {prompt.name} (ID: {prompt_key})")
+
+            except Exception as e:
+                logger.error(f"Failed to load prompt {prompt_file}: {e}")
 
     def _load_models(self, system_path: Path, system: System) -> None:
         """Load model definitions."""

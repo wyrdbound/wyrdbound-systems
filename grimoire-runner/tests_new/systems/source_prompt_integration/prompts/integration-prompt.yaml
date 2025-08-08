@@ -1,0 +1,17 @@
+id: "integration_prompt"
+kind: "prompt"
+name: "Integration Test Prompt"
+description: "Prompt for integration testing"
+version: "1.0"
+
+llm:
+  provider: "ollama"
+  model: "gemma2"
+
+prompt_template: |
+  Generate content for integration testing.
+  
+  Input: {{ input }}
+  Context: {{ context }}
+  
+  This prompt is part of the {{ system_name }} system.
