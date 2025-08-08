@@ -1,7 +1,6 @@
 """Prompt definition models for GRIMOIRE runner."""
 
-from dataclasses import dataclass, field
-from typing import Any
+from dataclasses import dataclass
 
 
 @dataclass
@@ -17,17 +16,19 @@ class LLMConfig:
     def validate(self) -> list[str]:
         """Validate the LLM configuration and return any errors."""
         errors = []
-        
+
         # Temperature should be between 0 and 1 if specified
         if self.temperature is not None:
             if not 0.0 <= self.temperature <= 1.0:
-                errors.append(f"Temperature must be between 0.0 and 1.0, got {self.temperature}")
-                
+                errors.append(
+                    f"Temperature must be between 0.0 and 1.0, got {self.temperature}"
+                )
+
         # Max tokens should be positive if specified
         if self.max_tokens is not None:
             if self.max_tokens <= 0:
                 errors.append(f"Max tokens must be positive, got {self.max_tokens}")
-        
+
         return errors
 
 
@@ -59,7 +60,7 @@ class PromptDefinition:
             errors.append("Prompt name is required")
         if not self.prompt_template:
             errors.append("Prompt template is required")
-            
+
         # Validate LLM config if present
         if self.llm:
             errors.extend(self.llm.validate())
