@@ -15,7 +15,6 @@ This tests the enhanced table system t        # Entry 4 should have type overrid
 Tests are organized by complexity following the testing strategy.
 """
 
-
 import pytest
 
 from grimoire_runner.core.loader import SystemLoader

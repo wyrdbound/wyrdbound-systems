@@ -11,7 +11,6 @@ This module tests model definition capabilities, focusing on:
 - Model references and nested structures
 """
 
-
 import pytest
 import yaml
 
@@ -519,9 +518,7 @@ class TestValidationExecution:
 
         manager.set_field_value("current_hit_points", 0)
         is_unconscious = context._get_nested_value(context.outputs, "is_unconscious")
-        assert is_unconscious, (
-            f"Expected is_unconscious=True, got {is_unconscious}"
-        )
+        assert is_unconscious, f"Expected is_unconscious=True, got {is_unconscious}"
 
         # Verify the dependency system is working
         assert len(manager.fields) == 3, "Should have 3 derived fields registered"

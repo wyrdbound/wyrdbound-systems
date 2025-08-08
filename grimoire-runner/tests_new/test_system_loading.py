@@ -9,7 +9,6 @@ This module tests the basic system loading capabilities, focusing on:
 - Error handling for invalid systems
 """
 
-
 import pytest
 import yaml
 

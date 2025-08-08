@@ -11,7 +11,6 @@ This module tests compendium and table definition capabilities, focusing on:
 - Complex table result types
 """
 
-
 import pytest
 import yaml
 
