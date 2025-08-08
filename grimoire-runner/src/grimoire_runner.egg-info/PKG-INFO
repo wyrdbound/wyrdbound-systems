@@ -22,6 +22,7 @@ Requires-Dist: jinja2>=3.1
 Requires-Dist: typer[all]>=0.9
 Requires-Dist: langchain>=0.1
 Requires-Dist: langchain-anthropic>=0.1
+Requires-Dist: langchain-ollama>=0.1
 Requires-Dist: wyrdbound-dice>=0.0.1
 Requires-Dist: wyrdbound-rng>=0.0.1
 Provides-Extra: dev

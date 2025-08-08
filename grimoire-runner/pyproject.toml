@@ -28,6 +28,7 @@ dependencies = [
     "typer[all]>=0.9",
     "langchain>=0.1",
     "langchain-anthropic>=0.1",
+    "langchain-ollama>=0.1",
     "wyrdbound-dice>=0.0.1",
     "wyrdbound-rng>=0.0.1",
 ]
