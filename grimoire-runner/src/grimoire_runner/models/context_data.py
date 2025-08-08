@@ -320,54 +320,92 @@ class ExecutionContext:
             # Provide detailed error information for template resolution failures
             error_details = []
             error_details.append(f"Template: {template_str!r}")
-            
+
             # Enhanced error message for attribute errors
             error_str = str(e)
             if "'dict object' has no attribute" in error_str and "'" in error_str:
                 # Extract the attribute name from the error
                 parts = error_str.split("'")
                 if len(parts) >= 2:
-                    missing_attr = parts[-2]  # The attribute name is usually the second-to-last quoted string
-                    
+                    missing_attr = parts[
+                        -2
+                    ]  # The attribute name is usually the second-to-last quoted string
+
                     # Try to identify which object failed and show its contents
-                    if hasattr(self, 'inputs') and missing_attr in template_str and 'inputs.' in template_str:
+                    if (
+                        hasattr(self, "inputs")
+                        and missing_attr in template_str
+                        and "inputs." in template_str
+                    ):
                         available_keys = list(self.inputs.keys()) if self.inputs else []
-                        error_details.append(f"Error: 'inputs' (dict object) has no attribute '{missing_attr}'")
-                        error_details.append(f"Available keys under 'inputs': {available_keys}")
-                    elif hasattr(self, 'outputs') and missing_attr in template_str and 'outputs.' in template_str:
-                        available_keys = list(self.outputs.keys()) if self.outputs else []
-                        error_details.append(f"Error: 'outputs' (dict object) has no attribute '{missing_attr}'")
-                        error_details.append(f"Available keys under 'outputs': {available_keys}")
-                    elif hasattr(self, 'variables') and missing_attr in template_str and 'variables.' in template_str:
-                        available_keys = list(self.variables.keys()) if self.variables else []
-                        error_details.append(f"Error: 'variables' (dict object) has no attribute '{missing_attr}'")
-                        error_details.append(f"Available keys under 'variables': {available_keys}")
+                        error_details.append(
+                            f"Error: 'inputs' (dict object) has no attribute '{missing_attr}'"
+                        )
+                        error_details.append(
+                            f"Available keys under 'inputs': {available_keys}"
+                        )
+                    elif (
+                        hasattr(self, "outputs")
+                        and missing_attr in template_str
+                        and "outputs." in template_str
+                    ):
+                        available_keys = (
+                            list(self.outputs.keys()) if self.outputs else []
+                        )
+                        error_details.append(
+                            f"Error: 'outputs' (dict object) has no attribute '{missing_attr}'"
+                        )
+                        error_details.append(
+                            f"Available keys under 'outputs': {available_keys}"
+                        )
+                    elif (
+                        hasattr(self, "variables")
+                        and missing_attr in template_str
+                        and "variables." in template_str
+                    ):
+                        available_keys = (
+                            list(self.variables.keys()) if self.variables else []
+                        )
+                        error_details.append(
+                            f"Error: 'variables' (dict object) has no attribute '{missing_attr}'"
+                        )
+                        error_details.append(
+                            f"Available keys under 'variables': {available_keys}"
+                        )
                     else:
                         error_details.append(f"Error: {e}")
                 else:
                     error_details.append(f"Error: {e}")
-            elif 'undefined' in error_str.lower():
+            elif "undefined" in error_str.lower():
                 # Handle Jinja2 undefined variable errors
                 if "'" in error_str:
-                    undefined_var = error_str.split("'")[1] if error_str.count("'") >= 2 else "unknown"
+                    undefined_var = (
+                        error_str.split("'")[1]
+                        if error_str.count("'") >= 2
+                        else "unknown"
+                    )
                     error_details.append(f"Error: '{undefined_var}' is undefined")
                 else:
                     error_details.append(f"Error: {e}")
             else:
                 error_details.append(f"Error: {e}")
-            
+
             # Show top-level available context keys for additional context
-            if hasattr(context, 'keys'):
+            if hasattr(context, "keys"):
                 top_level_keys = list(context.keys())
             elif isinstance(context, dict):
                 top_level_keys = list(context.keys())
             else:
                 top_level_keys = []
-            
+
             if top_level_keys:
-                error_details.append(f"Available top-level context keys: {sorted(top_level_keys)}")
-            
-            detailed_message = "Template resolution failed:\n" + "\n".join(f"  {detail}" for detail in error_details)
+                error_details.append(
+                    f"Available top-level context keys: {sorted(top_level_keys)}"
+                )
+
+            detailed_message = "Template resolution failed:\n" + "\n".join(
+                f"  {detail}" for detail in error_details
+            )
             raise ValueError(detailed_message) from e
 
     def resolve_path_value(self, path: str) -> Any:

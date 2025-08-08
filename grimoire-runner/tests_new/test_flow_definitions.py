@@ -169,14 +169,21 @@ class TestStepDefinitions:
 
         assert llm_step is not None
         assert llm_step.type == StepType.LLM_GENERATION
-        assert llm_step.prompt == "Create a character description for {{ character_name }}, a {{ character_class }}. Include their appearance, personality, and background."
+        assert (
+            llm_step.prompt
+            == "Create a character description for {{ character_name }}, a {{ character_class }}. Include their appearance, personality, and background."
+        )
         assert "character_class" in llm_step.prompt_data
         assert llm_step.llm_settings is not None
 
         settings = llm_step.llm_settings
         assert isinstance(settings, LLMSettingsDefinition)
-        assert settings.provider == "ollama"  # Default changed from "anthropic" to "ollama"
-        assert settings.model == "gemma2"     # Default changed from "claude-3-haiku" to "gemma2"
+        assert (
+            settings.provider == "ollama"
+        )  # Default changed from "anthropic" to "ollama"
+        assert (
+            settings.model == "gemma2"
+        )  # Default changed from "claude-3-haiku" to "gemma2"
         assert settings.max_tokens == 150
         assert settings.temperature == 0.8
 
