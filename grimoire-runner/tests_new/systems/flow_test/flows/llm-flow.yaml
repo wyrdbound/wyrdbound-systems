@@ -17,13 +17,13 @@ steps:
   - id: "generate-description"
     name: "Generate Character Description"
     type: "llm_generation"
-    prompt: "Create a character description"
+    prompt: "Create a character description for {{ character_name }}, a {{ character_class }}. Include their appearance, personality, and background."
     prompt_data:
-      character_class: "{{ get_value('inputs.character.class') }}"
-      character_name: "{{ get_value('inputs.character.name') }}"
+      character_class: "{{ inputs.character.class }}"
+      character_name: "{{ inputs.character.name }}"
     llm_settings:
-      provider: "anthropic"
-      model: "claude-3-haiku"
+      provider: "ollama"
+      model: "gemma2"
       max_tokens: 150
       temperature: 0.8
     actions:
