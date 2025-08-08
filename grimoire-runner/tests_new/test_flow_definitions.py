@@ -204,15 +204,6 @@ class TestFlowValidation:
                 found_types.add(step.type)
 
         # Verify we have coverage of main step types
-        expected_types = {
-            StepType.COMPLETION,
-            StepType.DICE_ROLL,
-            StepType.DICE_SEQUENCE,
-            StepType.PLAYER_CHOICE,
-            StepType.TABLE_ROLL,
-            StepType.LLM_GENERATION,
-            StepType.FLOW_CALL,
-        }
 
         # Check that we're testing the core step types
         assert StepType.COMPLETION in found_types

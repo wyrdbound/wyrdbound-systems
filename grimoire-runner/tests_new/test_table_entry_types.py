@@ -242,7 +242,7 @@ class TestComplexScenarios:
                     referenced_models.add(entry["type"])
 
         # Verify each referenced model has a corresponding compendium
-        compendium_models = {comp.model for comp in test_system.compendiums.values()}
+        {comp.model for comp in test_system.compendiums.values()}
 
         for model_id in referenced_models:
             assert model_id in test_system.models, f"Model '{model_id}' not found"

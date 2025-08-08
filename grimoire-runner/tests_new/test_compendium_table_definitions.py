@@ -153,10 +153,10 @@ class TestCompendiumValidation:
 
         # Get compendium and model
         weapons_compendium = system.compendiums["basic_weapons"]
-        weapon_model = system.models["weapon"]
+        system.models["weapon"]
 
         # Verify entries match model requirements
-        for entry_id, entry_data in weapons_compendium.entries.items():
+        for _entry_id, entry_data in weapons_compendium.entries.items():
             # Check required attributes exist
             assert "name" in entry_data
             assert "damage" in entry_data
@@ -175,10 +175,10 @@ class TestCompendiumValidation:
 
         # Get compendium and model
         weapons_compendium = system.compendiums["basic_weapons"]
-        weapon_model = system.models["weapon"]
+        system.models["weapon"]
 
         # When model validation is fully implemented, this should work:
-        for entry_id, entry_data in weapons_compendium.entries.items():
+        for _entry_id, _entry_data in weapons_compendium.entries.items():
             # This should validate the entry against the weapon model
             # errors = weapon_model.validate_instance(entry_data)
             # assert len(errors) == 0, f"Entry '{entry_id}' should be valid: {errors}"
@@ -198,7 +198,7 @@ class TestCompendiumValidation:
         rope_entry = items_compendium.entries["rope"]
         assert "description" in rope_entry
 
-        rations_entry = items_compendium.entries["rations"]
+        items_compendium.entries["rations"]
         # rations entry doesn't have description, which should be fine since it's optional
 
     def test_compendium_validation_method(self, test_systems_dir):
@@ -283,7 +283,7 @@ class TestCompendiumTableIntegration:
         gear_compendium = system.compendiums["starting_gear"]
 
         # All table entries should reference valid compendium entries
-        for entry_id, entry_value in equipment_table.entries.items():
+        for _entry_id, entry_value in equipment_table.entries.items():
             assert entry_value in gear_compendium.entries, (
                 f"Table entry '{entry_value}' not found in compendium"
             )

@@ -2,16 +2,12 @@
 
 import logging
 import os
-import sys
 from typing import Any
 
 logger = logging.getLogger(__name__)
 
 # Core dependency check
 try:
-    # We only need the base LangChain classes, not PromptTemplate
-    from langchain_core.language_models import BaseLanguageModel
-
     LANGCHAIN_CORE_AVAILABLE = True
 except ImportError:
     LANGCHAIN_CORE_AVAILABLE = False

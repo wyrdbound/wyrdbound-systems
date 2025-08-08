@@ -130,7 +130,7 @@ class TestAttributeTypes:
         alive_attr = character_model.get_attribute("is_alive")
         assert alive_attr is not None
         assert alive_attr.type == "bool"
-        assert alive_attr.default == True
+        assert alive_attr.default
 
         # Boolean without default
         pc_attr = character_model.get_attribute("is_player_character")
@@ -513,13 +513,13 @@ class TestValidationExecution:
         # TEST 4: Boolean derived field
         manager.set_field_value("current_hit_points", 15)
         is_unconscious = context._get_nested_value(context.outputs, "is_unconscious")
-        assert is_unconscious == False, (
+        assert not is_unconscious, (
             f"Expected is_unconscious=False, got {is_unconscious}"
         )
 
         manager.set_field_value("current_hit_points", 0)
         is_unconscious = context._get_nested_value(context.outputs, "is_unconscious")
-        assert is_unconscious == True, (
+        assert is_unconscious, (
             f"Expected is_unconscious=True, got {is_unconscious}"
         )
 
@@ -624,7 +624,7 @@ class TestModelLoadingEdgeCases:
         assert required_attr.type == "str"
         assert optional_attr is not None
         assert optional_attr.type == "str"
-        assert optional_attr.optional == True
+        assert optional_attr.optional
 
     def test_empty_model_attributes(self, temp_system_dir):
         """Test model with no attributes."""

@@ -202,7 +202,7 @@ class TestOutputValidation:
         # (specific outputs depend on the flow definition)
         if result.outputs:
             # If there are outputs, they should be properly structured
-            for output_id, output_value in result.outputs.items():
+            for output_id, _output_value in result.outputs.items():
                 assert isinstance(output_id, str)
                 assert len(output_id) > 0
 

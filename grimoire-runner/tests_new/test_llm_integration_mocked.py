@@ -59,7 +59,7 @@ class TestLLMIntegrationMocked:
         """Test complete LLM flow execution with mocked LLM calls."""
         # Create engine and load test system
         engine = GrimoireEngine()
-        system = engine.load_system(
+        engine.load_system(
             "/Users/justingaylor/src/wyrdbound-systems/grimoire-runner/tests_new/systems/flow_test"
         )
 
@@ -105,7 +105,7 @@ class TestLLMIntegrationMocked:
 
         # Create engine and load test system
         engine = GrimoireEngine()
-        system = engine.load_system(
+        engine.load_system(
             "/Users/justingaylor/src/wyrdbound-systems/grimoire-runner/tests_new/systems/flow_test"
         )
 
@@ -117,7 +117,7 @@ class TestLLMIntegrationMocked:
         )
 
         # Execute the LLM flow
-        result = engine.execute_flow("llm-flow", context)
+        engine.execute_flow("llm-flow", context)
 
         # Verify the mock was called with correctly resolved template values
         mock_generate.assert_called_once()
@@ -190,7 +190,7 @@ class TestLLMErrorHandling:
             )
 
             engine = GrimoireEngine()
-            system = engine.load_system(
+            engine.load_system(
                 "/Users/justingaylor/src/wyrdbound-systems/grimoire-runner/tests_new/systems/flow_test"
             )
 
