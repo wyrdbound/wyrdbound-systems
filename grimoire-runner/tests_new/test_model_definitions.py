@@ -11,15 +11,11 @@ This module tests model definition capabilities, focusing on:
 - Model references and nested structures
 """
 
+
 import pytest
-from pathlib import Path
 import yaml
+
 from grimoire_runner.core.loader import SystemLoader
-from grimoire_runner.models.model import (
-    ModelDefinition,
-    AttributeDefinition,
-    ValidationRule,
-)
 
 
 class TestBasicModelLoading:
@@ -424,12 +420,11 @@ class TestValidationExecution:
         via DerivedFieldManager and ObservableValue classes. ModelDefinition is only for
         schema validation - derived calculation happens during execution, not validation.
         """
+
+        from grimoire_runner.models.context_data import ExecutionContext
         from grimoire_runner.models.observable import (
             DerivedFieldManager,
-            ObservableValue,
         )
-        from grimoire_runner.models.context_data import ExecutionContext
-        from unittest.mock import Mock
 
         # Create execution context and template resolver
         context = ExecutionContext()

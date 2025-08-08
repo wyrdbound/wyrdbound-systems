@@ -16,11 +16,12 @@ correct outputs.
 This is Phase 1.4.1 of the testing strategy.
 """
 
-import pytest
 from pathlib import Path
-from grimoire_runner.core.loader import SystemLoader
+
+import pytest
+
 from grimoire_runner.core.engine import GrimoireEngine
-from grimoire_runner.models.context_data import ExecutionContext
+from grimoire_runner.core.loader import SystemLoader
 from grimoire_runner.models.flow import FlowResult, StepResult
 
 

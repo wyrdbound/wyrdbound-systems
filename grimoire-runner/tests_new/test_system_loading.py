@@ -9,16 +9,11 @@ This module tests the basic system loading capabilities, focusing on:
 - Error handling for invalid systems
 """
 
+
 import pytest
-from pathlib import Path
 import yaml
+
 from grimoire_runner.core.loader import SystemLoader
-from grimoire_runner.models.system import (
-    System,
-    Currency,
-    CurrencyDenomination,
-    Credits,
-)
 
 
 class TestBasicSystemLoading:

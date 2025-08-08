@@ -11,19 +11,21 @@ This tests the flow definition system including:
 Tests are organized by complexity following the testing strategy.
 """
 
-import pytest
 from pathlib import Path
+
+import pytest
+
 from grimoire_runner.core.loader import SystemLoader
 from grimoire_runner.models.flow import (
+    ChoiceDefinition,
+    DiceSequenceDefinition,
     FlowDefinition,
+    InputDefinition,
+    LLMSettingsDefinition,
+    OutputDefinition,
     StepDefinition,
     StepType,
-    InputDefinition,
-    OutputDefinition,
-    ChoiceDefinition,
     TableRollDefinition,
-    DiceSequenceDefinition,
-    LLMSettingsDefinition,
 )
 
 

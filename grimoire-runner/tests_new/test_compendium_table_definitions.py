@@ -11,12 +11,11 @@ This module tests compendium and table definition capabilities, focusing on:
 - Complex table result types
 """
 
+
 import pytest
-from pathlib import Path
 import yaml
+
 from grimoire_runner.core.loader import SystemLoader
-from grimoire_runner.models.compendium import CompendiumDefinition
-from grimoire_runner.models.table import TableDefinition
 
 
 class TestBasicCompendiumLoading:

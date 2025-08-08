@@ -5,11 +5,12 @@ This module provides common fixtures and utilities for testing GRIMOIRE componen
 in isolation using minimal test systems.
 """
 
-import pytest
-import tempfile
 import shutil
+import tempfile
 from pathlib import Path
-from typing import Dict, Any, Optional
+from typing import Any
+
+import pytest
 import yaml
 
 
@@ -27,7 +28,7 @@ def test_systems_dir():
     return Path(__file__).parent / "systems"
 
 
-def create_yaml_file(directory: Path, filename: str, content: Dict[str, Any]) -> Path:
+def create_yaml_file(directory: Path, filename: str, content: dict[str, Any]) -> Path:
     """Helper function to create a YAML file in a directory."""
     directory.mkdir(parents=True, exist_ok=True)
     file_path = directory / filename
@@ -36,9 +37,9 @@ def create_yaml_file(directory: Path, filename: str, content: Dict[str, Any]) ->
     return file_path
 
 
-def load_yaml_file(file_path: Path) -> Dict[str, Any]:
+def load_yaml_file(file_path: Path) -> dict[str, Any]:
     """Helper function to load and parse a YAML file."""
-    with open(file_path, "r") as f:
+    with open(file_path) as f:
         return yaml.safe_load(f)
 
 
@@ -61,7 +62,7 @@ class SystemBuilder:
         self.system_def["description"] = description
         return self
 
-    def with_currency(self, base_unit: str, denominations: Dict[str, Any]):
+    def with_currency(self, base_unit: str, denominations: dict[str, Any]):
         """Add currency system to the system."""
         self.system_def["currency"] = {
             "base_unit": base_unit,
