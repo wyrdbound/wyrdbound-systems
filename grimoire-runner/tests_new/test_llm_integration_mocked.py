@@ -1,6 +1,7 @@
 """Tests for LLM integration functionality using mocks."""
 
 import sys
+from pathlib import Path
 from unittest.mock import patch
 
 import pytest
@@ -59,9 +60,8 @@ class TestLLMIntegrationMocked:
         """Test complete LLM flow execution with mocked LLM calls."""
         # Create engine and load test system
         engine = GrimoireEngine()
-        engine.load_system(
-            "/Users/justingaylor/src/wyrdbound-systems/grimoire-runner/tests_new/systems/flow_test"
-        )
+        system_path = Path(__file__).parent / "systems" / "flow_test"
+        engine.load_system(system_path)
 
         # Create execution context
         context = engine.create_execution_context(
@@ -105,9 +105,8 @@ class TestLLMIntegrationMocked:
 
         # Create engine and load test system
         engine = GrimoireEngine()
-        engine.load_system(
-            "/Users/justingaylor/src/wyrdbound-systems/grimoire-runner/tests_new/systems/flow_test"
-        )
+        system_path = Path(__file__).parent / "systems" / "flow_test"
+        engine.load_system(system_path)
 
         # Create execution context with specific test data
         test_name = "Aragorn"
@@ -134,9 +133,8 @@ class TestLLMIntegrationMocked:
         """Test that the simplified template syntax {{ inputs.character.name }} works."""
         # Load the LLM flow and check its template syntax
         engine = GrimoireEngine()
-        system = engine.load_system(
-            "/Users/justingaylor/src/wyrdbound-systems/grimoire-runner/tests_new/systems/flow_test"
-        )
+        system_path = Path(__file__).parent / "systems" / "flow_test"
+        system = engine.load_system(system_path)
 
         llm_flow = system.flows["llm-flow"]
         generate_step = llm_flow.get_step("generate-description")
@@ -190,9 +188,8 @@ class TestLLMErrorHandling:
             )
 
             engine = GrimoireEngine()
-            engine.load_system(
-                "/Users/justingaylor/src/wyrdbound-systems/grimoire-runner/tests_new/systems/flow_test"
-            )
+            system_path = Path(__file__).parent / "systems" / "flow_test"
+            engine.load_system(system_path)
 
             context = engine.create_execution_context(
                 inputs={"character": {"name": "TestCharacter", "class": "Fighter"}}
