@@ -250,191 +250,246 @@ class TableExecutor(BaseStepExecutor):
         # Create a new execution context for the sub-flow
         sub_context = ExecutionContext()
 
-        # Resolve input values from the current context
-        resolved_inputs = {}
-        for input_key, input_value in inputs.items():
-            if (
-                isinstance(input_value, str)
-                and input_value.startswith("{{")
-                and input_value.endswith("}}")
-            ):
-                # This is a template expression, resolve it
-                try:
-                    # Debug: Check what's available in context
-                    if input_value == "{{ result }}":
-                        current_result = context.get_variable("result")
-                        logger.info(
-                            f"Context result variable: {type(current_result).__name__} = {current_result}"
-                        )
-
-                        # For "result" variable, use direct access to avoid string conversion
-                        if current_result is not None and isinstance(
-                            current_result, dict
-                        ):
-                            resolved_value = current_result
-                            logger.info(
-                                f"Used direct result access: {type(resolved_value).__name__}"
-                            )
-                        else:
-                            resolved_value = context.resolve_template(input_value)
-                            logger.info(
-                                f"Used template resolution for result: {type(resolved_value).__name__}"
-                            )
-                    elif input_value == "{{ selected_item }}":
-                        # Special handling for selected_item - convert string to typed object if needed
-                        selected_item = context.get_variable("selected_item")
-                        logger.info(
-                            f"Context selected_item variable: {type(selected_item).__name__} = {selected_item}"
-                        )
-
-                        if isinstance(selected_item, str) and selected_item:
-                            # Try to convert the string to a typed object using the same logic as table rolls
-                            # We need to guess the entry_type based on context or use a default
-                            # For weapon choices, we can assume it's a weapon type
-                            typed_result = self._convert_string_to_typed_object(
-                                selected_item, "weapon", system
-                            )
-                            if typed_result:
-                                resolved_value = typed_result
-                                logger.info(
-                                    f"Converted selected_item string to typed object: {type(resolved_value).__name__}"
-                                )
-                            else:
-                                resolved_value = selected_item
-                                logger.info(
-                                    f"Could not convert selected_item, using string: {selected_item}"
-                                )
-                        else:
-                            resolved_value = context.resolve_template(input_value)
-                            logger.info(
-                                f"Used template resolution for selected_item: {type(resolved_value).__name__}"
-                            )
-                    else:
-                        resolved_value = context.resolve_template(input_value)
-
-                    resolved_inputs[input_key] = resolved_value
-                    logger.info(
-                        f"Resolved input {input_key}: {input_value} -> {type(resolved_value).__name__}"
-                    )
-                except Exception as e:
-                    logger.error(
-                        f"Failed to resolve input {input_key}: {input_value} - {e}"
-                    )
-                    # Use the literal value as fallback
-                    resolved_inputs[input_key] = input_value
-            elif isinstance(input_value, str) and "outputs." in input_value:
-                # This is a direct reference to an output, resolve it
-                try:
-                    resolved_value = context.resolve_path_value(input_value)
-                    resolved_inputs[input_key] = resolved_value
-                    logger.info(
-                        f"Resolved output reference {input_key}: {input_value} -> {type(resolved_value).__name__}"
-                    )
-                except Exception as e:
-                    logger.error(
-                        f"Failed to resolve output reference {input_key}: {input_value} - {e}"
-                    )
-                    resolved_inputs[input_key] = input_value
-            else:
-                resolved_inputs[input_key] = input_value
-
-        # Set the resolved inputs in the sub-flow context
+        # Resolve and set inputs for the sub-flow
+        resolved_inputs = self._resolve_sub_flow_inputs(inputs, context, system)
         for input_key, input_value in resolved_inputs.items():
             sub_context.set_input(input_key, input_value)
 
-        # Import the engine to execute the flow
+        # Execute the sub-flow
+        flow_result = self._execute_sub_flow_with_engine(flow_id, sub_context, system)
+
+        if flow_result.success:
+            # Merge sub-flow outputs back into main context
+            self._merge_sub_flow_outputs(sub_context, context, original_inputs)
+        else:
+            logger.error(f"Sub-flow {flow_id} execution failed")
+
+    def _resolve_sub_flow_inputs(
+        self, inputs: dict[str, Any], context: "ExecutionContext", system: "System"
+    ) -> dict[str, Any]:
+        """Resolve input values for a sub-flow from the current context."""
+        resolved_inputs = {}
+
+        for input_key, input_value in inputs.items():
+            if self._is_template_expression(input_value):
+                resolved_inputs[input_key] = self._resolve_template_input(
+                    input_key, input_value, context, system
+                )
+            elif self._is_output_reference(input_value):
+                resolved_inputs[input_key] = self._resolve_output_reference(
+                    input_key, input_value, context
+                )
+            else:
+                resolved_inputs[input_key] = input_value
+
+        return resolved_inputs
+
+    def _is_template_expression(self, value: Any) -> bool:
+        """Check if a value is a template expression."""
+        return (
+            isinstance(value, str) and value.startswith("{{") and value.endswith("}}")
+        )
+
+    def _is_output_reference(self, value: Any) -> bool:
+        """Check if a value is an output reference."""
+        return isinstance(value, str) and "outputs." in value
+
+    def _resolve_template_input(
+        self,
+        input_key: str,
+        input_value: str,
+        context: "ExecutionContext",
+        system: "System",
+    ) -> Any:
+        """Resolve a template input value with special handling for common patterns."""
+        try:
+            if input_value == "{{ result }}":
+                return self._resolve_result_variable(context)
+            elif input_value == "{{ selected_item }}":
+                return self._resolve_selected_item_variable(context, system)
+            else:
+                return context.resolve_template(input_value)
+        except Exception as e:
+            logger.error(f"Failed to resolve input {input_key}: {input_value} - {e}")
+            return input_value
+
+    def _resolve_result_variable(self, context: "ExecutionContext") -> Any:
+        """Resolve the 'result' variable with special handling for dict types."""
+        current_result = context.get_variable("result")
+        logger.info(
+            f"Context result variable: {type(current_result).__name__} = {current_result}"
+        )
+
+        if current_result is not None and isinstance(current_result, dict):
+            logger.info(f"Used direct result access: {type(current_result).__name__}")
+            return current_result
+        else:
+            resolved_value = context.resolve_template("{{ result }}")
+            logger.info(
+                f"Used template resolution for result: {type(resolved_value).__name__}"
+            )
+            return resolved_value
+
+    def _resolve_selected_item_variable(
+        self, context: "ExecutionContext", system: "System"
+    ) -> Any:
+        """Resolve the 'selected_item' variable with type conversion if needed."""
+        selected_item = context.get_variable("selected_item")
+        logger.info(
+            f"Context selected_item variable: {type(selected_item).__name__} = {selected_item}"
+        )
+
+        if isinstance(selected_item, str) and selected_item:
+            # Try to convert the string to a typed object
+            typed_result = self._convert_string_to_typed_object(
+                selected_item, "weapon", system
+            )
+            if typed_result:
+                logger.info(
+                    f"Converted selected_item string to typed object: {type(typed_result).__name__}"
+                )
+                return typed_result
+            else:
+                logger.info(
+                    f"Could not convert selected_item, using string: {selected_item}"
+                )
+                return selected_item
+        else:
+            resolved_value = context.resolve_template("{{ selected_item }}")
+            logger.info(
+                f"Used template resolution for selected_item: {type(resolved_value).__name__}"
+            )
+            return resolved_value
+
+    def _resolve_output_reference(
+        self, input_key: str, input_value: str, context: "ExecutionContext"
+    ) -> Any:
+        """Resolve a direct output reference."""
+        try:
+            resolved_value = context.resolve_path_value(input_value)
+            logger.info(
+                f"Resolved output reference {input_key}: {input_value} -> {type(resolved_value).__name__}"
+            )
+            return resolved_value
+        except Exception as e:
+            logger.error(
+                f"Failed to resolve output reference {input_key}: {input_value} - {e}"
+            )
+            return input_value
+
+    def _execute_sub_flow_with_engine(
+        self, flow_id: str, sub_context: "ExecutionContext", system: "System"
+    ) -> Any:
+        """Execute a sub-flow using the GrimoireEngine."""
         from ..core.engine import GrimoireEngine
 
-        # Create an engine instance and execute the sub-flow
         engine = GrimoireEngine()
-        try:
-            flow_result = engine.execute_flow(flow_id, sub_context, system)
+        flow_result = engine.execute_flow(flow_id, sub_context, system)
+        logger.info(f"Sub-flow {flow_id} completed with success: {flow_result.success}")
+
+        # Debug logging
+        logger.info(
+            f"Sub-flow outputs after completion: {list(sub_context.outputs.keys())}"
+        )
+        for key, value in sub_context.outputs.items():
+            logger.info(f"Sub-flow output {key}: {type(value).__name__} = {value}")
+
+        return flow_result
+
+    def _merge_sub_flow_outputs(
+        self,
+        sub_context: "ExecutionContext",
+        main_context: "ExecutionContext",
+        original_inputs: dict[str, Any] = None,
+    ) -> None:
+        """Merge sub-flow outputs back into the main context."""
+        for output_key, output_value in sub_context.outputs.items():
             logger.info(
-                f"Sub-flow {flow_id} completed with success: {flow_result.success}"
+                f"Merging sub-flow output: {output_key} = {type(output_value).__name__}"
             )
 
-            # Debug: Log what the sub-flow produced after completion
-            logger.info(
-                f"Sub-flow outputs after completion: {list(sub_context.outputs.keys())}"
+            target_output_key = self._determine_target_output_key(
+                output_key, original_inputs
             )
-            for key, value in sub_context.outputs.items():
-                logger.info(f"Sub-flow output {key}: {type(value).__name__} = {value}")
 
-            # Merge the sub-flow outputs back into the main context
-            for output_key, output_value in sub_context.outputs.items():
+            self._merge_output_value(main_context, target_output_key, output_value)
+            self._update_observables_if_needed(
+                main_context, target_output_key, output_value
+            )
+
+    def _determine_target_output_key(
+        self, output_key: str, original_inputs: dict[str, Any] = None
+    ) -> str:
+        """Determine the target output key for merging sub-flow results."""
+        if not original_inputs:
+            return output_key
+
+        for input_key, original_input_value in original_inputs.items():
+            if (
+                input_key == output_key
+                and isinstance(original_input_value, str)
+                and original_input_value.startswith("outputs.")
+            ):
+                target_key = original_input_value[8:]  # Remove "outputs." prefix
                 logger.info(
-                    f"Merging sub-flow output: {output_key} = {type(output_value).__name__}"
+                    f"Mapping sub-flow output '{output_key}' back to main context "
+                    f"'{target_key}' based on input mapping"
                 )
+                return target_key
 
-                # Intelligently map sub-flow outputs back to main context
-                # If an input was passed from a main context output, map the sub-flow output back to that location
-                target_output_key = output_key
-                if original_inputs:
-                    for input_key, original_input_value in original_inputs.items():
-                        if (
-                            input_key == output_key
-                            and isinstance(original_input_value, str)
-                            and original_input_value.startswith("outputs.")
-                        ):
-                            # Extract the output key from the path (e.g., "outputs.knave" -> "knave")
-                            target_output_key = original_input_value[
-                                8:
-                            ]  # Remove "outputs." prefix
-                            logger.info(
-                                f"Mapping sub-flow output '{output_key}' back to main context '{target_output_key}' based on input mapping"
-                            )
-                            break
+        return output_key
 
-                if target_output_key in context.outputs:
-                    # Update existing output
-                    logger.info(
-                        f"Updating output {target_output_key} with sub-flow result"
-                    )
+    def _merge_output_value(
+        self, context: "ExecutionContext", target_key: str, output_value: Any
+    ) -> None:
+        """Merge an output value into the context."""
+        if target_key in context.outputs:
+            logger.info(f"Updating output {target_key} with sub-flow result")
 
-                    # Merge dictionaries if both are dicts, otherwise replace
-                    if isinstance(output_value, dict) and isinstance(
-                        context.outputs.get(target_output_key), dict
-                    ):
-                        # For dictionary updates, merge the new data into the existing data
-                        existing_data = context.outputs[target_output_key]
-                        updated_data = {**existing_data, **output_value}
-                        context.outputs[target_output_key] = updated_data
-                        logger.info(
-                            f"Merged data to {target_output_key}: {updated_data}"
-                        )
-                    else:
-                        context.outputs[target_output_key] = output_value
-                else:
-                    # Create new output
-                    logger.info(f"Creating new output {target_output_key}")
-                    context.outputs[target_output_key] = output_value
+            if isinstance(output_value, dict) and isinstance(
+                context.outputs.get(target_key), dict
+            ):
+                # Merge dictionaries
+                existing_data = context.outputs[target_key]
+                updated_data = {**existing_data, **output_value}
+                context.outputs[target_key] = updated_data
+                logger.info(f"Merged data to {target_key}: {updated_data}")
+            else:
+                context.outputs[target_key] = output_value
+        else:
+            logger.info(f"Creating new output {target_key}")
+            context.outputs[target_key] = output_value
 
-                # Update observables if available
-                logger.info(
-                    f"Checking if observable update needed for {target_output_key}: has_derived_field_manager={hasattr(context, '_derived_field_manager')}"
-                )
-                if (
-                    hasattr(context, "_derived_field_manager")
-                    and context._derived_field_manager
-                ):
-                    logger.info(
-                        f"Output value type: {type(output_value)}, existing type: {type(context.outputs.get(target_output_key))}"
-                    )
-                    if isinstance(output_value, dict) and isinstance(
-                        context.outputs.get(target_output_key), dict
-                    ):
-                        # Update observables for any dictionary data
-                        logger.info(f"Updating observables for {target_output_key}")
-                        self._update_observables_from_dict(
-                            context, "", output_value, instance_id=target_output_key
-                        )
-                    else:
-                        logger.info("Skipping observable update - not both dicts")
-                else:
-                    logger.info("No derived field manager available")
+    def _update_observables_if_needed(
+        self, context: "ExecutionContext", target_key: str, output_value: Any
+    ) -> None:
+        """Update observables if the context has a derived field manager."""
+        logger.info(
+            f"Checking if observable update needed for {target_key}: "
+            f"has_derived_field_manager={hasattr(context, '_derived_field_manager')}"
+        )
 
-        except Exception as e:
-            logger.error(f"Sub-flow {flow_id} execution failed: {e}")
+        if not (
+            hasattr(context, "_derived_field_manager")
+            and context._derived_field_manager
+        ):
+            logger.info("No derived field manager available")
+            return
+
+        logger.info(
+            f"Output value type: {type(output_value)}, "
+            f"existing type: {type(context.outputs.get(target_key))}"
+        )
+
+        if isinstance(output_value, dict) and isinstance(
+            context.outputs.get(target_key), dict
+        ):
+            logger.info(f"Updating observables for {target_key}")
+            self._update_observables_from_dict(
+                context, "", output_value, instance_id=target_key
+            )
+        else:
+            logger.info("Skipping observable update - not both dicts")
             raise
 
     def _update_observables_from_dict(

@@ -134,20 +134,16 @@ class ChoiceExecutor(BaseStepExecutor):
                         for key, value in data.items():
                             # Create template context for formatting
                             template_context = {
-                                "variables": context.variables,
-                                "outputs": context.outputs,
-                                "inputs": context.inputs,
                                 "key": key,
                                 "value": value,
-                                **context.variables,
-                                **context.outputs,
                             }
 
-                            # Use Jinja2 directly for more control
-                            from jinja2 import Template
-
-                            template = Template(display_format)
-                            label = template.render(template_context)
+                            # Use unified template service with local context
+                            label = context.resolve_template_with_context(
+                                display_format, template_context
+                            )
+                            if not isinstance(label, str):
+                                label = str(label)
 
                             choice = ChoiceDefinition(
                                 id=key,
@@ -327,17 +323,16 @@ class ChoiceExecutor(BaseStepExecutor):
             context.set_variable("choice_label", selected_choice.label)
 
             # Execute step-level actions (including flow calls) if present
-            if step.actions and system:
+            if step.actions and system and self.engine:
                 logger.info(
                     f"Executing {len(step.actions)} step actions after choice..."
                 )
-                for action in step.actions:
-                    self._execute_step_action(
-                        action,
-                        context,
-                        system,
-                        {"selected_item": context.get_variable("selected_item")},
-                    )
+                step_result_data = {
+                    "selected_item": context.get_variable("selected_item")
+                }
+                self.engine.action_executor.execute_actions(
+                    step.actions, context, step_result_data, system
+                )
                 logger.info("✅ Step actions executed successfully")
 
             logger.info(f"User chose: {selected_choice.label} ({choice_id})")
