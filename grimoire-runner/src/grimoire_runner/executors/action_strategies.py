@@ -1,8 +1,8 @@
 """Strategy pattern implementation for different action types."""
 
+import logging
 from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING, Any
-import logging
 
 if TYPE_CHECKING:
     from ..models.context_data import ExecutionContext
@@ -94,7 +94,9 @@ class DisplayValueActionStrategy(ActionStrategy):
     ) -> None:
         """Execute a display_value action."""
         # For now, just log the value
-        path = action_data if isinstance(action_data, str) else action_data.get("path", "")
+        path = (
+            action_data if isinstance(action_data, str) else action_data.get("path", "")
+        )
         try:
             value = context.resolve_path_value(path)
             logger.info(f"Display: {path} = {value}")
@@ -155,7 +157,9 @@ class SwapValuesActionStrategy(ActionStrategy):
         except Exception as e:
             logger.error(f"Error swapping values between {path1} and {path2}: {e}")
 
-    def _set_value_at_path(self, context: "ExecutionContext", path: str, value: Any) -> None:
+    def _set_value_at_path(
+        self, context: "ExecutionContext", path: str, value: Any
+    ) -> None:
         """Set a value at a specific path in the context."""
         if path.startswith("outputs."):
             context.set_output(path[8:], value)
@@ -227,6 +231,7 @@ class FlowCallActionStrategy(ActionStrategy):
         else:
             # Fallback to direct import and creation for backward compatibility
             from ..executors.table_executor import TableExecutor
+
             table_executor = TableExecutor()
 
         # Use the table executor's sub-flow execution logic
@@ -274,7 +279,9 @@ class ValidateValueActionStrategy(ActionStrategy):
     ) -> None:
         """Execute a validate_value action."""
         # TODO: Implement validation
-        logger.info(f"Validate value action called - not yet implemented: {action_data}")
+        logger.info(
+            f"Validate value action called - not yet implemented: {action_data}"
+        )
 
 
 class ActionStrategyRegistry:
@@ -296,7 +303,7 @@ class ActionStrategyRegistry:
             GetValueActionStrategy(),
             ValidateValueActionStrategy(),
         ]
-        
+
         for strategy in default_strategies:
             self.register_strategy(strategy)
 

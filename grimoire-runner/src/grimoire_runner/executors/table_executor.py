@@ -257,7 +257,7 @@ class TableExecutor(BaseStepExecutor):
 
         # Execute the sub-flow
         flow_result = self._execute_sub_flow_with_engine(flow_id, sub_context, system)
-        
+
         if flow_result.success:
             # Merge sub-flow outputs back into main context
             self._merge_sub_flow_outputs(sub_context, context, original_inputs)
@@ -269,7 +269,7 @@ class TableExecutor(BaseStepExecutor):
     ) -> dict[str, Any]:
         """Resolve input values for a sub-flow from the current context."""
         resolved_inputs = {}
-        
+
         for input_key, input_value in inputs.items():
             if self._is_template_expression(input_value):
                 resolved_inputs[input_key] = self._resolve_template_input(
@@ -281,15 +281,13 @@ class TableExecutor(BaseStepExecutor):
                 )
             else:
                 resolved_inputs[input_key] = input_value
-        
+
         return resolved_inputs
 
     def _is_template_expression(self, value: Any) -> bool:
         """Check if a value is a template expression."""
         return (
-            isinstance(value, str) 
-            and value.startswith("{{") 
-            and value.endswith("}}")
+            isinstance(value, str) and value.startswith("{{") and value.endswith("}}")
         )
 
     def _is_output_reference(self, value: Any) -> bool:
@@ -297,7 +295,11 @@ class TableExecutor(BaseStepExecutor):
         return isinstance(value, str) and "outputs." in value
 
     def _resolve_template_input(
-        self, input_key: str, input_value: str, context: "ExecutionContext", system: "System"
+        self,
+        input_key: str,
+        input_value: str,
+        context: "ExecutionContext",
+        system: "System",
     ) -> Any:
         """Resolve a template input value with special handling for common patterns."""
         try:
@@ -314,14 +316,18 @@ class TableExecutor(BaseStepExecutor):
     def _resolve_result_variable(self, context: "ExecutionContext") -> Any:
         """Resolve the 'result' variable with special handling for dict types."""
         current_result = context.get_variable("result")
-        logger.info(f"Context result variable: {type(current_result).__name__} = {current_result}")
+        logger.info(
+            f"Context result variable: {type(current_result).__name__} = {current_result}"
+        )
 
         if current_result is not None and isinstance(current_result, dict):
             logger.info(f"Used direct result access: {type(current_result).__name__}")
             return current_result
         else:
             resolved_value = context.resolve_template("{{ result }}")
-            logger.info(f"Used template resolution for result: {type(resolved_value).__name__}")
+            logger.info(
+                f"Used template resolution for result: {type(resolved_value).__name__}"
+            )
             return resolved_value
 
     def _resolve_selected_item_variable(
@@ -329,20 +335,30 @@ class TableExecutor(BaseStepExecutor):
     ) -> Any:
         """Resolve the 'selected_item' variable with type conversion if needed."""
         selected_item = context.get_variable("selected_item")
-        logger.info(f"Context selected_item variable: {type(selected_item).__name__} = {selected_item}")
+        logger.info(
+            f"Context selected_item variable: {type(selected_item).__name__} = {selected_item}"
+        )
 
         if isinstance(selected_item, str) and selected_item:
             # Try to convert the string to a typed object
-            typed_result = self._convert_string_to_typed_object(selected_item, "weapon", system)
+            typed_result = self._convert_string_to_typed_object(
+                selected_item, "weapon", system
+            )
             if typed_result:
-                logger.info(f"Converted selected_item string to typed object: {type(typed_result).__name__}")
+                logger.info(
+                    f"Converted selected_item string to typed object: {type(typed_result).__name__}"
+                )
                 return typed_result
             else:
-                logger.info(f"Could not convert selected_item, using string: {selected_item}")
+                logger.info(
+                    f"Could not convert selected_item, using string: {selected_item}"
+                )
                 return selected_item
         else:
             resolved_value = context.resolve_template("{{ selected_item }}")
-            logger.info(f"Used template resolution for selected_item: {type(resolved_value).__name__}")
+            logger.info(
+                f"Used template resolution for selected_item: {type(resolved_value).__name__}"
+            )
             return resolved_value
 
     def _resolve_output_reference(
@@ -351,10 +367,14 @@ class TableExecutor(BaseStepExecutor):
         """Resolve a direct output reference."""
         try:
             resolved_value = context.resolve_path_value(input_value)
-            logger.info(f"Resolved output reference {input_key}: {input_value} -> {type(resolved_value).__name__}")
+            logger.info(
+                f"Resolved output reference {input_key}: {input_value} -> {type(resolved_value).__name__}"
+            )
             return resolved_value
         except Exception as e:
-            logger.error(f"Failed to resolve output reference {input_key}: {input_value} - {e}")
+            logger.error(
+                f"Failed to resolve output reference {input_key}: {input_value} - {e}"
+            )
             return input_value
 
     def _execute_sub_flow_with_engine(
@@ -362,34 +382,40 @@ class TableExecutor(BaseStepExecutor):
     ) -> Any:
         """Execute a sub-flow using the GrimoireEngine."""
         from ..core.engine import GrimoireEngine
-        
+
         engine = GrimoireEngine()
         flow_result = engine.execute_flow(flow_id, sub_context, system)
         logger.info(f"Sub-flow {flow_id} completed with success: {flow_result.success}")
-        
+
         # Debug logging
-        logger.info(f"Sub-flow outputs after completion: {list(sub_context.outputs.keys())}")
+        logger.info(
+            f"Sub-flow outputs after completion: {list(sub_context.outputs.keys())}"
+        )
         for key, value in sub_context.outputs.items():
             logger.info(f"Sub-flow output {key}: {type(value).__name__} = {value}")
-        
+
         return flow_result
 
     def _merge_sub_flow_outputs(
         self,
         sub_context: "ExecutionContext",
-        main_context: "ExecutionContext", 
-        original_inputs: dict[str, Any] = None
+        main_context: "ExecutionContext",
+        original_inputs: dict[str, Any] = None,
     ) -> None:
         """Merge sub-flow outputs back into the main context."""
         for output_key, output_value in sub_context.outputs.items():
-            logger.info(f"Merging sub-flow output: {output_key} = {type(output_value).__name__}")
+            logger.info(
+                f"Merging sub-flow output: {output_key} = {type(output_value).__name__}"
+            )
 
             target_output_key = self._determine_target_output_key(
                 output_key, original_inputs
             )
-            
+
             self._merge_output_value(main_context, target_output_key, output_value)
-            self._update_observables_if_needed(main_context, target_output_key, output_value)
+            self._update_observables_if_needed(
+                main_context, target_output_key, output_value
+            )
 
     def _determine_target_output_key(
         self, output_key: str, original_inputs: dict[str, Any] = None
@@ -397,7 +423,7 @@ class TableExecutor(BaseStepExecutor):
         """Determine the target output key for merging sub-flow results."""
         if not original_inputs:
             return output_key
-            
+
         for input_key, original_input_value in original_inputs.items():
             if (
                 input_key == output_key
@@ -410,7 +436,7 @@ class TableExecutor(BaseStepExecutor):
                     f"'{target_key}' based on input mapping"
                 )
                 return target_key
-        
+
         return output_key
 
     def _merge_output_value(
@@ -419,7 +445,7 @@ class TableExecutor(BaseStepExecutor):
         """Merge an output value into the context."""
         if target_key in context.outputs:
             logger.info(f"Updating output {target_key} with sub-flow result")
-            
+
             if isinstance(output_value, dict) and isinstance(
                 context.outputs.get(target_key), dict
             ):
@@ -442,16 +468,19 @@ class TableExecutor(BaseStepExecutor):
             f"Checking if observable update needed for {target_key}: "
             f"has_derived_field_manager={hasattr(context, '_derived_field_manager')}"
         )
-        
-        if not (hasattr(context, "_derived_field_manager") and context._derived_field_manager):
+
+        if not (
+            hasattr(context, "_derived_field_manager")
+            and context._derived_field_manager
+        ):
             logger.info("No derived field manager available")
             return
-            
+
         logger.info(
             f"Output value type: {type(output_value)}, "
             f"existing type: {type(context.outputs.get(target_key))}"
         )
-        
+
         if isinstance(output_value, dict) and isinstance(
             context.outputs.get(target_key), dict
         ):

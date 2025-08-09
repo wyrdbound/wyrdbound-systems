@@ -3,7 +3,6 @@
 import logging
 from collections.abc import Iterator
 from pathlib import Path
-from typing import Any
 
 from ..executors.executor_factories import ExecutorRegistry
 from ..executors.executor_factory import ExecutorFactory, StepExecutorInterface
@@ -40,7 +39,9 @@ class GrimoireEngine:
             except Exception as e:
                 logger.warning(f"Failed to create executor for {step_type}: {e}")
 
-    def register_executor(self, step_type: str, executor: StepExecutorInterface) -> None:
+    def register_executor(
+        self, step_type: str, executor: StepExecutorInterface
+    ) -> None:
         """Register a custom step executor."""
         self.executors[step_type] = executor
         logger.debug(f"Registered executor for step type: {step_type}")
@@ -333,7 +334,9 @@ class GrimoireEngine:
             if step.actions and not (
                 result.requires_input and step_type == "player_choice"
             ):
-                self.action_executor.execute_actions(step.actions, context, result.data, system)
+                self.action_executor.execute_actions(
+                    step.actions, context, result.data, system
+                )
 
             return result
 

@@ -1,16 +1,18 @@
 """Execution context models for managing runtime state."""
 
 import copy
-import json
 import logging
 from dataclasses import dataclass, field
 from datetime import datetime
 from typing import TYPE_CHECKING, Any, Optional
 
+from ..services.flow_execution_context_manager import (
+    DefaultNamespaceDataAccess,
+    FlowExecutionContextManager,
+)
+from ..services.path_resolver import PathResolver
 from .flow_namespace import FlowNamespaceManager
 from .template_resolver import TemplateResolver
-from ..services.path_resolver import PathResolver
-from ..services.flow_execution_context_manager import FlowExecutionContextManager, DefaultNamespaceDataAccess
 
 if TYPE_CHECKING:
     from .observable import DerivedFieldManager
@@ -42,7 +44,9 @@ class ExecutionContext:
     system_metadata: dict[str, Any] = field(default_factory=dict)
 
     # Flow namespace management (delegated to specialized manager)
-    namespace_manager: FlowNamespaceManager = field(default_factory=FlowNamespaceManager)
+    namespace_manager: FlowNamespaceManager = field(
+        default_factory=FlowNamespaceManager
+    )
 
     # Execution tracking
     current_step: str | None = None
@@ -56,7 +60,7 @@ class ExecutionContext:
     path_resolver: PathResolver = field(default_factory=PathResolver)
 
     # Flow execution context management (delegated to specialized manager)
-    _flow_execution_manager: Optional[FlowExecutionContextManager] = field(
+    _flow_execution_manager: FlowExecutionContextManager | None = field(
         default=None, init=False, repr=False
     )
 
@@ -74,7 +78,9 @@ class ExecutionContext:
 
         # Initialize the flow execution context manager
         namespace_data_access = DefaultNamespaceDataAccess(self)
-        self._flow_execution_manager = FlowExecutionContextManager(namespace_data_access)
+        self._flow_execution_manager = FlowExecutionContextManager(
+            namespace_data_access
+        )
 
     def set_variable(self, path: str, value: Any) -> None:
         """Set a variable at the specified path."""
@@ -216,13 +222,15 @@ class ExecutionContext:
             self._derived_field_manager,
         )
 
-    def resolve_template_with_context(self, template_str: str, additional_context: dict[str, Any]) -> Any:
+    def resolve_template_with_context(
+        self, template_str: str, additional_context: dict[str, Any]
+    ) -> Any:
         """Resolve a template string with additional context variables."""
         # Merge additional context with existing context
         merged_variables = {**self.variables, **additional_context}
         merged_outputs = {**self.outputs}
         merged_inputs = {**self.inputs}
-        
+
         # If additional_context has variables/outputs/inputs, merge those too
         if "variables" in additional_context:
             merged_variables.update(additional_context["variables"])
@@ -230,7 +238,7 @@ class ExecutionContext:
             merged_outputs.update(additional_context["outputs"])
         if "inputs" in additional_context:
             merged_inputs.update(additional_context["inputs"])
-            
+
         return self.template_resolver.resolve_template(
             template_str,
             merged_variables,
@@ -244,19 +252,21 @@ class ExecutionContext:
     def resolve_path_value(self, path: str) -> Any:
         """Resolve a path that might reference variables, outputs, inputs, or system metadata."""
         logger.info(f"resolve_path_value({path})")
-        
+
         # Use the centralized path resolver
         try:
             return self.path_resolver.get_value(self, path)
         except Exception as e:
-            raise KeyError(f"Path '{path}' not found: {e}")
+            raise KeyError(f"Path '{path}' not found: {e}") from e
 
     # Flow Namespace Management (delegated to namespace manager)
     def create_flow_namespace(
         self, namespace_id: str, flow_id: str, execution_id: str
     ) -> None:
         """Create an isolated namespace for flow execution."""
-        self.namespace_manager.create_flow_namespace(namespace_id, flow_id, execution_id)
+        self.namespace_manager.create_flow_namespace(
+            namespace_id, flow_id, execution_id
+        )
 
     def set_current_flow_namespace(self, namespace_id: str) -> None:
         """Set the current active flow namespace."""
@@ -286,14 +296,18 @@ class ExecutionContext:
         self, namespace_id: str, variables: dict[str, Any]
     ) -> None:
         """Initialize variables in a flow namespace."""
-        self.namespace_manager.initialize_flow_namespace_variables(namespace_id, variables)
+        self.namespace_manager.initialize_flow_namespace_variables(
+            namespace_id, variables
+        )
 
     def get_flow_namespace_data(self, namespace_id: str) -> dict[str, Any] | None:
         """Get all data for a specific flow namespace."""
         return self.namespace_manager.get_flow_namespace_data(namespace_id)
 
     # Flow Execution Management (delegated to specialized manager)
-    def start_flow_execution(self, flow_id: str, variables: Optional[dict[str, Any]] = None):
+    def start_flow_execution(
+        self, flow_id: str, variables: dict[str, Any] | None = None
+    ):
         """Start a new flow execution with proper context management."""
         if self._flow_execution_manager:
             return self._flow_execution_manager.start_flow_execution(flow_id, variables)
@@ -313,7 +327,7 @@ class ExecutionContext:
         """Update the current step in the execution context."""
         self.current_step = step_id
         self.step_history.append(step_id)
-        
+
         if self._flow_execution_manager:
             self._flow_execution_manager.update_execution_step(step_id)
 

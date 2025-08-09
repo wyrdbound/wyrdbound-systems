@@ -17,7 +17,7 @@ class ActionExecutor:
     """Handles execution of step actions using Strategy Pattern for extensibility."""
 
     def __init__(
-        self, 
+        self,
         strategy_registry: ActionStrategyRegistry | None = None,
         table_executor_factory: "TableExecutorFactory" = None,
     ):

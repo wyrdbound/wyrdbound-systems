@@ -32,14 +32,18 @@ class PathResolverHandler(ABC):
         try:
             result = self._handle_get(context, path)
             if result is not None:
-                logger.debug(f"PathResolver: {self.__class__.__name__} resolved get '{path}' = {result}")
+                logger.debug(
+                    f"PathResolver: {self.__class__.__name__} resolved get '{path}' = {result}"
+                )
                 return result
         except Exception as e:
-            logger.debug(f"PathResolver: {self.__class__.__name__} failed to resolve get '{path}': {e}")
+            logger.debug(
+                f"PathResolver: {self.__class__.__name__} failed to resolve get '{path}': {e}"
+            )
 
         if self._next_handler:
             return self._next_handler.handle_get(context, path)
-        
+
         raise PathResolutionError(f"Cannot resolve path '{path}' for reading")
 
     def handle_set(self, context: "ExecutionContext", path: str, value: Any) -> bool:
@@ -47,14 +51,18 @@ class PathResolverHandler(ABC):
         try:
             success = self._handle_set(context, path, value)
             if success:
-                logger.debug(f"PathResolver: {self.__class__.__name__} handled set '{path}' = {value}")
+                logger.debug(
+                    f"PathResolver: {self.__class__.__name__} handled set '{path}' = {value}"
+                )
                 return True
         except Exception as e:
-            logger.debug(f"PathResolver: {self.__class__.__name__} failed to handle set '{path}': {e}")
+            logger.debug(
+                f"PathResolver: {self.__class__.__name__} failed to handle set '{path}': {e}"
+            )
 
         if self._next_handler:
             return self._next_handler.handle_set(context, path, value)
-        
+
         raise PathResolutionError(f"Cannot resolve path '{path}' for writing")
 
     @abstractmethod
@@ -74,7 +82,7 @@ class OutputsPathHandler(PathResolverHandler):
     def _handle_get(self, context: "ExecutionContext", path: str) -> Any:
         if not path.startswith("outputs."):
             return None
-        
+
         # Remove 'outputs.' prefix and resolve in outputs dict
         output_path = path[8:]  # len("outputs.") = 8
         return self._get_nested_value(context.outputs, output_path)
@@ -82,16 +90,19 @@ class OutputsPathHandler(PathResolverHandler):
     def _handle_set(self, context: "ExecutionContext", path: str, value: Any) -> bool:
         if not path.startswith("outputs."):
             return False
-        
+
         # Remove 'outputs.' prefix and set in outputs dict
         output_path = path[8:]  # len("outputs.") = 8
-        
+
         # Use the derived field manager if available for observable updates
-        if hasattr(context, '_derived_field_manager') and context._derived_field_manager:
+        if (
+            hasattr(context, "_derived_field_manager")
+            and context._derived_field_manager
+        ):
             context._derived_field_manager.set_field_value(output_path, value)
         else:
             self._set_nested_value(context.outputs, output_path, value)
-        
+
         return True
 
     def _get_nested_value(self, obj: dict[str, Any], path: str) -> Any:
@@ -137,7 +148,7 @@ class VariablesPathHandler(PathResolverHandler):
     def _handle_get(self, context: "ExecutionContext", path: str) -> Any:
         if not path.startswith("variables."):
             return None
-        
+
         # Remove 'variables.' prefix and resolve in variables dict
         var_path = path[10:]  # len("variables.") = 10
         return self._get_nested_value(context.variables, var_path)
@@ -145,7 +156,7 @@ class VariablesPathHandler(PathResolverHandler):
     def _handle_set(self, context: "ExecutionContext", path: str, value: Any) -> bool:
         if not path.startswith("variables."):
             return False
-        
+
         # Remove 'variables.' prefix and set in variables dict
         var_path = path[10:]  # len("variables.") = 10
         self._set_nested_value(context.variables, var_path, value)
@@ -194,7 +205,7 @@ class InputsPathHandler(PathResolverHandler):
     def _handle_get(self, context: "ExecutionContext", path: str) -> Any:
         if not path.startswith("inputs."):
             return None
-        
+
         # Remove 'inputs.' prefix and resolve in inputs dict
         input_path = path[7:]  # len("inputs.") = 7
         return self._get_nested_value(context.inputs, input_path)
@@ -202,7 +213,7 @@ class InputsPathHandler(PathResolverHandler):
     def _handle_set(self, context: "ExecutionContext", path: str, value: Any) -> bool:
         if not path.startswith("inputs."):
             return False
-        
+
         # Remove 'inputs.' prefix and set in inputs dict
         input_path = path[7:]  # len("inputs.") = 7
         self._set_nested_value(context.inputs, input_path, value)
@@ -251,7 +262,7 @@ class SystemPathHandler(PathResolverHandler):
     def _handle_get(self, context: "ExecutionContext", path: str) -> Any:
         if not path.startswith("system."):
             return None
-        
+
         # Remove 'system.' prefix and resolve in system_metadata dict
         system_path = path[7:]  # len("system.") = 7
         return self._get_nested_value(context.system_metadata, system_path)
@@ -259,7 +270,7 @@ class SystemPathHandler(PathResolverHandler):
     def _handle_set(self, context: "ExecutionContext", path: str, value: Any) -> bool:
         if not path.startswith("system."):
             return False
-        
+
         # Remove 'system.' prefix and set in system_metadata dict
         system_path = path[7:]  # len("system.") = 7
         self._set_nested_value(context.system_metadata, system_path, value)
@@ -309,18 +320,18 @@ class DirectVariableHandler(PathResolverHandler):
         # Only handle simple names without dots
         if "." in path:
             return None
-        
+
         # Try direct lookup in variables
         if path in context.variables:
             return context.variables[path]
-        
+
         return None
 
     def _handle_set(self, context: "ExecutionContext", path: str, value: Any) -> bool:
         # Only handle simple names without dots
         if "." in path:
             return False
-        
+
         # Set directly in variables
         context.variables[path] = value
         return True
@@ -333,17 +344,13 @@ class PathResolver:
         """Initialize the path resolver with the default handler chain."""
         # Build the chain of responsibility
         self.handler_chain = OutputsPathHandler()
-        self.handler_chain.set_next(
-            VariablesPathHandler()
-        ).set_next(
+        self.handler_chain.set_next(VariablesPathHandler()).set_next(
             InputsPathHandler()
-        ).set_next(
-            SystemPathHandler()
-        ).set_next(
-            DirectVariableHandler()
-        )
+        ).set_next(SystemPathHandler()).set_next(DirectVariableHandler())
 
-    def get_value(self, context: "ExecutionContext", path: str, default: Any = None) -> Any:
+    def get_value(
+        self, context: "ExecutionContext", path: str, default: Any = None
+    ) -> Any:
         """Get a value at the specified path."""
         try:
             return self.handler_chain.handle_get(context, path)
@@ -355,7 +362,7 @@ class PathResolver:
         try:
             self.handler_chain.handle_set(context, path, value)
         except PathResolutionError as e:
-            raise ValueError(str(e))
+            raise ValueError(str(e)) from e
 
     def has_value(self, context: "ExecutionContext", path: str) -> bool:
         """Check if a value exists at the specified path."""
@@ -371,6 +378,6 @@ class PathResolver:
         current = self.handler_chain
         while current._next_handler is not None:
             current = current._next_handler
-        
+
         # Add the new handler
         current.set_next(handler)

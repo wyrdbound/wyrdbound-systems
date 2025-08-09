@@ -3,9 +3,15 @@
 import logging
 import re
 from abc import ABC, abstractmethod
-from typing import Any, Optional
+from typing import Any
 
-from jinja2 import BaseLoader, Environment, StrictUndefined, TemplateError, meta, Template
+from jinja2 import (
+    BaseLoader,
+    Environment,
+    StrictUndefined,
+    TemplateError,
+    meta,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -33,19 +39,23 @@ class RuntimeTemplateStrategy(TemplateResolutionStrategy):
 
     def _setup_template_functions(self):
         """Setup custom functions available in runtime templates."""
-        self._jinja_env.globals.update({
-            "get_value": self._template_get_value,
-            "has_value": self._template_has_value,
-        })
+        self._jinja_env.globals.update(
+            {
+                "get_value": self._template_get_value,
+                "has_value": self._template_has_value,
+            }
+        )
 
         # Add standard Python functions
-        self._jinja_env.globals.update({
-            "range": range,
-            "len": len,
-            "str": str,
-            "int": int,
-            "float": float,
-        })
+        self._jinja_env.globals.update(
+            {
+                "range": range,
+                "len": len,
+                "str": str,
+                "int": int,
+                "float": float,
+            }
+        )
 
     def resolve_template(self, template_str: str, context_data: Any) -> Any:
         """Resolve a template using runtime execution context."""
@@ -58,10 +68,12 @@ class RuntimeTemplateStrategy(TemplateResolutionStrategy):
 
         try:
             template = self._jinja_env.from_string(template_str)
-            
+
             # context_data should be a dict with all template variables
             if not isinstance(context_data, dict):
-                logger.warning(f"Expected dict for runtime template context, got {type(context_data)}")
+                logger.warning(
+                    f"Expected dict for runtime template context, got {type(context_data)}"
+                )
                 return template_str
 
             result = template.render(context_data)
@@ -74,7 +86,9 @@ class RuntimeTemplateStrategy(TemplateResolutionStrategy):
             return result
 
         except Exception as e:
-            logger.error(f"Runtime template resolution failed for '{template_str}': {e}")
+            logger.error(
+                f"Runtime template resolution failed for '{template_str}': {e}"
+            )
             return template_str
 
     def is_template(self, text: str) -> bool:
@@ -85,12 +99,13 @@ class RuntimeTemplateStrategy(TemplateResolutionStrategy):
 
     def _try_parse_structured_data(self, result: str) -> Any:
         """Try to parse template result as structured data."""
-        import json
-        import yaml
         import ast
+        import json
+
+        import yaml
 
         result = result.strip()
-        
+
         # Try to parse as number first
         try:
             if "." in result:
@@ -99,10 +114,11 @@ class RuntimeTemplateStrategy(TemplateResolutionStrategy):
                 return int(result)
         except ValueError:
             pass
-        
+
         # Try JSON for clearly JSON-formatted results
-        if (result.startswith('{') and result.endswith('}')) or \
-           (result.startswith('[') and result.endswith(']')):
+        if (result.startswith("{") and result.endswith("}")) or (
+            result.startswith("[") and result.endswith("]")
+        ):
             try:
                 return json.loads(result)
             except json.JSONDecodeError:
@@ -112,27 +128,36 @@ class RuntimeTemplateStrategy(TemplateResolutionStrategy):
         try:
             parsed = ast.literal_eval(result)
             # Only return if it's actually structured data (not a simple string or number)
-            if isinstance(parsed, (list, dict, tuple, set)):
+            if isinstance(parsed, list | dict | tuple | set):
                 return parsed
         except (ValueError, SyntaxError):
             pass
 
         # Try YAML - but be more selective to avoid parsing display text
         # Only parse multi-line YAML or clearly structured single-line YAML
-        if result.count('\n') > 0 or (result.startswith('- ') or result.startswith('  ')):
+        if result.count("\n") > 0 or (
+            result.startswith("- ") or result.startswith("  ")
+        ):
             try:
                 parsed = yaml.safe_load(result)
-                if parsed != result and not isinstance(parsed, str):  # If YAML parsing changed something meaningful, use it
+                if parsed != result and not isinstance(
+                    parsed, str
+                ):  # If YAML parsing changed something meaningful, use it
                     return parsed
             except yaml.YAMLError:
                 pass
-        
+
         # Special handling for single-line YAML that might be intentional structured data
         # but not simple display text like "Strength: +2"
-        if ':' in result and (result.count('\n') > 0 or not any(char in result for char in ['+', '-', 'Strength', 'Dexterity'])):
+        if ":" in result and (
+            result.count("\n") > 0
+            or not any(char in result for char in ["+", "-", "Strength", "Dexterity"])
+        ):
             try:
                 parsed = yaml.safe_load(result)
-                if parsed != result and isinstance(parsed, dict):  # Only use parsed dict if it's actually structured
+                if parsed != result and isinstance(
+                    parsed, dict
+                ):  # Only use parsed dict if it's actually structured
                     return parsed
             except yaml.YAMLError:
                 pass
@@ -218,7 +243,7 @@ class LoadTimeTemplateStrategy(TemplateResolutionStrategy):
 
         try:
             template = self.env.from_string(template_str)
-            
+
             # Ensure context_data is a dict
             if not isinstance(context_data, dict):
                 context_data = {"value": context_data}
@@ -303,67 +328,66 @@ class TemplateService:
 
     def __init__(self):
         self._strategies = {
-            'runtime': RuntimeTemplateStrategy(),
-            'loadtime': LoadTimeTemplateStrategy()
+            "runtime": RuntimeTemplateStrategy(),
+            "loadtime": LoadTimeTemplateStrategy(),
         }
 
     def resolve_template(
-        self, 
-        template_str: str, 
-        context_data: Any, 
-        mode: str = 'runtime'
+        self, template_str: str, context_data: Any, mode: str = "runtime"
     ) -> Any:
         """Resolve a template using the specified strategy."""
         if mode not in self._strategies:
             raise ValueError(f"Unknown template resolution mode: {mode}")
-        
+
         return self._strategies[mode].resolve_template(template_str, context_data)
 
-    def is_template(self, text: str, mode: str = 'runtime') -> bool:
+    def is_template(self, text: str, mode: str = "runtime") -> bool:
         """Check if a string contains template syntax."""
         if mode not in self._strategies:
             raise ValueError(f"Unknown template resolution mode: {mode}")
-        
+
         return self._strategies[mode].is_template(text)
 
     def get_strategy(self, mode: str) -> TemplateResolutionStrategy:
         """Get a specific template resolution strategy."""
         if mode not in self._strategies:
             raise ValueError(f"Unknown template resolution mode: {mode}")
-        
+
         return self._strategies[mode]
 
     # Convenience methods for backward compatibility
     def add_template(self, name: str, template_str: str) -> None:
         """Add a named template (loadtime strategy)."""
-        loadtime_strategy = self._strategies['loadtime']
-        if hasattr(loadtime_strategy, 'add_template'):
+        loadtime_strategy = self._strategies["loadtime"]
+        if hasattr(loadtime_strategy, "add_template"):
             loadtime_strategy.add_template(name, template_str)
 
     def render_named_template(self, template_name: str, context: dict[str, Any]) -> str:
         """Render a named template (loadtime strategy)."""
-        loadtime_strategy = self._strategies['loadtime']
-        if hasattr(loadtime_strategy, 'render_named_template'):
+        loadtime_strategy = self._strategies["loadtime"]
+        if hasattr(loadtime_strategy, "render_named_template"):
             return loadtime_strategy.render_named_template(template_name, context)
         raise ValueError("Named template rendering not supported in runtime mode")
 
-    def validate_template(self, template_str: str, mode: str = 'loadtime') -> str | None:
+    def validate_template(
+        self, template_str: str, mode: str = "loadtime"
+    ) -> str | None:
         """Validate a template string."""
         strategy = self._strategies[mode]
-        if hasattr(strategy, 'validate_template'):
+        if hasattr(strategy, "validate_template"):
             return strategy.validate_template(template_str)
         return None
 
-    def extract_variables(self, template_str: str, mode: str = 'loadtime') -> set[str]:
+    def extract_variables(self, template_str: str, mode: str = "loadtime") -> set[str]:
         """Extract variable names used in a template."""
         strategy = self._strategies[mode]
-        if hasattr(strategy, 'extract_variables'):
+        if hasattr(strategy, "extract_variables"):
             return strategy.extract_variables(template_str)
         return set()
 
-    def escape_for_template(self, text: str, mode: str = 'loadtime') -> str:
+    def escape_for_template(self, text: str, mode: str = "loadtime") -> str:
         """Escape text for template inclusion."""
         strategy = self._strategies[mode]
-        if hasattr(strategy, 'escape_for_template'):
+        if hasattr(strategy, "escape_for_template"):
             return strategy.escape_for_template(text)
         return text

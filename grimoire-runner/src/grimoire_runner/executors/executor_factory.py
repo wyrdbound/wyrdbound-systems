@@ -31,7 +31,9 @@ class ExecutorFactory(ABC):
     """Abstract factory for creating step executors."""
 
     @abstractmethod
-    def create_executor(self, step_type: str, engine: "GrimoireEngine") -> StepExecutorInterface:
+    def create_executor(
+        self, step_type: str, engine: "GrimoireEngine"
+    ) -> StepExecutorInterface:
         """Create an executor for the given step type."""
 
     @abstractmethod
@@ -46,7 +48,9 @@ class DefaultExecutorFactory(ExecutorFactory):
         """Initialize with optional executor registry for dependency injection."""
         self.executor_registry = executor_registry
 
-    def create_executor(self, step_type: str, engine: "GrimoireEngine") -> StepExecutorInterface:
+    def create_executor(
+        self, step_type: str, engine: "GrimoireEngine"
+    ) -> StepExecutorInterface:
         """Create an executor for the given step type."""
         from ..executors.choice_executor import ChoiceExecutor
         from ..executors.dice_executor import DiceExecutor
@@ -79,7 +83,7 @@ class DefaultExecutorFactory(ExecutorFactory):
         """Get the list of step types this factory supports."""
         return [
             "dice_roll",
-            "dice_sequence", 
+            "dice_sequence",
             "player_choice",
             "player_input",
             "table_roll",

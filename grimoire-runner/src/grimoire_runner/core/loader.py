@@ -23,7 +23,6 @@ from ..models.prompt import PromptDefinition
 from ..models.source import SourceDefinition
 from ..models.system import Credits, Currency, CurrencyDenomination, System
 from ..models.table import TableDefinition
-from ..utils.serialization import SerializationHelpers
 from ..services.template_service import TemplateService
 
 logger = logging.getLogger(__name__)
@@ -424,10 +423,12 @@ class SystemLoader:
     def _resolve_templates_in_value(self, value: Any, context: dict[str, Any]) -> Any:
         """Resolve templates in a single value."""
         if isinstance(value, str):
-            if self._template_service.is_template(value, 'loadtime'):
+            if self._template_service.is_template(value, "loadtime"):
                 try:
                     # Check if template contains execution-time variables or functions
-                    variables = self._template_service.extract_variables(value, 'loadtime')
+                    variables = self._template_service.extract_variables(
+                        value, "loadtime"
+                    )
                     execution_vars = {
                         "result",
                         "results",
@@ -456,7 +457,9 @@ class SystemLoader:
                         )
                         return value
 
-                    return self._template_service.resolve_template(value, context, 'loadtime')
+                    return self._template_service.resolve_template(
+                        value, context, "loadtime"
+                    )
                 except Exception as e:
                     logger.debug(f"Failed to resolve template '{value}': {e}")
                     return value

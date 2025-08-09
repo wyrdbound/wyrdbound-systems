@@ -139,7 +139,9 @@ class ChoiceExecutor(BaseStepExecutor):
                             }
 
                             # Use unified template service with local context
-                            label = context.resolve_template_with_context(display_format, template_context)
+                            label = context.resolve_template_with_context(
+                                display_format, template_context
+                            )
                             if not isinstance(label, str):
                                 label = str(label)
 
@@ -325,8 +327,12 @@ class ChoiceExecutor(BaseStepExecutor):
                 logger.info(
                     f"Executing {len(step.actions)} step actions after choice..."
                 )
-                step_result_data = {"selected_item": context.get_variable("selected_item")}
-                self.engine.action_executor.execute_actions(step.actions, context, step_result_data, system)
+                step_result_data = {
+                    "selected_item": context.get_variable("selected_item")
+                }
+                self.engine.action_executor.execute_actions(
+                    step.actions, context, step_result_data, system
+                )
                 logger.info("✅ Step actions executed successfully")
 
             logger.info(f"User chose: {selected_choice.label} ({choice_id})")

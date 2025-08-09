@@ -1,9 +1,7 @@
 """Template resolution for execution context."""
 
-import ast
-import json
 import logging
-from typing import Any, Optional, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, Optional
 
 from ..services.template_service import TemplateService
 
@@ -41,8 +39,12 @@ class TemplateResolver:
 
         # Build template context
         context = self._build_template_context(
-            variables, outputs, inputs, system_metadata,
-            namespace_manager, derived_field_manager
+            variables,
+            outputs,
+            inputs,
+            system_metadata,
+            namespace_manager,
+            derived_field_manager,
         )
 
         # Store context resolver for template functions
@@ -51,14 +53,16 @@ class TemplateResolver:
         )
 
         # Set up template functions that need access to the context
-        runtime_strategy = self._template_service.get_strategy('runtime')
-        if hasattr(runtime_strategy, '_template_get_value'):
+        runtime_strategy = self._template_service.get_strategy("runtime")
+        if hasattr(runtime_strategy, "_template_get_value"):
             runtime_strategy._template_get_value = self._template_get_value
-        if hasattr(runtime_strategy, '_template_has_value'):
+        if hasattr(runtime_strategy, "_template_has_value"):
             runtime_strategy._template_has_value = self._template_has_value
 
         try:
-            return self._template_service.resolve_template(template_str, context, 'runtime')
+            return self._template_service.resolve_template(
+                template_str, context, "runtime"
+            )
         finally:
             # Clean up context resolver
             self._current_context_resolver = None
@@ -72,6 +76,7 @@ class TemplateResolver:
         derived_field_manager: Optional["DerivedFieldManager"] = None,
     ):
         """Create a context resolver function for template functions."""
+
         def resolve_path(path: str, default: Any = None) -> Any:
             """Resolve a path that might reference variables, outputs, or inputs."""
             logger.info(f"resolve_path_value({path})")
@@ -88,7 +93,7 @@ class TemplateResolver:
                         return self._get_nested_value(context, path, default)
                     except (KeyError, TypeError):
                         continue
-                
+
                 # Try namespace manager if available
                 if namespace_manager:
                     try:
@@ -117,7 +122,7 @@ class TemplateResolver:
             "inputs": inputs,
             "system": system_metadata,
             **variables,  # Make variables available at top level too
-            **outputs,    # Make outputs available at top level too
+            **outputs,  # Make outputs available at top level too
         }
 
         # Add input instances directly to the context for observable system
@@ -127,7 +132,7 @@ class TemplateResolver:
             namespace_context = namespace_manager.get_namespace_context_for_templates()
             if namespace_context:
                 flow_inputs = {**inputs, **namespace_context["inputs"]}
-        
+
         # Make model instances from inputs available at their expected paths
         # This is crucial for the observable system to compute derived fields correctly
         for input_key, input_value in flow_inputs.items():
@@ -135,23 +140,29 @@ class TemplateResolver:
                 # Add the input model instance directly to context (e.g., inputs.character -> character)
                 # But we need to ensure we're providing the fully resolved data structure
                 # If the input value contains template strings, we should resolve them first
-                resolved_input = self._resolve_template_fields_in_dict(input_value, context)
+                resolved_input = self._resolve_template_fields_in_dict(
+                    input_value, context
+                )
                 context[input_key] = resolved_input
-                logger.debug(f"Made input model '{input_key}' available for observable system")
-        
+                logger.debug(
+                    f"Made input model '{input_key}' available for observable system"
+                )
+
         # Add namespace-aware context if we have an active flow
         if namespace_manager:
             namespace_context = namespace_manager.get_namespace_context_for_templates()
             if namespace_context:
                 # Overlay flow-specific data with precedence over root data
-                context.update({
-                    "variables": {**variables, **namespace_context["variables"]},
-                    "outputs": {**outputs, **namespace_context["outputs"]},
-                    "inputs": {**inputs, **namespace_context["inputs"]},
-                    # Make flow-specific data available at top level too
-                    **namespace_context["variables"],
-                    **namespace_context["outputs"],
-                })
+                context.update(
+                    {
+                        "variables": {**variables, **namespace_context["variables"]},
+                        "outputs": {**outputs, **namespace_context["outputs"]},
+                        "inputs": {**inputs, **namespace_context["inputs"]},
+                        # Make flow-specific data available at top level too
+                        **namespace_context["variables"],
+                        **namespace_context["outputs"],
+                    }
+                )
                 logger.debug(
                     f"Template resolution using namespace: {namespace_manager.get_current_flow_namespace()}"
                 )
@@ -163,17 +174,18 @@ class TemplateResolver:
         return context
 
     def _overlay_observable_values(
-        self, 
-        context: dict[str, Any], 
-        derived_field_manager: "DerivedFieldManager"
+        self, context: dict[str, Any], derived_field_manager: "DerivedFieldManager"
     ) -> None:
         """Overlay observable values to ensure template resolution gets current values."""
-        for field_name, observable_value in derived_field_manager.observable_values.items():
+        for (
+            field_name,
+            observable_value,
+        ) in derived_field_manager.observable_values.items():
             # Convert qualified field names (e.g., "knave.inventory") to template paths
             if "." in field_name:
                 # Set the observable value directly in the context at the qualified path
                 context[field_name] = observable_value.value
-                
+
                 # Debug log for inventory field
                 if field_name == "knave.inventory":
                     logger.info(
@@ -184,18 +196,22 @@ class TemplateResolver:
         # Debug: check if knave.inventory is in the context and what type it is
         if "knave.inventory" in context:
             inventory_value = context["knave.inventory"]
-            logger.info(f"Template context has knave.inventory: {type(inventory_value).__name__}")
+            logger.info(
+                f"Template context has knave.inventory: {type(inventory_value).__name__}"
+            )
             if isinstance(inventory_value, list):
                 logger.info(f"Inventory has {len(inventory_value)} items")
             else:
                 logger.info(f"Inventory is not a list: {inventory_value}")
 
-    def _resolve_template_fields_in_dict(self, data: dict[str, Any], context: dict[str, Any]) -> dict[str, Any]:
+    def _resolve_template_fields_in_dict(
+        self, data: dict[str, Any], context: dict[str, Any]
+    ) -> dict[str, Any]:
         """Recursively resolve any template strings in a dictionary structure."""
         import copy
-        
+
         result = copy.deepcopy(data)
-        
+
         def resolve_recursive(obj: Any) -> Any:
             if isinstance(obj, dict):
                 for key, value in obj.items():
@@ -214,7 +230,7 @@ class TemplateResolver:
                     return obj
             else:
                 return obj
-        
+
         return resolve_recursive(result)
 
     def resolve_path_value(
@@ -228,11 +244,17 @@ class TemplateResolver:
         """Resolve a path like 'outputs.character.name' to its value."""
         try:
             if path.startswith("outputs."):
-                return self._get_nested_value(outputs, path[8:])  # Remove "outputs." prefix
+                return self._get_nested_value(
+                    outputs, path[8:]
+                )  # Remove "outputs." prefix
             elif path.startswith("variables."):
-                return self._get_nested_value(variables, path[10:])  # Remove "variables." prefix
+                return self._get_nested_value(
+                    variables, path[10:]
+                )  # Remove "variables." prefix
             elif path.startswith("inputs."):
-                return self._get_nested_value(inputs, path[7:])  # Remove "inputs." prefix
+                return self._get_nested_value(
+                    inputs, path[7:]
+                )  # Remove "inputs." prefix
             else:
                 # Try outputs first, then variables, then inputs
                 try:

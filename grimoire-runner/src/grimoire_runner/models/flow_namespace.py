@@ -83,7 +83,9 @@ class FlowNamespaceManager:
             raise ValueError(f"Flow namespace '{namespace_id}' does not exist")
 
         if category not in ["variables", "outputs", "inputs"]:
-            raise ValueError(f"Invalid category '{category}'. Must be variables, outputs, or inputs")
+            raise ValueError(
+                f"Invalid category '{category}'. Must be variables, outputs, or inputs"
+            )
 
         namespace_data = self.flow_namespaces[namespace_id][category]
         self._set_nested_value(namespace_data, key_path, value)
@@ -117,21 +119,28 @@ class FlowNamespaceManager:
             raise ValueError(f"Flow namespace '{namespace_id}' does not exist")
 
         self.flow_namespaces[namespace_id]["variables"] = variables.copy()
-        logger.debug(f"Initialized variables for namespace {namespace_id}: {list(variables.keys())}")
+        logger.debug(
+            f"Initialized variables for namespace {namespace_id}: {list(variables.keys())}"
+        )
 
-    def copy_flow_outputs_to_root(self, namespace_id: str, root_outputs: dict[str, Any]) -> None:
+    def copy_flow_outputs_to_root(
+        self, namespace_id: str, root_outputs: dict[str, Any]
+    ) -> None:
         """Copy flow outputs from namespace to root level."""
         if namespace_id not in self.flow_namespaces:
             logger.warning(f"Cannot copy outputs: namespace '{namespace_id}' not found")
             return
 
         namespace_outputs = self.flow_namespaces[namespace_id].get("outputs", {})
-        
+
         # Deep copy the outputs to avoid reference issues
         import copy
+
         for output_id, output_value in namespace_outputs.items():
             root_outputs[output_id] = copy.deepcopy(output_value)
-            logger.debug(f"Copied output to root: {output_id} = {type(output_value).__name__}")
+            logger.debug(
+                f"Copied output to root: {output_id} = {type(output_value).__name__}"
+            )
 
     def get_flow_namespace_data(self, namespace_id: str) -> dict[str, Any] | None:
         """Get the complete data for a flow namespace."""
@@ -145,7 +154,10 @@ class FlowNamespaceManager:
 
     def get_namespace_context_for_templates(self) -> dict[str, Any]:
         """Get the current namespace context for template resolution."""
-        if not self.current_flow_namespace or self.current_flow_namespace not in self.flow_namespaces:
+        if (
+            not self.current_flow_namespace
+            or self.current_flow_namespace not in self.flow_namespaces
+        ):
             return {}
 
         flow_data = self.flow_namespaces[self.current_flow_namespace]
