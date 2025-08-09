@@ -120,6 +120,25 @@ class TemplateResolver:
             **outputs,    # Make outputs available at top level too
         }
 
+        # Add input instances directly to the context for observable system
+        # This ensures that model instances in inputs are available for derived field computation
+        flow_inputs = inputs
+        if namespace_manager:
+            namespace_context = namespace_manager.get_namespace_context_for_templates()
+            if namespace_context:
+                flow_inputs = {**inputs, **namespace_context["inputs"]}
+        
+        # Make model instances from inputs available at their expected paths
+        # This is crucial for the observable system to compute derived fields correctly
+        for input_key, input_value in flow_inputs.items():
+            if isinstance(input_value, dict):
+                # Add the input model instance directly to context (e.g., inputs.character -> character)
+                # But we need to ensure we're providing the fully resolved data structure
+                # If the input value contains template strings, we should resolve them first
+                resolved_input = self._resolve_template_fields_in_dict(input_value, context)
+                context[input_key] = resolved_input
+                logger.debug(f"Made input model '{input_key}' available for observable system")
+        
         # Add namespace-aware context if we have an active flow
         if namespace_manager:
             namespace_context = namespace_manager.get_namespace_context_for_templates()
@@ -154,6 +173,7 @@ class TemplateResolver:
             if "." in field_name:
                 # Set the observable value directly in the context at the qualified path
                 context[field_name] = observable_value.value
+                
                 # Debug log for inventory field
                 if field_name == "knave.inventory":
                     logger.info(
@@ -166,12 +186,36 @@ class TemplateResolver:
             inventory_value = context["knave.inventory"]
             logger.info(f"Template context has knave.inventory: {type(inventory_value).__name__}")
             if isinstance(inventory_value, list):
-                logger.info(
-                    f"Inventory list has {len(inventory_value)} items: "
-                    f"{[item.get('slot_cost', 'no_slot_cost') for item in inventory_value if isinstance(item, dict)]}"
-                )
+                logger.info(f"Inventory has {len(inventory_value)} items")
             else:
                 logger.info(f"Inventory is not a list: {inventory_value}")
+
+    def _resolve_template_fields_in_dict(self, data: dict[str, Any], context: dict[str, Any]) -> dict[str, Any]:
+        """Recursively resolve any template strings in a dictionary structure."""
+        import copy
+        
+        result = copy.deepcopy(data)
+        
+        def resolve_recursive(obj: Any) -> Any:
+            if isinstance(obj, dict):
+                for key, value in obj.items():
+                    obj[key] = resolve_recursive(value)
+                return obj
+            elif isinstance(obj, list):
+                return [resolve_recursive(item) for item in obj]
+            elif isinstance(obj, str) and self._template_service.is_template(obj):
+                try:
+                    # Resolve the template string using the current context
+                    resolved = self._template_service.resolve_template(obj, context)
+                    logger.debug(f"Resolved template field: {obj} -> {resolved}")
+                    return resolved
+                except Exception as e:
+                    logger.warning(f"Failed to resolve template field '{obj}': {e}")
+                    return obj
+            else:
+                return obj
+        
+        return resolve_recursive(result)
 
     def resolve_path_value(
         self,

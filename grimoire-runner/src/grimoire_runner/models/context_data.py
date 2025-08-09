@@ -10,6 +10,7 @@ from typing import TYPE_CHECKING, Any, Optional
 from .flow_namespace import FlowNamespaceManager
 from .template_resolver import TemplateResolver
 from ..services.path_resolver import PathResolver
+from ..services.flow_execution_context_manager import FlowExecutionContextManager, DefaultNamespaceDataAccess
 
 if TYPE_CHECKING:
     from .observable import DerivedFieldManager
@@ -54,17 +55,26 @@ class ExecutionContext:
     # Path resolution (delegated to specialized resolver)
     path_resolver: PathResolver = field(default_factory=PathResolver)
 
+    # Flow execution context management (delegated to specialized manager)
+    _flow_execution_manager: Optional[FlowExecutionContextManager] = field(
+        default=None, init=False, repr=False
+    )
+
     # Observable system for derived fields
     _derived_field_manager: Optional["DerivedFieldManager"] = field(
         default=None, init=False, repr=False
     )
 
     def __post_init__(self) -> None:
-        """Initialize the derived field manager."""
+        """Initialize the derived field manager and flow execution manager."""
         # Initialize the derived field manager
         from .observable import DerivedFieldManager
 
         self._derived_field_manager = DerivedFieldManager(self, self.resolve_template)
+
+        # Initialize the flow execution context manager
+        namespace_data_access = DefaultNamespaceDataAccess(self)
+        self._flow_execution_manager = FlowExecutionContextManager(namespace_data_access)
 
     def set_variable(self, path: str, value: Any) -> None:
         """Set a variable at the specified path."""
@@ -281,6 +291,43 @@ class ExecutionContext:
     def get_flow_namespace_data(self, namespace_id: str) -> dict[str, Any] | None:
         """Get all data for a specific flow namespace."""
         return self.namespace_manager.get_flow_namespace_data(namespace_id)
+
+    # Flow Execution Management (delegated to specialized manager)
+    def start_flow_execution(self, flow_id: str, variables: Optional[dict[str, Any]] = None):
+        """Start a new flow execution with proper context management."""
+        if self._flow_execution_manager:
+            return self._flow_execution_manager.start_flow_execution(flow_id, variables)
+        else:
+            # Fallback to legacy method for backward compatibility
+            return self.create_flow_namespace(f"flow_{flow_id}", flow_id, "legacy")
+
+    def end_flow_execution(self):
+        """End the current flow execution and clean up resources."""
+        if self._flow_execution_manager:
+            return self._flow_execution_manager.end_flow_execution()
+        else:
+            # Fallback to legacy method
+            return self.pop_flow_namespace()
+
+    def update_execution_step(self, step_id: str) -> None:
+        """Update the current step in the execution context."""
+        self.current_step = step_id
+        self.step_history.append(step_id)
+        
+        if self._flow_execution_manager:
+            self._flow_execution_manager.update_execution_step(step_id)
+
+    def get_current_execution(self):
+        """Get the current flow execution state."""
+        if self._flow_execution_manager:
+            return self._flow_execution_manager.get_current_execution()
+        return None
+
+    def is_execution_active(self) -> bool:
+        """Check if a flow execution is currently active."""
+        if self._flow_execution_manager:
+            return self._flow_execution_manager.is_execution_active()
+        return False
 
     # Checkpoint and state management
     def create_checkpoint(self, checkpoint_id: str | None = None) -> str:
