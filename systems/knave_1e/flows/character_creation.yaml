@@ -218,18 +218,76 @@ steps:
       - table: "alignment"
         actions:
           - set_value:
-              path: "outputs.knave.alignment"
+              path: "outputs.knave.traits.alignment"
               value: "{{ result }}"
+
+  - id: "choose_gender_choice"
+    name: "Gender Determination Choice"
+    type: "player_choice"
+    prompt: "How would you like to determine your character's gender?"
+    choices:
+      - id: "player_choice"
+        label: "Player Choice"
+        next_step: "choose_gender"
+      - id: "random_roll"
+        label: "Randomly Choose"
+        next_step: "roll_gender"
+
+  - id: "choose_gender"
+    name: "Choose Character Gender"
+    type: "player_choice"
+    prompt: "Select your gender"
+    choices:
+      - id: "female"
+        label: "Female"
+        actions:
+          - set_value:
+              path: "outputs.knave.gender"
+              value: "Female"
+      - id: "male"
+        label: "Male"
+        actions:
+          - set_value:
+              path: "outputs.knave.gender"
+              value: "Male"
+      - id: "non_binary"
+        label: "Non-binary"
+        actions:
+          - set_value:
+              path: "outputs.knave.gender"
+              value: "Non-binary"
+    next_step: "choose_name"
+
+  - id: "roll_gender"
+    name: "Determine Character Gender"
+    type: "table_roll"
+    prompt: "Rolling for your character's gender..."
+    tables:
+      - table: gender
+        actions:
+          - set_value:
+              path: "outputs.knave.gender"
+              value: "{{ result }}"
+    next_step: "choose_name"
+
+  - id: "choose_name"
+    name: "Choose Character Name"
+    type: "player_input"
+    prompt: "What is your character's name?"
+    actions:
+      - set_value:
+          path: "outputs.knave.name"
+          value: "{{ result }}"
 
   - id: "character_description"
     name: "Generate Character Description"
     type: "llm_generation"
     condition: "llm_enabled"
-    prompt_id: "knave_character_description"
+    prompt_id: "character_description"
     prompt_data:
-      traits: "{{ get_value('outputs.knave.traits') }}"
-      abilities: "{{ get_value('outputs.knave.abilities') }}"
-      background: "{{ get_value('outputs.knave.traits.background') }}"
+      name: "{{ outputs.knave.name }}"
+      gender: "{{ outputs.knave.gender }}"
+      traits: "{{ outputs.knave.traits }}"
     llm_settings:
       provider: "ollama"
       model: "gemma3"
@@ -237,7 +295,7 @@ steps:
     actions:
       - set_value:
           path: "outputs.knave.description"
-          value: "{{ llm_result }}"
+          value: "{{ result }}"
 
   - id: "review_character"
     name: "Review and Confirm Character"
@@ -265,7 +323,7 @@ steps:
           value: 1
       - log_event:
           type: "character_created"
-          data: "{{ get_value('outputs.knave.name') or 'Unnamed Knave' }}"
+          data: "{{ outputs.knave.name or 'Unnamed Knave' }}"
 
 # Flow control
 resume_points:

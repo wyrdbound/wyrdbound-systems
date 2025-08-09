@@ -7,4 +7,5 @@ __all__ = [
     "TableExecutor",
     "LLMExecutor",
     "FlowExecutor",
+    "PlayerInputExecutor",
 ]

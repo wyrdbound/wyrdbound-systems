@@ -441,7 +441,7 @@ Phase 1.4 successfully tested **flow definition structure** (parsing, validation
 **Test Coverage**:
 
 - **Source definition loading and validation**: Complete source file loading with proper structure validation
-- **Prompt definition loading and validation**: Full prompt system with LLM configuration parsing  
+- **Prompt definition loading and validation**: Full prompt system with LLM configuration parsing
 - **Template parsing and rendering**: Jinja2 template syntax validation and variable substitution
 - **LLM configuration validation**: Provider, model, temperature, and token limit validation
 - **Integration with system components**: Cross-references between sources, prompts, and other system elements
@@ -460,7 +460,7 @@ Phase 1.4 successfully tested **flow definition structure** (parsing, validation
 
 - `TestBasicSourceLoading`: 3 tests (system loading, structure validation, validation methods)
 - `TestBasicPromptLoading`: 4 tests (system loading, structure, template content, LLM config)
-- `TestPromptValidation`: 2 tests (validation methods, template validation)  
+- `TestPromptValidation`: 2 tests (validation methods, template validation)
 - `TestSourcePromptIntegration`: 2 tests (integrated loading, system get methods)
 - `TestSourcePromptErrorHandling`: 2 tests (invalid source validation, missing name validation)
 - `TestPromptTemplateFeatures`: 2 tests (complex variables, LLM configuration completeness)
@@ -481,6 +481,72 @@ Phase 1.4 successfully tested **flow definition structure** (parsing, validation
 - **Validation Consistency**: Followed established validation patterns from other definition types
 - **Minimal Test Systems**: Created focused test systems rather than complex real-world examples
 - **Integration Focus**: Emphasized integration testing between sources, prompts, and existing components
+
+---
+
+### ✅ Phase 1.6: Player Input Step Type
+
+**Status**: COMPLETED (14/14 tests passing)
+
+**Objective**: Test player_input step type functionality for text input collection
+
+**Test Coverage**:
+
+- **PlayerInputExecutor**: Complete executor class with execute() and process_input() methods
+- **Step Type Integration**: PLAYER_INPUT added to StepType enum and engine registration
+- **UI Integration**: Rich TUI enhanced with \_handle_player_input() method
+- **Input Processing**: User text input collection and context variable storage
+- **Template Resolution**: Jinja2 template parsing for prompts and completion actions
+- **Namespaced Context**: Proper integration with ExecutionContext namespace system
+- **Error Handling**: Comprehensive error handling for input processing failures
+- **End-to-End Validation**: Character creation flow successfully uses player_input step
+
+**Key Achievements**:
+
+- **New Step Type**: Added PLAYER_INPUT to StepType enum in flow.py
+- **PlayerInputExecutor**: Complete executor implementation with robust error handling
+- **Engine Registration**: player_input step type properly registered in engine.\_initialize_executors()
+- **UI Enhancement**: Rich TUI updated to handle player input with graceful fallback for piped input
+- **Flow Integration**: Character creation flow successfully prompts for and processes player name
+- **Comprehensive Testing**: 14 tests covering all executor methods and integration scenarios
+- **Documentation**: Updated flow_spec.md and TESTING_STRATEGY.md with player_input examples
+
+**Tests Added**: 14 tests across 2 test classes
+
+- `TestPlayerInputExecutor`: 8 tests (execution, input processing, templates, error handling)
+- `TestPlayerInputExecutorIntegration`: 6 tests (context integration, completion actions, validation)
+
+**Technical Implementation**:
+
+- **PlayerInputExecutor Class**: Full implementation with execute(), process_input(), error handling
+- **Rich TUI Integration**: \_handle_player_input() method with graceful degradation for automation
+- **Template Support**: Jinja2 template resolution for prompts and completion actions
+- **Context Integration**: Proper ExecutionContext integration with namespace awareness
+- **Input Validation**: User input validation and storage in context variables
+- **Error Recovery**: Comprehensive error handling with informative messages
+
+**End-to-End Validation**:
+
+- ✅ Character creation flow reaches player_input step successfully
+- ✅ Prompt "What is your character's name?" displayed correctly
+- ✅ Input "Bob" processed and stored as outputs.knave.name
+- ✅ Flow continues and completes successfully after player input
+- ✅ All 14 PlayerInputExecutor tests pass with comprehensive coverage
+
+**Design Decisions**:
+
+- **Executor Pattern**: Followed existing BaseStepExecutor pattern for consistency
+- **Input Variable**: User input available as `user_input` in template context
+- **UI Integration**: Enhanced Rich TUI while maintaining compatibility with automation
+- **Error Handling**: Robust error handling with graceful degradation
+- **Template Support**: Full Jinja2 template support for dynamic prompts and actions
+
+**Coverage Metrics**:
+
+- **PlayerInputExecutor**: 100% coverage of new executor functionality
+- **Integration Testing**: Complete end-to-end validation with character creation flow
+- **Error Scenarios**: Comprehensive testing of edge cases and error conditions
+- **UI Integration**: Rich TUI player input handling tested via end-to-end flow
 
 ---
 
@@ -566,7 +632,7 @@ These skipped tests clearly document what functionality is missing and will pass
 | `models/prompt.py`                 | 78%      | ✅ Strong   | **Prompt definitions well-covered**       |
 | `models/flow.py`                   | 73%      | ✅ Strong   | Flow definitions well-covered             |
 | `models/model.py`                  | 66%      | 🔄 Good     | Model definitions solid coverage          |
-| `models/system.py`                 | 62%      | 🔄 Good     | **System loading enhanced with prompts**   |
+| `models/system.py`                 | 62%      | 🔄 Good     | **System loading enhanced with prompts**  |
 | `models/observable.py`             | 60%      | 🔄 Good     | Observable pattern implementation         |
 | `executors/llm_executor.py`        | 59%      | 🔄 Good     | **LLM execution improvements**            |
 | `executors/dice_executor.py`       | 58%      | 🔄 Good     | **Namespace-aware dice rolling**          |
@@ -582,11 +648,11 @@ These skipped tests clearly document what functionality is missing and will pass
 
 #### Low Coverage Components (15-22%):
 
-| Component                      | Coverage | Priority  | Reason                                 |
-| ------------------------------ | -------- | --------- | -------------------------------------- |
+| Component                      | Coverage | Priority  | Reason                                   |
+| ------------------------------ | -------- | --------- | ---------------------------------------- |
 | `executors/table_executor.py`  | 22%      | 🟡 Medium | **Namespace isolation + type overrides** |
-| `executors/choice_executor.py` | 15%      | 🟡 Medium | Player choice handling                 |
-| `executors/flow_helper.py`     | 9%       | 🟡 Medium | Flow utility functions                 |
+| `executors/choice_executor.py` | 15%      | 🟡 Medium | Player choice handling                   |
+| `executors/flow_helper.py`     | 9%       | 🟡 Medium | Flow utility functions                   |
 
 #### Untested Components (0% coverage):
 
@@ -687,7 +753,7 @@ These skipped tests clearly document what functionality is missing and will pass
 ### ✅ Phase 1.5: Source & Prompt Tests - COMPLETED
 
 1. **Source Definition Loading**: ✅ Complete source file loading with proper structure validation
-2. **Prompt Definition Loading**: ✅ Full prompt system with LLM configuration parsing  
+2. **Prompt Definition Loading**: ✅ Full prompt system with LLM configuration parsing
 3. **Template Validation**: ✅ Jinja2 template syntax validation and variable substitution
 4. **LLM Configuration**: ✅ Provider, model, temperature, and token limit validation
 5. **System Integration**: ✅ Cross-references between sources, prompts, and other components
@@ -697,7 +763,7 @@ These skipped tests clearly document what functionality is missing and will pass
 ### Short Term (Phase 2.x: Integration Testing & Executor Enhancement)
 
 1. Cross-component integration testing and validation
-2. Executor enhancement and edge case coverage improvement  
+2. Executor enhancement and edge case coverage improvement
 3. Real-world scenario testing with complex systems
 4. **Coverage Target**: Achieve 45%+ overall coverage with executors at 60%+
 

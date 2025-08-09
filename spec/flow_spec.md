@@ -202,8 +202,24 @@ Uses Large Language Models to generate content.
   actions:
     - set_value:
         path: "outputs.character.description"
-        value: "{{ llm_result }}"
+        value: "{{ result }}"
 ```
+
+#### `player_input`
+
+Prompts the player for text input.
+
+```yaml
+- id: "get_character_name"
+  type: "player_input"
+  prompt: "What is your character's name?"
+  actions:
+    - set_value:
+        path: "outputs.character.name"
+        value: "{{ result }}"
+```
+
+The player's input is available in templates as `{{ result }}`, maintaining consistency with other step types. This step type is ideal for collecting names, descriptions, or any custom text from the player.
 
 #### `completion`
 
@@ -213,7 +229,8 @@ Marks the end of a flow.
 - id: "finish"
   type: "completion"
   prompt: "Character creation complete!"
-  actions:    - log_event:
+  actions:
+    - log_event:
         type: "character_created"
         data: "{{ outputs.new_character.name }}"
 ```
@@ -232,14 +249,6 @@ Sets a value at a reference path.
 - set_value:
     path: "outputs.character.level"
     value: 1
-```
-
-#### `get_value`
-
-Retrieves a value from a reference path (used in templates).
-
-```yaml
-value: "{{ get_value('outputs.character.name') }}"
 ```
 
 #### `swap_values`
@@ -297,7 +306,7 @@ Flows use Jinja2 templating syntax for dynamic content:
 - **Variables**: `{{ variables.hp_dice_roll }}`
 - **References**: `{{ outputs.character.name }}`
 - **Filters**: `{{ item|title }}`, `{{ value|upper }}`
-- **Conditionals**: `{{ get_value('character.name') || 'Unnamed Character' }}`
+- **Conditionals**: `{{ outputs.character.name || 'Unnamed Character' }}`
 
 ## Flow Control
 

@@ -10,6 +10,7 @@ from ..executors.choice_executor import ChoiceExecutor
 from ..executors.dice_executor import DiceExecutor
 from ..executors.flow_executor import FlowExecutor
 from ..executors.llm_executor import LLMExecutor
+from ..executors.player_input_executor import PlayerInputExecutor
 from ..executors.table_executor import TableExecutor
 from ..models.context_data import ExecutionContext
 from ..models.flow import FlowDefinition, FlowResult, StepResult
@@ -37,6 +38,7 @@ class GrimoireEngine:
             "dice_roll": DiceExecutor(),
             "dice_sequence": DiceExecutor(),
             "player_choice": ChoiceExecutor(self),
+            "player_input": PlayerInputExecutor(),
             "table_roll": TableExecutor(),
             "llm_generation": LLMExecutor(),
             "completion": FlowExecutor(),
