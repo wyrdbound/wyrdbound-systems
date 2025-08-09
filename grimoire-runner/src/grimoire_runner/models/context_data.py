@@ -9,6 +9,7 @@ from typing import TYPE_CHECKING, Any, Optional
 
 from .flow_namespace import FlowNamespaceManager
 from .template_resolver import TemplateResolver
+from ..services.path_resolver import PathResolver
 
 if TYPE_CHECKING:
     from .observable import DerivedFieldManager
@@ -50,6 +51,9 @@ class ExecutionContext:
     # Template resolution (delegated to specialized resolver)
     template_resolver: TemplateResolver = field(default_factory=TemplateResolver)
 
+    # Path resolution (delegated to specialized resolver)
+    path_resolver: PathResolver = field(default_factory=PathResolver)
+
     # Observable system for derived fields
     _derived_field_manager: Optional["DerivedFieldManager"] = field(
         default=None, init=False, repr=False
@@ -64,31 +68,19 @@ class ExecutionContext:
 
     def set_variable(self, path: str, value: Any) -> None:
         """Set a variable at the specified path."""
-        self._set_nested_value(self.variables, path, value)
+        self.path_resolver.set_value(self, f"variables.{path}", value)
 
     def get_variable(self, path: str, default: Any = None) -> Any:
         """Get a variable at the specified path."""
-        try:
-            return self._get_nested_value(self.variables, path)
-        except (KeyError, TypeError):
-            return default
+        return self.path_resolver.get_value(self, f"variables.{path}", default)
 
     def has_variable(self, path: str) -> bool:
         """Check if a variable exists at the specified path."""
-        try:
-            self._get_nested_value(self.variables, path)
-            return True
-        except (KeyError, TypeError):
-            return False
+        return self.path_resolver.has_value(self, f"variables.{path}")
 
     def set_output(self, path: str, value: Any) -> None:
         """Set an output at the specified path, triggering derived field computation if applicable."""
-        # Always use the observable system for consistency and to trigger derived fields
-        if self._derived_field_manager:
-            self._derived_field_manager.set_field_value(path, value)
-        else:
-            # Fallback if no derived field manager (shouldn't happen in normal operation)
-            self._set_nested_value(self.outputs, path, value)
+        self.path_resolver.set_value(self, f"outputs.{path}", value)
 
     def set_output_with_observables(self, path: str, value: Any) -> None:
         """Set an output and trigger observable updates."""
@@ -98,7 +90,7 @@ class ExecutionContext:
     def get_output(self, path: str, default: Any = None) -> Any:
         """Get an output at the specified path, including computed derived fields."""
         try:
-            base_value = self._get_nested_value(self.outputs, path)
+            base_value = self.path_resolver.get_value(self, f"outputs.{path}")
             logger.info(f"get_output({path}): base_value = {base_value}")
 
             # If we have a derived field manager and this looks like a model instance,
@@ -120,7 +112,7 @@ class ExecutionContext:
                     return merged_value
 
             return base_value
-        except (KeyError, TypeError):
+        except Exception:
             return default
 
     def _deep_merge_dicts(self, base: dict, overlay: dict) -> dict:
@@ -196,14 +188,11 @@ class ExecutionContext:
 
     def set_input(self, path: str, value: Any) -> None:
         """Set an input at the specified path."""
-        self._set_nested_value(self.inputs, path, value)
+        self.path_resolver.set_value(self, f"inputs.{path}", value)
 
     def get_input(self, path: str, default: Any = None) -> Any:
         """Get an input at the specified path."""
-        try:
-            return self._get_nested_value(self.inputs, path)
-        except (KeyError, TypeError):
-            return default
+        return self.path_resolver.get_value(self, f"inputs.{path}", default)
 
     def resolve_template(self, template_str: str) -> Any:
         """Resolve a Jinja2 template string with current context."""
@@ -243,27 +232,14 @@ class ExecutionContext:
         )
 
     def resolve_path_value(self, path: str) -> Any:
-        """Resolve a path that might reference variables, outputs, or inputs."""
+        """Resolve a path that might reference variables, outputs, inputs, or system metadata."""
         logger.info(f"resolve_path_value({path})")
-        if path.startswith("variables."):
-            return self.get_variable(path[10:])  # Remove 'variables.' prefix
-        elif path.startswith("outputs."):
-            return self.get_output(path[8:])  # Remove 'outputs.' prefix
-        elif path.startswith("inputs."):
-            return self.get_input(path[7:])  # Remove 'inputs.' prefix
-        else:
-            # Try all contexts
-            for _context_name, context in [
-                ("variables", self.variables),
-                ("outputs", self.outputs),
-                ("inputs", self.inputs),
-            ]:
-                try:
-                    return self._get_nested_value(context, path)
-                except (KeyError, TypeError):
-                    continue
-
-            raise KeyError(f"Path '{path}' not found in any context")
+        
+        # Use the centralized path resolver
+        try:
+            return self.path_resolver.get_value(self, path)
+        except Exception as e:
+            raise KeyError(f"Path '{path}' not found: {e}")
 
     # Flow Namespace Management (delegated to namespace manager)
     def create_flow_namespace(
