@@ -306,6 +306,34 @@ class RichTUI:
                             step_result.success = False
                             step_result.error = f"Step action execution failed: {e}"
 
+            else:
+                # Handle player input (text input)
+                user_input = self._handle_player_input(step_result)
+
+                if user_input is None:
+                    self.console.print("[red]❌ Input cancelled[/red]")
+                    step_result.success = False
+                    step_result.error = "User cancelled input"
+                else:
+                    self.console.print(
+                        f"[green]✅ Input received: {user_input}[/green]"
+                    )
+
+                    # Process the input using PlayerInputExecutor
+                    from ..executors.player_input_executor import PlayerInputExecutor
+
+                    input_executor = PlayerInputExecutor()
+                    input_result = input_executor.process_input(
+                        user_input, step, self.context, self.system
+                    )
+
+                    if input_result.success:
+                        step_result.success = True
+                        step_result.data = input_result.data
+                    else:
+                        step_result.success = False
+                        step_result.error = input_result.error
+
         # Show step result
         if step_result.success:
             self.console.print(f"[green]✅ Completed Step {step_num}[/green]")
@@ -530,6 +558,34 @@ class RichTUI:
             # Fall back to empty selection
             self.context.set_variable("selected_items", [])
             self.context.set_variable("user_choices", [])
+            return None
+
+    def _handle_player_input(self, step_result) -> str | None:
+        """Handle player text input using Rich prompts."""
+        prompt_text = step_result.prompt or "Please enter your input:"
+
+        try:
+            # Use Rich.prompt for accessible text input
+            user_input = Prompt.ask(prompt_text, console=self.console)
+            return user_input.strip() if user_input else None
+
+        except (KeyboardInterrupt, EOFError):
+            # Handle automated input or interruption gracefully
+            try:
+                import sys
+
+                if not sys.stdin.isatty():
+                    # We're reading from a pipe/redirect, try to read one line
+                    line = sys.stdin.readline()
+                    if line:
+                        self.console.print(
+                            f"[yellow]Using piped input: {line.strip()}[/yellow]"
+                        )
+                        return line.strip()
+            except (EOFError, OSError, UnicodeDecodeError):
+                pass
+
+            self.console.print("[yellow]Input cancelled or unavailable[/yellow]")
             return None
 
     def _show_results_summary(self) -> None:

@@ -30,10 +30,16 @@ class LLMExecutor(BaseStepExecutor):
             # Check if LLM is enabled/available
             if not self.llm_integration.is_available():
                 logger.warning(f"LLM not available for step {step.id}, skipping")
+                # Provide a safe fallback so templates like {{ result }} or {{ llm_result }} don't explode
+                context.set_variable("llm_result", "")
                 return StepResult(
                     step_id=step.id,
                     success=True,
-                    data={"skipped": True, "reason": "llm_not_available"},
+                    data={
+                        "skipped": True,
+                        "reason": "llm_not_available",
+                        "result": "",
+                    },
                 )
 
             # Get the prompt template
@@ -58,19 +64,20 @@ class LLMExecutor(BaseStepExecutor):
             generated_content = self.llm_integration.generate_content(
                 prompt_template=prompt_template,
                 context=prompt_data,
-                **settings.__dict__ if hasattr(settings, "__dict__") else {},
+                **(settings.__dict__ if hasattr(settings, "__dict__") else {}),
             )
 
             logger.info(f"LLM generation completed for step {step.id}")
             logger.debug(f"Generated content: {generated_content[:100]}...")
 
-            # Store result in context for actions
+            # Store result in context for actions and provide a common 'result' key
             context.set_variable("llm_result", generated_content)
 
             return StepResult(
                 step_id=step.id,
                 success=True,
                 data={
+                    "result": generated_content,
                     "generated_content": generated_content,
                     "prompt_data": prompt_data,
                     "settings": settings.__dict__

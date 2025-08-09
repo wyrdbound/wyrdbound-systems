@@ -11,6 +11,7 @@ class StepType(Enum):
     DICE_ROLL = "dice_roll"
     DICE_SEQUENCE = "dice_sequence"
     PLAYER_CHOICE = "player_choice"
+    PLAYER_INPUT = "player_input"
     TABLE_ROLL = "table_roll"
     LLM_GENERATION = "llm_generation"
     COMPLETION = "completion"

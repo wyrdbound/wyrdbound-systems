@@ -13,17 +13,17 @@ prompt_template: |
 
   Name: {{ name }}
   Gender: {{ gender }}
-  Physique: {{ physique }}
-  Face: {{ face }}
-  Skin: {{ skin }}
-  Hair: {{ hair }}
-  Clothing: {{ clothing }}
-  Virtue: {{ virtue }}
-  Vice: {{ vice }}
-  Speech: {{ speech }}
-  Background: {{ background }}
-  Misfortunes: {{ misfortunes }}
-  Alignment: {{ alignment }}
+  Physique: {{ traits.physique }}
+  Face: {{ traits.face }}
+  Skin: {{ traits.skin }}
+  Hair: {{ traits.hair }}
+  Clothing: {{ traits.clothing }}
+  Virtue: {{ traits.virtue }}
+  Vice: {{ traits.vice }}
+  Speech: {{ traits.speech }}
+  Background: {{ traits.background }}
+  Misfortunes: {{ traits.misfortunes }}
+  Alignment: {{ traits.alignment }}
 
   Please use the below examples as guidance for your output and refrain from adding lore or unnecessarily specific world locations. In addition, be sure to use correct pronouns for the specified gender.
   =============================
