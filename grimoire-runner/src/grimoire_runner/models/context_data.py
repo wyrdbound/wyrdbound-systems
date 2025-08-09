@@ -7,8 +7,8 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from typing import TYPE_CHECKING, Any, Optional
 
-from jinja2 import Environment, StrictUndefined
 from .flow_namespace import FlowNamespaceManager
+from .template_resolver import TemplateResolver
 
 if TYPE_CHECKING:
     from .observable import DerivedFieldManager
@@ -47,12 +47,8 @@ class ExecutionContext:
     step_history: list[str] = field(default_factory=list)
     checkpoints: dict[str, Checkpoint] = field(default_factory=dict)
 
-    # Template environment
-    _jinja_env: Environment = field(
-        default_factory=lambda: Environment(undefined=StrictUndefined),
-        init=False,
-        repr=False,
-    )
+    # Template resolution (delegated to specialized resolver)
+    template_resolver: TemplateResolver = field(default_factory=TemplateResolver)
 
     # Observable system for derived fields
     _derived_field_manager: Optional["DerivedFieldManager"] = field(
@@ -60,14 +56,7 @@ class ExecutionContext:
     )
 
     def __post_init__(self) -> None:
-        """Initialize the template environment with custom functions."""
-        self._jinja_env.globals.update(
-            {
-                "get_value": self.get_variable,
-                "has_value": self.has_variable,
-            }
-        )
-
+        """Initialize the derived field manager."""
         # Initialize the derived field manager
         from .observable import DerivedFieldManager
 
@@ -218,191 +207,15 @@ class ExecutionContext:
 
     def resolve_template(self, template_str: str) -> Any:
         """Resolve a Jinja2 template string with current context."""
-        if not isinstance(template_str, str):
-            return template_str
-
-        # Skip if no template syntax
-        if "{{" not in template_str and "{%" not in template_str:
-            return template_str
-
-        try:
-            template = self._jinja_env.from_string(template_str)
-
-            # Start with basic context (backward compatibility)
-            context = {
-                "variables": self.variables,
-                "outputs": self.outputs,
-                "inputs": self.inputs,
-                "system": self.system_metadata,  # Make system metadata available
-                **self.variables,  # Make variables available at top level too
-                **self.outputs,  # Make outputs available at top level too
-            }
-
-            # Add namespace-aware context if we have an active flow
-            namespace_context = self.namespace_manager.get_namespace_context_for_templates()
-            if namespace_context:
-                # Overlay flow-specific data with precedence over root data
-                context.update(
-                    {
-                        "variables": {**self.variables, **namespace_context["variables"]},
-                        "outputs": {**self.outputs, **namespace_context["outputs"]},
-                        "inputs": {**self.inputs, **namespace_context["inputs"]},
-                        # Make flow-specific data available at top level too
-                        **namespace_context["variables"],
-                        **namespace_context["outputs"],
-                    }
-                )
-                logger.debug(
-                    f"Template resolution using namespace: {self.namespace_manager.get_current_flow_namespace()}"
-                )
-
-            # If we have a derived field manager, overlay observable values to ensure
-            # template resolution gets the most current values (including lists, not strings)
-            if self._derived_field_manager:
-                for (
-                    field_name,
-                    observable_value,
-                ) in self._derived_field_manager.observable_values.items():
-                    # Convert qualified field names (e.g., "knave.inventory") to template paths
-                    if "." in field_name:
-                        # Set the observable value directly in the context at the qualified path
-                        context[field_name] = observable_value.value
-                        # Debug log for inventory field
-                        if field_name == "knave.inventory":
-                            logger.info(
-                                f"Template context overlay: {field_name} = {type(observable_value.value).__name__} with {len(observable_value.value) if isinstance(observable_value.value, list) else 'non-list'} items"
-                            )
-
-            # Debug: check if knave.inventory is in the context and what type it is
-            if "knave.inventory" in context:
-                inventory_value = context["knave.inventory"]
-                logger.info(
-                    f"Template context has knave.inventory: {type(inventory_value).__name__}"
-                )
-                if isinstance(inventory_value, list):
-                    logger.info(
-                        f"Inventory list has {len(inventory_value)} items: {[item.get('slot_cost', 'no_slot_cost') for item in inventory_value if isinstance(item, dict)]}"
-                    )
-                else:
-                    logger.info(f"Inventory is not a list: {inventory_value}")
-
-            logger.debug(f"Template context for '{template_str}': {context}")
-            result = template.render(context)
-
-            # Try to parse as JSON if it looks like structured data
-            result = result.strip()
-            if (
-                result.startswith(("{", "[", '"'))
-                or result in ("true", "false", "null")
-                or result.isdigit()
-            ):
-                try:
-                    return json.loads(result)
-                except json.JSONDecodeError:
-                    pass
-
-            # Try to parse as number
-            try:
-                if "." in result:
-                    return float(result)
-                else:
-                    return int(result)
-            except ValueError:
-                pass
-
-            return result
-
-        except Exception as e:
-            # Provide detailed error information for template resolution failures
-            error_details = []
-            error_details.append(f"Template: {template_str!r}")
-
-            # Enhanced error message for attribute errors
-            error_str = str(e)
-            if "'dict object' has no attribute" in error_str and "'" in error_str:
-                # Extract the attribute name from the error
-                parts = error_str.split("'")
-                if len(parts) >= 2:
-                    missing_attr = parts[
-                        -2
-                    ]  # The attribute name is usually the second-to-last quoted string
-
-                    # Try to identify which object failed and show its contents
-                    if (
-                        hasattr(self, "inputs")
-                        and missing_attr in template_str
-                        and "inputs." in template_str
-                    ):
-                        available_keys = list(self.inputs.keys()) if self.inputs else []
-                        error_details.append(
-                            f"Error: 'inputs' (dict object) has no attribute '{missing_attr}'"
-                        )
-                        error_details.append(
-                            f"Available keys under 'inputs': {available_keys}"
-                        )
-                    elif (
-                        hasattr(self, "outputs")
-                        and missing_attr in template_str
-                        and "outputs." in template_str
-                    ):
-                        available_keys = (
-                            list(self.outputs.keys()) if self.outputs else []
-                        )
-                        error_details.append(
-                            f"Error: 'outputs' (dict object) has no attribute '{missing_attr}'"
-                        )
-                        error_details.append(
-                            f"Available keys under 'outputs': {available_keys}"
-                        )
-                    elif (
-                        hasattr(self, "variables")
-                        and missing_attr in template_str
-                        and "variables." in template_str
-                    ):
-                        available_keys = (
-                            list(self.variables.keys()) if self.variables else []
-                        )
-                        error_details.append(
-                            f"Error: 'variables' (dict object) has no attribute '{missing_attr}'"
-                        )
-                        error_details.append(
-                            f"Available keys under 'variables': {available_keys}"
-                        )
-                    else:
-                        error_details.append(f"Error: {e}")
-                else:
-                    error_details.append(f"Error: {e}")
-            elif "undefined" in error_str.lower():
-                # Handle Jinja2 undefined variable errors
-                if "'" in error_str:
-                    undefined_var = (
-                        error_str.split("'")[1]
-                        if error_str.count("'") >= 2
-                        else "unknown"
-                    )
-                    error_details.append(f"Error: '{undefined_var}' is undefined")
-                else:
-                    error_details.append(f"Error: {e}")
-            else:
-                error_details.append(f"Error: {e}")
-
-            # Show top-level available context keys for additional context
-            if hasattr(context, "keys"):
-                top_level_keys = list(context.keys())
-            elif isinstance(context, dict):
-                top_level_keys = list(context.keys())
-            else:
-                top_level_keys = []
-
-            if top_level_keys:
-                error_details.append(
-                    f"Available top-level context keys: {sorted(top_level_keys)}"
-                )
-
-            detailed_message = "Template resolution failed:\n" + "\n".join(
-                f"  {detail}" for detail in error_details
-            )
-            raise ValueError(detailed_message) from e
+        return self.template_resolver.resolve_template(
+            template_str,
+            self.variables,
+            self.outputs,
+            self.inputs,
+            self.system_metadata,
+            self.namespace_manager,
+            self._derived_field_manager,
+        )
 
     def resolve_path_value(self, path: str) -> Any:
         """Resolve a path that might reference variables, outputs, or inputs."""
