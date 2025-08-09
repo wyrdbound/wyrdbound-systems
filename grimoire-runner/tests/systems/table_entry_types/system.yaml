@@ -1,0 +1,5 @@
+id: "table_entry_types"
+kind: "system"
+name: "Table Entry Types Test System"
+description: "System for testing advanced table entry type features"
+version: "1.0"

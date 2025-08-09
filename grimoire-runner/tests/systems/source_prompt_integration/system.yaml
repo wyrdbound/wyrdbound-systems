@@ -1,0 +1,5 @@
+id: "source_prompt_integration"
+kind: "system"
+name: "Source & Prompt Integration System"
+description: "System for testing both sources and prompts together"
+version: "1.0"

@@ -1,0 +1,33 @@
+id: "validated_character"
+kind: "model"
+name: "Validated Character"
+description: "Character model with validation rules and derived attributes"
+attributes:
+  name:
+    type: str
+  max_hit_points:
+    type: int
+    range: "1..200"
+  current_hit_points:
+    type: int
+    range: "0.."
+  armor_class_base:
+    type: int
+    range: "10..18"
+    default: 10
+  dexterity_modifier:
+    type: int
+    range: "-5..5"
+    default: 0
+  armor_class:
+    type: int
+    derived: "$.armor_class_base + $.dexterity_modifier"
+  is_unconscious:
+    type: bool
+    derived: "$.current_hit_points <= 0"
+
+validations:
+  - expression: "$.current_hit_points <= $.max_hit_points"
+    message: "Current HP cannot exceed maximum HP"
+  - expression: "$.name.length > 0"
+    message: "Character name cannot be empty"

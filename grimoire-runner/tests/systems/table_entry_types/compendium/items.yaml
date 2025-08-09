@@ -1,0 +1,17 @@
+kind: "compendium"
+id: "items"
+name: "Items Compendium"
+model: "item"
+entries:
+  - id: "backpack"
+    name: "Backpack"
+    category: "equipment"
+    cost: 2
+  - id: "rope"
+    name: "Hemp Rope (50 feet)"
+    category: "equipment"
+    cost: 1
+  - id: "lantern"
+    name: "Lantern"
+    category: "equipment"
+    cost: 5

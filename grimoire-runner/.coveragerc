@@ -13,6 +13,7 @@ omit =
     setup.py
     */venv/*
     */.venv/*
+    */__init__.py
 
 # Enable branch coverage
 branch = true

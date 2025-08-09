@@ -1,0 +1,12 @@
+id: "armor"
+kind: "model"
+name: "Armor"
+description: "Basic armor model"
+attributes:
+  name:
+    type: str
+  defense:
+    type: int
+  cost:
+    type: int
+    default: 0

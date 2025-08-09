@@ -1,0 +1,38 @@
+# Flow with dice rolling
+id: "dice-flow"
+type: "flow"
+name: "Dice Rolling Flow"
+description: "Flow demonstrating dice step types"
+
+variables:
+  dice_result: 0
+  ability_scores: {}
+
+steps:
+  - id: "simple-roll"
+    name: "Simple Dice Roll"
+    type: "dice_roll"
+    prompt: "Rolling a simple d6"
+    roll: "1d6"
+    output: "dice_result"
+    actions:
+      - type: "set_value"
+        data:
+          path: "variables.dice_result"
+          value: "{{ result }}"
+    next_step: "sequence-roll"
+
+  - id: "sequence-roll"
+    name: "Dice Sequence"
+    type: "dice_sequence"
+    prompt: "Rolling ability scores"
+    sequence:
+      items: ["STR", "DEX", "CON", "INT", "WIS", "CHA"]
+      roll: "3d6"
+      actions:
+        - type: "set_value"
+          data:
+            path: "variables.ability_scores.{{ item }}"
+            value: "{{ result }}"
+      display_as: "{{ item }}: {{ result }}"
+    output: "ability_scores"

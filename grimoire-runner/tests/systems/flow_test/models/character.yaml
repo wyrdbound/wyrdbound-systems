@@ -1,0 +1,18 @@
+# Basic model for testing
+kind: "model"
+id: "character"
+name: "Character Model"
+description: "Basic character model for flow testing"
+version: 1
+
+attributes:
+  name:
+    type: "str"
+    required: true
+  level:
+    type: "int"
+    default: 1
+    range: [1, 20]
+  health:
+    type: "int"
+    default: 10

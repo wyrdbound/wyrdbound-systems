@@ -19,6 +19,7 @@ from ..models.flow import (
     TableRollDefinition,
 )
 from ..models.model import AttributeDefinition, ModelDefinition, ValidationRule
+from ..models.prompt import PromptDefinition
 from ..models.source import SourceDefinition
 from ..models.system import Credits, Currency, CurrencyDenomination, System
 from ..models.table import TableDefinition
@@ -61,6 +62,7 @@ class SystemLoader:
 
         # Load all other components
         self._load_sources(system_path, system)
+        self._load_prompts(system_path, system)
         self._load_models(system_path, system)
         self._load_compendiums(system_path, system)
         self._load_tables(system_path, system)
@@ -127,6 +129,26 @@ class SystemLoader:
             except Exception as e:
                 logger.error(f"Failed to load source {source_file}: {e}")
 
+    def _load_prompts(self, system_path: Path, system: System) -> None:
+        """Load prompt definitions."""
+        prompts_dir = system_path / "prompts"
+        if not prompts_dir.exists():
+            return
+
+        for prompt_file in prompts_dir.glob("*.yaml"):
+            try:
+                with open(prompt_file, encoding="utf-8") as f:
+                    data = yaml.safe_load(f)
+
+                prompt = PromptDefinition(**data)
+                # Use prompt ID as key, falling back to name if no ID
+                prompt_key = prompt.id or prompt.name
+                system.prompts[prompt_key] = prompt
+                logger.debug(f"Loaded prompt: {prompt.name} (ID: {prompt_key})")
+
+            except Exception as e:
+                logger.error(f"Failed to load prompt {prompt_file}: {e}")
+
     def _load_models(self, system_path: Path, system: System) -> None:
         """Load model definitions."""
         models_dir = system_path / "models"
@@ -189,14 +211,20 @@ class SystemLoader:
             if isinstance(attr_data, dict):
                 if "type" in attr_data:
                     # This is an attribute definition
+                    # Derived attributes should not be required since they're calculated
+                    is_derived = "derived" in attr_data
+                    required = attr_data.get("required", not is_derived)
+
                     parsed_attrs[attr_name] = AttributeDefinition(
                         type=attr_data["type"],
                         default=attr_data.get("default"),
                         range=attr_data.get("range"),
                         enum=attr_data.get("enum"),
                         derived=attr_data.get("derived"),
-                        required=attr_data.get("required", True),
+                        required=required,
                         description=attr_data.get("description"),
+                        of=attr_data.get("of"),
+                        optional=attr_data.get("optional"),
                     )
                 else:
                     # This is a nested attribute group
@@ -248,6 +276,20 @@ class SystemLoader:
 
             except Exception as e:
                 logger.error(f"Failed to load table {table_file}: {e}")
+
+    def _validate_system_components(self, system: System) -> None:
+        """Validate system components that require cross-references."""
+        # Validate tables with access to system models
+        validation_errors = []
+
+        for table_id, table in system.tables.items():
+            table_errors = table.validate_with_system(system)
+            for error in table_errors:
+                validation_errors.append(f"Table '{table_id}': {error}")
+
+        if validation_errors:
+            error_msg = "System validation failed:\n" + "\n".join(validation_errors)
+            raise ValueError(error_msg)
 
     def _load_flows(self, system_path: Path, system: System) -> None:
         """Load flow definitions."""

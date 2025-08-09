@@ -1,0 +1,22 @@
+# Flow with table rolling
+id: "table-flow"
+type: "flow"
+name: "Table Rolling Flow"
+description: "Flow demonstrating table roll mechanics"
+
+outputs:
+  - id: "character"
+    type: "character"
+
+steps:
+  - id: "name-generation"
+    name: "Generate Name"
+    type: "table_roll"
+    prompt: "Rolling for a random name..."
+    tables:
+      - table: "simple-names"
+        actions:
+          - type: "set_value"
+            data:
+              path: "outputs.character.name"
+              value: "{{ result }}"

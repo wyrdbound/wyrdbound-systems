@@ -1,0 +1,37 @@
+# Basic flow for testing structure
+id: "basic-flow"
+type: "flow"
+name: "Basic Flow"
+description: "Simple flow for basic testing"
+version: "1.0"
+
+inputs:
+  - id: "player_name"
+    type: "str"
+    required: true
+    description: "Name of the player"
+
+outputs:
+  - id: "character"
+    type: "character"
+    description: "Generated character"
+
+variables:
+  temp_value: "initial"
+
+steps:
+  - id: "start"
+    name: "Starting Step"
+    type: "completion"
+    prompt: "Welcome {{player_name}}!"
+    actions:
+      - type: "set_value"
+        data:
+          path: "outputs.character"
+          value: "{{ inputs.player_name }}"
+    next_step: "end"
+
+  - id: "end"
+    name: "Ending Step"
+    type: "completion"
+    prompt: "Flow complete!"

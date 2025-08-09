@@ -1,0 +1,33 @@
+# Flow with LLM generation
+id: "llm-flow"
+type: "flow"
+name: "LLM Generation Flow"
+description: "Flow demonstrating LLM generation"
+
+inputs:
+  - id: "character"
+    type: "character"
+    required: true
+
+outputs:
+  - id: "character_with_description"
+    type: "character"
+
+steps:
+  - id: "generate-description"
+    name: "Generate Character Description"
+    type: "llm_generation"
+    prompt: "Create a character description for {{ character_name }}, a {{ character_class }}. Include their appearance, personality, and background."
+    prompt_data:
+      character_class: "{{ inputs.character.class }}"
+      character_name: "{{ inputs.character.name }}"
+    llm_settings:
+      provider: "ollama"
+      model: "gemma2"
+      max_tokens: 150
+      temperature: 0.8
+    actions:
+      - type: "set_value"
+        data:
+          path: "outputs.character_with_description.description"
+          value: "{{ llm_result }}"

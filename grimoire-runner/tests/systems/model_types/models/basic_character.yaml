@@ -1,0 +1,38 @@
+id: "basic_character"
+kind: "model"
+name: "Basic Character"
+description: "Simple character model testing basic attribute types"
+attributes:
+  # String attributes
+  name:
+    type: str
+    default: "Unnamed Character"
+  description:
+    type: str
+
+  # Integer attributes
+  level:
+    type: int
+    range: "1..20"
+    default: 1
+  hit_points:
+    type: int
+    range: "1.."
+
+  # Float attributes
+  weight:
+    type: float
+    range: "0.1.."
+    default: 150.0
+
+  # Boolean attributes
+  is_alive:
+    type: bool
+    default: true
+  is_player_character:
+    type: bool
+
+  # Roll attributes
+  hit_dice:
+    type: roll
+    default: "1d8"

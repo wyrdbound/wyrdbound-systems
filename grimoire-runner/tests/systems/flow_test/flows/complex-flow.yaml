@@ -1,0 +1,64 @@
+# Complex flow demonstrating advanced features
+id: "complex-flow"
+type: "flow"
+name: "Complex Flow Example"
+description: "Flow demonstrating complex features like conditions and flow calls"
+
+inputs:
+  - id: "difficulty"
+    type: "str"
+    required: false
+  - id: "player_name"
+    type: "str"
+    required: true
+
+outputs:
+  - id: "character"
+    type: "character"
+    validate: true
+  - id: "result"
+    type: "str"
+
+variables:
+  step_counter: 0
+  difficulty_modifier: 0
+
+resume_points:
+  - "character-creation"
+  - "final-review"
+
+steps:
+  - id: "setup"
+    name: "Initial Setup"
+    type: "completion"
+    prompt: "Starting character creation..."
+    condition: "inputs.difficulty != 'skip'"
+    actions:
+      - type: "set_value"
+        data:
+          path: "variables.step_counter"
+          value: 1
+    next_step: "character-creation"
+
+  - id: "character-creation"
+    name: "Character Creation"
+    type: "flow_call"
+    prompt: "Creating your character..."
+    actions:
+      - type: "call_flow"
+        data:
+          flow_id: "basic-flow"
+          inputs:
+            player_name: "{{ inputs.player_name }}"
+    next_step: "final-review"
+
+  - id: "final-review"
+    name: "Final Review"
+    type: "completion"
+    prompt: "Character creation complete!"
+    condition: "variables.step_counter > 0"
+    actions:
+      - type: "set_value"
+        data:
+          path: "outputs.result"
+          value: "completed"

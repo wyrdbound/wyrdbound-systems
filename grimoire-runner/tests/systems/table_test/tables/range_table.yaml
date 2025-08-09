@@ -1,0 +1,11 @@
+kind: "table"
+id: "range_table"
+name: "Range Table"
+version: "1.0"
+roll: "1d20"
+description: "Table with range entries for testing"
+entries:
+  1-5: "Common"
+  6-15: "Uncommon"
+  16-19: "Rare"
+  20: "Legendary"

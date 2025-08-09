@@ -1,0 +1,8 @@
+id: "test_source"
+kind: "source"
+name: "Test Source"
+description: "A test source for validation testing"
+edition: "Test Edition 1.0"
+publisher: "Test Publisher"
+source_url: "https://example.com/test-source"
+version: "1.0"

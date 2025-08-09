@@ -1,0 +1,25 @@
+kind: "compendium"
+id: "starting_gear"
+name: "Starting Gear"
+model: "gear"
+entries:
+  dagger:
+    name: "Dagger"
+    cost: 200
+    weight: 1.0
+    category: "weapon"
+  rope:
+    name: "Rope (50ft)"
+    cost: 200
+    weight: 10.0
+    category: "tool"
+  torch:
+    name: "Torch"
+    cost: 10
+    weight: 1.0
+    category: "misc"
+  leather_armor:
+    name: "Leather Armor"
+    cost: 1000
+    weight: 10.0
+    category: "armor"

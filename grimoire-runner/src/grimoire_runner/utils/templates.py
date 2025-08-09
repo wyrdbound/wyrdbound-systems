@@ -16,6 +16,8 @@ class StringTemplateLoader(BaseLoader):
         self.templates: dict[str, str] = {}
 
     def get_source(self, environment: Environment, template: str) -> tuple:
+        # environment parameter required by Jinja2 interface but not used in this implementation
+        _ = environment
         if template in self.templates:
             source = self.templates[template]
             return source, None, lambda: True

@@ -1,0 +1,13 @@
+# Basic table with entry_type
+kind: "table"
+id: "basic-items"
+name: "Basic Items"
+roll: "1d6"
+entry_type: "item"
+entries:
+  1: "backpack"
+  2: "rope"
+  3: "lantern"
+  4: { id: "longsword", type: "weapon" } # Type override
+  5: { type: "armor" } # Random armor
+  6: { type: "item", generate: true } # Generated item

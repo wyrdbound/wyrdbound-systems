@@ -1,0 +1,20 @@
+kind: "compendium"
+id: "basic_weapons"
+name: "Basic Weapons"
+model: "weapon"
+entries:
+  dagger:
+    name: "Dagger"
+    damage: "1d4"
+    weapon_type: "melee"
+    cost: 200
+  shortsword:
+    name: "Shortsword"
+    damage: "1d6"
+    weapon_type: "melee"
+    cost: 1000
+  shortbow:
+    name: "Shortbow"
+    damage: "1d6"
+    weapon_type: "ranged"
+    cost: 2500

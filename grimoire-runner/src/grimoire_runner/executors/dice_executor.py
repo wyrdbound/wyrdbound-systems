@@ -67,7 +67,11 @@ class DiceExecutor(BaseStepExecutor):
                 str(roll_expression), modifiers
             )
 
-            logger.info(f"Dice roll: {roll_expression} = {result.total}")
+            # Log with detailed information if available, otherwise fall back to simple format
+            if result.detailed_result:
+                logger.info(f"Dice roll: {result.detailed_result}")
+            else:
+                logger.info(f"Dice roll: {roll_expression} = {result.total}")
 
             # Prepare result data
             result_data = {
@@ -190,8 +194,14 @@ class DiceExecutor(BaseStepExecutor):
 
         try:
             # Execute the action (simplified version)
-            action_type = list(action.keys())[0]
-            action_data = action[action_type]
+            # Handle both old format (key as action type) and new format (type field)
+            if "type" in action and "data" in action:
+                action_type = action["type"]
+                action_data = action["data"]
+            else:
+                # Fallback to old format
+                action_type = list(action.keys())[0]
+                action_data = action[action_type]
 
             if action_type == "set_value":
                 path = action_data["path"]
@@ -201,15 +211,37 @@ class DiceExecutor(BaseStepExecutor):
                 resolved_path = context.resolve_template(str(path))
                 resolved_value = context.resolve_template(str(value))
 
-                # Set the value using the observable system
-                if str(resolved_path).startswith("outputs."):
-                    context.set_observable_output(
-                        str(resolved_path)[8:], resolved_value
+                # Get current flow namespace for proper isolation
+                current_namespace = context.get_current_flow_namespace()
+
+                if current_namespace:
+                    # Use namespaced path to avoid collision
+                    if str(resolved_path).startswith("outputs."):
+                        namespaced_path = (
+                            f"{current_namespace}.outputs.{str(resolved_path)[8:]}"
+                        )
+                    elif str(resolved_path).startswith("variables."):
+                        namespaced_path = (
+                            f"{current_namespace}.variables.{str(resolved_path)[10:]}"
+                        )
+                    else:
+                        # Default to variables for dice results
+                        namespaced_path = (
+                            f"{current_namespace}.variables.{resolved_path}"
+                        )
+
+                    context.set_namespaced_value(namespaced_path, resolved_value)
+                    logger.info(
+                        f"Set namespaced dice value: {namespaced_path} = {resolved_value}"
                     )
-                elif str(resolved_path).startswith("variables."):
-                    context.set_variable(str(resolved_path)[10:], resolved_value)
                 else:
-                    context.set_observable_output(str(resolved_path), resolved_value)
+                    # Fallback to original behavior for backward compatibility
+                    if str(resolved_path).startswith("outputs."):
+                        context.set_output(str(resolved_path)[8:], resolved_value)
+                    elif str(resolved_path).startswith("variables."):
+                        context.set_variable(str(resolved_path)[10:], resolved_value)
+                    else:
+                        context.set_output(str(resolved_path), resolved_value)
 
         finally:
             # Restore original values

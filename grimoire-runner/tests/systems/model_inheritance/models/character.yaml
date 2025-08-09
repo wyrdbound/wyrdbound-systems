@@ -1,0 +1,16 @@
+id: "character"
+kind: "model"
+name: "Character"
+description: "Character model extending base entity"
+extends: ["base_entity"]
+attributes:
+  level:
+    type: int
+    range: "1..20"
+    default: 1
+  hit_points:
+    type: int
+    range: "1.."
+  class_name:
+    type: str
+    enum: ["fighter", "wizard", "rogue", "cleric"]

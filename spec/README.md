@@ -92,6 +92,18 @@ Key features:
 - Author and publisher details
 - Content organization by source
 
+#### [Prompt Definition](prompt_spec.md)
+
+**Files**: `prompts/*.yaml`  
+**Purpose**: Contains AI prompt templates for generating character descriptions, narratives, and other text content.
+
+Key features:
+
+- LLM configuration settings
+- Variable substitution templates
+- Integration with flow generation steps
+- System-specific tone and style guidance
+
 ## Directory Structure
 
 A complete GRIMOIRE system follows this directory structure:
@@ -129,12 +141,9 @@ systems/{system_id}/
 │   ├── core-rulebook.yaml
 │   └── supplement.yaml
 └── prompts/                    # AI prompt templates
-    ├── character/
-    │   └── description.txt
-    ├── narrative/
-    │   └── scene.txt
-    └── rules/
-        └── interpretation.txt
+    ├── character-description.yaml
+    ├── item-description.yaml
+    └── location-description.yaml
 ```
 
 ## System Integration
@@ -147,7 +156,7 @@ systems/{system_id}/
 4. **Compendium Content**: Instantiated game objects and content
 5. **Table Definitions**: Random generation mechanics
 6. **Flow Definitions**: Rule procedures and game mechanics
-7. **Prompt Templates**: AI content generation templates
+7. **Prompt Definitions**: AI content generation templates
 
 ### Cross-References
 
@@ -189,6 +198,7 @@ The system provides comprehensive validation:
 4. Define flows for complex rule procedures
 5. Create compendiums with official content
 6. Add source attribution and licensing information
+7. Create prompt templates for AI-assisted content generation
 
 ### Best Practices
 

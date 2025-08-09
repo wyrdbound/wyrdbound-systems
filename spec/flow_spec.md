@@ -193,8 +193,8 @@ Uses Large Language Models to generate content.
   condition: "llm_enabled"
   prompt_id: "character_description_prompt"
   prompt_data:
-    traits: "{{ get_value('outputs.character.traits') }}"
-    background: "{{ get_value('outputs.character.background') }}"
+    traits: "{{ outputs.character.traits }}"
+    background: "{{ outputs.character.background }}"
   llm_settings:
     provider: "anthropic"
     model: "claude-3-haiku"
@@ -213,11 +213,9 @@ Marks the end of a flow.
 - id: "finish"
   type: "completion"
   prompt: "Character creation complete!"
-  actions:
-    - validate_value: "outputs.new_character"
-    - log_event:
+  actions:    - log_event:
         type: "character_created"
-        data: "{{ get_value('outputs.new_character.name') }}"
+        data: "{{ outputs.new_character.name }}"
 ```
 
 ## Actions

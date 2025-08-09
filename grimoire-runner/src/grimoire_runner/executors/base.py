@@ -17,7 +17,6 @@ class BaseStepExecutor(ABC):
         self, step: "StepDefinition", context: "ExecutionContext", system: "System"
     ) -> "StepResult":
         """Execute a step and return the result."""
-        pass
 
     def can_execute(self, step: "StepDefinition") -> bool:
         """Check if this executor can handle the given step type."""

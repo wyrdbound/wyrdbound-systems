@@ -1,0 +1,5 @@
+id: "model_types"
+kind: "system"
+name: "Model Types Test System"
+description: "System for testing all model attribute types and constraints"
+version: "1.0"

@@ -1,0 +1,21 @@
+# Minimal system for flow definition testing
+kind: "system"
+id: "flow_test"
+name: "Flow Definition Test System"
+description: "Minimal system for testing flow definition functionality"
+version: "1.0"
+
+# Simple currency for testing
+currency:
+  base_unit: "gold"
+  denominations:
+    gp:
+      name: "gold"
+      symbol: "gp"
+      value: 1
+      weight: 0.02
+
+# Credits for testing
+credits:
+  author: "Test System Designer"
+  license: "Test License"

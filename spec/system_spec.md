@@ -44,7 +44,7 @@ currency:
       name: "copper"
       symbol: "cp"
       value: 1 # Value relative to base unit
-      weight: 0.05 # Weight in pounds per coin
+      weight: 0.05 # Weight per coin
     sp:
       name: "silver"
       symbol: "sp"
@@ -64,7 +64,7 @@ currency:
   - **`name`** (required): Full name of the currency
   - **`symbol`** (required): Abbreviated symbol (e.g., "gp", "cp")
   - **`value`** (required): Exchange rate relative to the base unit
-  - **`weight`** (optional): Physical weight per coin in pounds
+  - **`weight`** (optional): Physical weight per coin in whatever unit is used in the game (e.g., grams, ounces, pounds)
 
 ## Credits
 

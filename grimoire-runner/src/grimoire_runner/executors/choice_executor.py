@@ -1,9 +1,10 @@
 """Player choice step executor."""
 
 import logging
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from .base import BaseStepExecutor
+from .flow_helper import create_flow_helper
 
 if TYPE_CHECKING:
     from ..models.context_data import ExecutionContext
@@ -15,6 +16,11 @@ logger = logging.getLogger(__name__)
 
 class ChoiceExecutor(BaseStepExecutor):
     """Executor for player choice steps."""
+
+    def __init__(self, engine=None):
+        """Initialize the choice executor with optional engine reference."""
+        self.engine = engine
+        self.flow_helper = create_flow_helper(engine)
 
     def execute(
         self, step: "StepDefinition", context: "ExecutionContext", system: "System"
@@ -37,6 +43,13 @@ class ChoiceExecutor(BaseStepExecutor):
                 choices = self._generate_choices_from_source(
                     step.choice_source, context, system
                 )
+
+                # Fail the step if no choices were generated from the source
+                if not choices:
+                    error_msg = "Failed to generate choices from choice source"
+                    logger.error(f"Step {step.id}: {error_msg}")
+                    return StepResult(step_id=step.id, success=False, error=error_msg)
+
                 # Extract selection count from choice source
                 if isinstance(step.choice_source, dict):
                     selection_count = step.choice_source.get("selection_count", 1)
@@ -190,8 +203,86 @@ class ChoiceExecutor(BaseStepExecutor):
                         logger.warning(f"Compendium {comp_name} not found")
                         return []
 
+                elif "table" in choice_source:
+                    # Generate choices from table entries
+                    table_name = choice_source["table"]
+                    table = system.get_table(table_name)
+                    if table:
+                        from ..models.flow import ChoiceDefinition
+
+                        choices = []
+
+                        for _entry_key, entry_value in table.entries.items():
+                            # Use the entry value as the choice ID (not the table key)
+                            choice_id = str(entry_value)
+                            choice_label = str(entry_value)
+                            choice_description = ""
+                            selected_item_value = entry_value  # Default to just the ID
+
+                            # If table has an entry_type, try to look up the item in compendiums
+                            if hasattr(table, "entry_type") and table.entry_type:
+                                # Try to find the item in compendiums
+                                for comp_id in system.list_compendiums():
+                                    comp = system.get_compendium(comp_id)
+                                    if comp and entry_value in comp.entries:
+                                        entry_data = comp.entries[entry_value]
+                                        # Use the full object as the selected_item value
+                                        selected_item_value = entry_data
+                                        # Use the proper name if available
+                                        if (
+                                            isinstance(entry_data, dict)
+                                            and "name" in entry_data
+                                        ):
+                                            choice_label = entry_data["name"]
+                                        # Use the description if available
+                                        if (
+                                            isinstance(entry_data, dict)
+                                            and "description" in entry_data
+                                        ):
+                                            choice_description = entry_data[
+                                                "description"
+                                            ]
+                                        break
+
+                            # Create choice definition
+                            choice = ChoiceDefinition(
+                                id=choice_id,
+                                label=choice_label,
+                                description=choice_description,
+                                actions=[
+                                    {
+                                        "set_value": {
+                                            "path": "variables.selected_item",
+                                            "value": selected_item_value,
+                                        }
+                                    }
+                                ],
+                            )
+                            choices.append(choice)
+
+                        logger.info(
+                            f"Generated {len(choices)} choices from table {table_name}"
+                        )
+                        return choices
+                    else:
+                        # Provide helpful error message with available tables
+                        available_tables = system.list_tables()
+                        table_list = (
+                            ", ".join(sorted(available_tables))
+                            if available_tables
+                            else "none"
+                        )
+                        logger.warning(
+                            f"Table '{table_name}' not found in system. Available tables: {table_list}"
+                        )
+                        return []
+
                 else:
-                    logger.warning(f"Unknown choice source format: {choice_source}")
+                    # Improved error message for unknown formats
+                    available_formats = ["table_from_values", "compendium", "table"]
+                    logger.warning(
+                        f"Unknown choice source format: {choice_source}. Supported formats: {', '.join(available_formats)}"
+                    )
                     return []
             else:
                 logger.warning(
@@ -204,7 +295,11 @@ class ChoiceExecutor(BaseStepExecutor):
             return []
 
     def process_choice(
-        self, choice_id: str, step: "StepDefinition", context: "ExecutionContext"
+        self,
+        choice_id: str,
+        step: "StepDefinition",
+        context: "ExecutionContext",
+        system: "System" = None,
     ) -> "StepResult":
         """Process a user's choice selection."""
         from ..models.flow import StepResult
@@ -231,6 +326,20 @@ class ChoiceExecutor(BaseStepExecutor):
             context.set_variable("user_choice", choice_id)
             context.set_variable("choice_label", selected_choice.label)
 
+            # Execute step-level actions (including flow calls) if present
+            if step.actions and system:
+                logger.info(
+                    f"Executing {len(step.actions)} step actions after choice..."
+                )
+                for action in step.actions:
+                    self._execute_step_action(
+                        action,
+                        context,
+                        system,
+                        {"selected_item": context.get_variable("selected_item")},
+                    )
+                logger.info("✅ Step actions executed successfully")
+
             logger.info(f"User chose: {selected_choice.label} ({choice_id})")
 
             return StepResult(
@@ -255,8 +364,15 @@ class ChoiceExecutor(BaseStepExecutor):
             path = action_data["path"]
             value = action_data["value"]
 
-            # Resolve templates
-            resolved_value = context.resolve_template(str(value))
+            # Handle dictionary values specially to avoid string conversion
+            if isinstance(value, dict):
+                # Use dictionary directly without template resolution
+                resolved_value = value
+                logger.info(f"Choice action set_value: Using dict directly for {path}")
+            else:
+                # Resolve templates for non-dict values
+                resolved_value = context.resolve_template(str(value))
+                logger.info(f"Choice action set_value: Resolved template for {path}")
 
             # Set the value
             if path.startswith("outputs."):
@@ -266,7 +382,41 @@ class ChoiceExecutor(BaseStepExecutor):
             else:
                 context.set_output(path, resolved_value)
 
+        elif action_type == "flow_call":
+            # Handle sub-flow calls - similar to table executor
+            flow_id = action_data["flow"]
+            inputs = action_data.get("inputs", {})
+            logger.info(f"Choice action flow_call: {flow_id} (inputs: {inputs})")
+
+            # This should be handled by the engine after choice processing
+            # For now, we'll log it but not execute it here
+            logger.warning(
+                "flow_call action in choice step should be handled at step level, not choice level"
+            )
+
+        else:
+            logger.warning(f"Unknown choice action type: {action_type}")
+
         # TODO: Add other action types as needed
+
+    def _execute_step_action(
+        self,
+        action: dict[str, Any],
+        context: "ExecutionContext",
+        system: "System",
+        step_result_data: dict[str, Any] = None,
+    ) -> None:
+        """Execute a step-level action (including flow calls)."""
+        action_type = list(action.keys())[0]
+
+        if action_type == "flow_call":
+            # Use the shared flow helper to execute flow calls
+            self.flow_helper.execute_flow_call_action(
+                action, context, system, step_result_data
+            )
+        else:
+            # Handle other action types as needed
+            logger.warning(f"Unhandled step action type: {action_type}")
 
     def can_execute(self, step: "StepDefinition") -> bool:
         """Check if this executor can handle the step."""

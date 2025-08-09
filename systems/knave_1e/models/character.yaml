@@ -31,8 +31,9 @@ attributes:
   xp: { type: int, default: 0, range: "0..1000" }
   level: { type: int, default: 1, range: "1..10" }
 
-  max_hp: { type: int }
-  current_hp: { type: int, range: "0..$max_hp" } # track current
+  hit_points:
+    max: { type: int }
+    current: { type: int, range: "0..$hit_points.max" } # track current
 
   armor:
     bonus: { type: int, range: "0..10" }
@@ -59,11 +60,12 @@ attributes:
 
   # --- inventory system ---
   inventory_capacity: { type: int, derived: "$.abilities.constitution.defense" }
-  inventory: { type: list, of: Item }
-  slots_used: { type: int, derived: "$.inventory | sum('slot_cost')" }
+  inventory: { type: list, of: item }
+  slots_used:
+    { type: int, derived: "$.inventory | map(attribute='slot_cost') | sum" }
 
 validations:
-  # Ensure current HP does not exceed max HP
-  - "$current_hp <= $max_hp"
-  # Ensure item slots do not exceed inventory capacity
-  - "$slots_used <= $inventory_capacity"
+  - expression: "$.hit_points.current <= $.hit_points.max"
+    message: "Current HP cannot exceed maximum HP"
+  - expression: "$.slots_used <= $.inventory_capacity"
+    message: "Item slots used cannot exceed inventory capacity"

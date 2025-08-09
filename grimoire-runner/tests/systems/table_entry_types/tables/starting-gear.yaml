@@ -1,0 +1,27 @@
+# Advanced table with multiple features
+kind: "table"
+id: "starting-gear"
+name: "Starting Gear"
+roll: "1d20"
+entry_type: "item"
+entries:
+  # Simple references using entry_type
+  1: "backpack"
+  2: "rope"
+  3: "lantern"
+
+  # Explicit type overrides
+  4: { id: "longsword", type: "weapon" }
+  5: { id: "leather", type: "armor" }
+  6: { id: "steel-sword", type: "weapon" }
+
+  # Random selections from specific types
+  10: { type: "weapon" }
+  11: { type: "armor" }
+  12: { type: "item" }
+
+  # Generation examples
+  17: { type: "item" }
+  18: { generate: true }
+  19: { type: "armor", generate: true }
+  20: { type: "weapon", generate: true }

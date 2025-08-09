@@ -101,58 +101,104 @@ class DerivedFieldManager:
 
         return dependencies
 
-    def register_derived_field(self, field_name: str, derived_expression: str) -> None:
-        """Register a field that should be computed from other fields."""
-        logger.debug(f"Registering derived field: {field_name} = {derived_expression}")
+    def register_derived_field(self, field_name: str, expression: str) -> None:
+        """Register a derived field with its template expression."""
+        logger.info(f"Registering derived field: {field_name} = '{expression}'")
 
-        # Extract dependencies from the Jinja2 template
-        dependencies = self._extract_dependencies(derived_expression)
-        logger.debug(f"Dependencies for {field_name}: {dependencies}")
+        # Build qualified field name if we have an instance ID
+        qualified_field_name = (
+            f"{self.current_instance_id}.{field_name}"
+            if self.current_instance_id
+            else field_name
+        )
+
+        # Extract dependencies from the expression
+        dependencies = self._extract_dependencies(expression)
+
+        # Convert relative dependencies to qualified names
+        qualified_dependencies = set()
+        for dep in dependencies:
+            if dep.startswith("$."):
+                # Convert $. to the current instance scope
+                instance_dep = dep[2:]  # Remove $.
+                qualified_dep = (
+                    f"{self.current_instance_id}.{instance_dep}"
+                    if self.current_instance_id
+                    else instance_dep
+                )
+                qualified_dependencies.add(qualified_dep)
+            else:
+                qualified_dependencies.add(dep)
 
         # Store field info
-        self.fields[field_name] = {
-            "derived": derived_expression,
-            "dependencies": dependencies,
+        self.fields[qualified_field_name] = {
+            "derived": expression,
+            "dependencies": qualified_dependencies,
         }
 
-        # Update dependency graph
-        for dep in dependencies:
+        # Update dependency graph (reverse mapping: dependency -> fields that depend on it)
+        for dep in qualified_dependencies:
             if dep not in self.dependency_graph:
                 self.dependency_graph[dep] = set()
-            self.dependency_graph[dep].add(field_name)
-            logger.debug(f"Added dependency: {dep} → {field_name}")
+            self.dependency_graph[dep].add(qualified_field_name)
+
+        logger.info(
+            f"Derived field '{qualified_field_name}' depends on: {qualified_dependencies}"
+        )
 
     def set_field_value(self, field_name: str, value: Any) -> None:
         """Set a value and trigger recomputation of dependent fields."""
-        logger.debug(f"Setting observable value: {field_name} = {value}")
+        logger.info(f"Observable: Setting field {field_name} = {value}")
 
-        # First, set the value in the execution context so it's available for template resolution
-        self.execution_context.set_output(field_name, value)
+        # First, set the value directly in the execution context outputs to avoid recursion
+        # We use _set_nested_value directly instead of set_output to prevent circular calls
+        self.execution_context._set_nested_value(
+            self.execution_context.outputs, field_name, value
+        )
 
         # Then create/update observable which will trigger recomputation
         if field_name not in self.observable_values:
-            logger.debug(f"Creating new ObservableValue for {field_name}")
+            logger.info(f"Observable: Creating new ObservableValue for {field_name}")
             # Create with None first, then set the value to trigger observers
             self.observable_values[field_name] = ObservableValue(field_name, None)
             # Add observer to trigger recomputation
             self.observable_values[field_name].add_observer(self._on_value_changed)
-            logger.debug(
-                f"Added observer to {field_name}, observers: {len(self.observable_values[field_name]._observers)}"
+            logger.info(
+                f"Observable: Added observer to {field_name}, observers: {len(self.observable_values[field_name]._observers)}"
             )
             # Now set the actual value (this will trigger observers)
             self.observable_values[field_name].value = value
         else:
             # Update existing observable (this will trigger observers)
-            logger.debug(f"Updating existing ObservableValue for {field_name}")
+            logger.info(
+                f"Observable: Updating existing ObservableValue for {field_name}"
+            )
             self.observable_values[field_name].value = value
 
     def _on_value_changed(self, field: str, old_value: Any, new_value: Any) -> None:
         """Called when a value changes."""
-        logger.debug(f"Observable: {field} changed from {old_value} to {new_value}")
+        logger.info(f"Observable: {field} changed from {old_value} to {new_value}")
         self._recompute_dependent_fields(field)
 
     def _recompute_dependent_fields(self, changed_field: str) -> None:
         """Recompute all fields that depend on the changed field."""
+        logger.info(f"Recomputing fields that depend on: {changed_field}")
+
+        # Check if any derived fields depend on this field
+        if changed_field in self.dependency_graph:
+            dependent_fields = self.dependency_graph[changed_field]
+            logger.info(
+                f"Found {len(dependent_fields)} dependent fields: {dependent_fields}"
+            )
+
+            for dependent_field in dependent_fields:
+                if (
+                    dependent_field not in self._computing
+                ):  # Prevent circular dependencies
+                    logger.info(f"Recomputing dependent field: {dependent_field}")
+                    self._recompute_field(dependent_field)
+        else:
+            logger.info(f"No dependent fields found for: {changed_field}")
         logger.debug(f"Field '{changed_field}' changed, checking dependencies...")
 
         if changed_field not in self.dependency_graph:
@@ -175,11 +221,16 @@ class DerivedFieldManager:
                 self._recompute_field(field_name)
 
     def _recompute_field(self, field: str) -> None:
-        """Recompute a specific field."""
-        logger.debug(f"Recomputing field: {field}")
+        """Recompute a single derived field."""
+        logger.info(f"_recompute_field called for: {field}")
+
+        # The field is already qualified (e.g., "knave.abilities.strength.defense")
+        # Look for it directly in the fields registry
+        logger.info(f"_recompute_field: looking for qualified field = {field}")
+        logger.info(f"_recompute_field: registered fields = {list(self.fields.keys())}")
 
         if field not in self.fields:
-            logger.debug(f"Field {field} not registered for recomputation")
+            logger.info(f"Qualified field {field} not registered for recomputation")
             return
 
         self._computing.add(field)
@@ -187,24 +238,40 @@ class DerivedFieldManager:
             template_expr = self.fields[field]["derived"]
             # Convert $variable syntax to {{ variable }} syntax for Jinja2
             jinja_expr = self._convert_to_jinja_syntax(template_expr)
-            logger.debug(f"Converting template: '{template_expr}' -> '{jinja_expr}'")
+            logger.info(f"Computing field {field}: '{template_expr}' -> '{jinja_expr}'")
 
             result = self.template_resolver(jinja_expr)
-            logger.debug(f"Field {field} computed to: {result}")
+            logger.info(f"Field {field} computed to: {result}")
 
-            # Store the result in the correct namespace
-            storage_path = field
-            if self.current_instance_id and not field.startswith(
-                f"{self.current_instance_id}."
-            ):
-                storage_path = f"{self.current_instance_id}.{field}"
+            # Store the result directly in outputs to avoid circular calls to set_output
+            self.execution_context._set_nested_value(
+                self.execution_context.outputs, field, result
+            )
 
-            self.execution_context.set_output(storage_path, result)
-
-            # Trigger any dependent fields
-            self._recompute_dependent_fields(field)
+            # Create/update observable for this computed field
+            if field not in self.observable_values:
+                logger.info(
+                    f"Creating observable for computed field {field} = {result}"
+                )
+                self.observable_values[field] = ObservableValue(field, None)
+                self.observable_values[field].add_observer(self._on_value_changed)
+                # Set the value, which will trigger observers naturally
+                self.observable_values[field].value = result
+            else:
+                logger.info(
+                    f"Updating observable for computed field {field} = {result}"
+                )
+                old_value = self.observable_values[field].value
+                self.observable_values[field].value = result
+                # If the value didn't change but this is a computed field, still trigger dependencies
+                # in case this is the first time dependent fields need to be computed
+                if old_value == result:
+                    logger.info(
+                        f"Computed field {field} value unchanged ({result}), but triggering dependent field recomputation"
+                    )
+                    self._recompute_dependent_fields(field)
         except Exception as e:
-            logger.debug(f"Error computing field {field}: {e}")
+            logger.error(f"Error computing field {field}: {e}")
         finally:
             self._computing.discard(field)
 
@@ -266,9 +333,7 @@ class DerivedFieldManager:
 
         return result
 
-    def register_model_attributes(
-        self, model_def: "ModelDefinition", instance_data: dict[str, Any]
-    ) -> None:
+    def register_model_attributes(self, model_def: "ModelDefinition") -> None:
         """Register all attributes from a model, including derived fields."""
         logger.debug(f"Registering model attributes for: {model_def.name}")
 
@@ -283,8 +348,11 @@ class DerivedFieldManager:
         self, model_def: "ModelDefinition", instance_id: str = None
     ) -> None:
         """Initialize observable system from a model definition."""
+        logger.info(
+            f"Initializing observable system for model {getattr(model_def, 'id', 'unknown')} with instance_id: {instance_id}"
+        )
         self.current_instance_id = instance_id
-        self.register_model_attributes(model_def, {})
+        self.register_model_attributes(model_def)
 
     def compute_all_derived_fields(self) -> None:
         """Compute all registered derived fields based on current context values."""
@@ -303,6 +371,124 @@ class DerivedFieldManager:
             if field_name not in self._computing:  # Prevent circular dependencies
                 logger.debug(f"Computing derived field: {field_name}")
                 self._recompute_field(field_name)
+
+    def get_computed_values_for_instance(self, instance_id: str) -> dict[str, Any]:
+        """Get all computed values (including derived fields) for a specific instance."""
+        computed_values = {}
+
+        # Get the prefix for this instance
+        prefix = f"{instance_id}."
+
+        logger.info(
+            f"get_computed_values_for_instance({instance_id}): observable_values keys = {list(self.observable_values.keys())}"
+        )
+
+        for field_name, observable_value in self.observable_values.items():
+            if field_name.startswith(prefix):
+                # Remove the instance prefix to get the relative field path
+                relative_path = field_name[len(prefix) :]
+                value_type = type(observable_value.value).__name__
+                value_preview = (
+                    str(observable_value.value)[:100] + "..."
+                    if len(str(observable_value.value)) > 100
+                    else str(observable_value.value)
+                )
+                logger.info(
+                    f"get_computed_values_for_instance({instance_id}): {field_name} -> {relative_path} = {value_type}: {value_preview}"
+                )
+
+                # Set the value in the nested structure
+                # If the value is a string that looks like serialized structured data, parse it
+                if (
+                    isinstance(observable_value.value, str)
+                    and len(observable_value.value) > 10
+                ):
+                    logger.debug(
+                        f"Checking if {relative_path} value is serialized data: {observable_value.value[:50]}..."
+                    )
+                final_value = self._try_parse_structured_data(observable_value.value)
+                if final_value is not None:
+                    logger.info(
+                        f"Parsed serialized data for {relative_path}: {type(final_value).__name__}"
+                    )
+                    self._set_nested_value_in_dict(
+                        computed_values, relative_path, final_value
+                    )
+                else:
+                    self._set_nested_value_in_dict(
+                        computed_values, relative_path, observable_value.value
+                    )
+
+        logger.info(
+            f"get_computed_values_for_instance({instance_id}): final computed_values = {computed_values}"
+        )
+        return computed_values
+
+    def _set_nested_value_in_dict(
+        self, target_dict: dict[str, Any], path: str, value: Any
+    ) -> None:
+        """Set a nested value in a dictionary using dot notation."""
+        parts = path.split(".")
+        current = target_dict
+
+        # Navigate to the parent of the target key
+        for part in parts[:-1]:
+            if part not in current:
+                current[part] = {}
+            current = current[part]
+
+        # Set the final value - use generic type-based priority for conflicts
+        final_key = parts[-1]
+        if final_key in current:
+            existing_value = current[final_key]
+            # Generic rule: preserve structured data (lists, dicts) over serialized strings
+            if isinstance(existing_value, list | dict) and isinstance(value, str):
+                logger.debug(
+                    f"_set_nested_value_in_dict: Preserving existing structured data for {path}, ignoring string value"
+                )
+                return
+            # Replace strings with structured data when available
+            elif isinstance(existing_value, str) and isinstance(value, list | dict):
+                logger.debug(
+                    f"_set_nested_value_in_dict: Replacing string with structured data for {path}"
+                )
+
+        current[final_key] = value
+
+    def _try_parse_structured_data(self, value: Any) -> Any:
+        """Try to parse a value as structured data. Returns None if not valid or not structured."""
+        if not isinstance(value, str):
+            return None
+
+        # Only try parsing if it looks like structured data
+        if not (
+            value.strip().startswith(("[", "{")) and value.strip().endswith(("]", "}"))
+        ):
+            return None
+
+        # Try JSON first (double quotes)
+        try:
+            import json
+
+            parsed = json.loads(value)
+            # Only return if it's actually structured data (list or dict)
+            if isinstance(parsed, list | dict):
+                return parsed
+        except (json.JSONDecodeError, ValueError):
+            pass
+
+        # Try Python literal evaluation (single quotes)
+        try:
+            import ast
+
+            parsed = ast.literal_eval(value)
+            # Only return if it's actually structured data (list or dict)
+            if isinstance(parsed, list | dict):
+                return parsed
+        except (ValueError, SyntaxError):
+            pass
+
+        return None
 
     def _register_attributes_recursive(
         self, attributes: dict[str, Any], path_prefix: str

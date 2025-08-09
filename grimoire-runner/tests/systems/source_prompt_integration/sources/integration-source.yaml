@@ -1,0 +1,6 @@
+id: "integration_source"
+kind: "source"
+name: "Integration Test Source"
+description: "Source for integration testing"
+publisher: "Integration Test Publisher"
+version: "1.0"

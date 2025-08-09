@@ -15,6 +15,8 @@ class AttributeDefinition:
     derived: str | None = None  # Formula for derived attributes
     required: bool = True
     description: str | None = None
+    of: str | None = None  # Element type for list/map attributes
+    optional: bool | None = None  # Whether attribute can be null/undefined
 
 
 @dataclass
@@ -67,9 +69,7 @@ class ModelDefinition:
 
         return None
 
-    def get_all_attributes(
-        self, include_inherited: bool = True
-    ) -> dict[str, AttributeDefinition]:
+    def get_all_attributes(self) -> dict[str, AttributeDefinition]:
         """Get all attributes, optionally including inherited ones."""
         # TODO: Implement inheritance resolution
         all_attrs = {}

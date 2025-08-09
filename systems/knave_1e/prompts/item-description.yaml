@@ -1,6 +1,13 @@
+id: "item_description"
+kind: "prompt"
+name: "Item Description Generator"
+description: "Generates descriptive text for items in the Knave game world"
+version: "1.0"
+
 llm:
   provider: "ollama"
-  name: "gemma3"
+  model: "gemma3"
+
 prompt_template: |
   Please generate a description for an item called "{{ display_name }}" for use in a text-based RPG based on the Tabletop RPG game Knave 1st edition.
   The setting is a gritty, medieval world. 

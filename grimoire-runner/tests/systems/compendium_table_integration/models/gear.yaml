@@ -1,0 +1,18 @@
+id: "gear"
+kind: "model"
+name: "Gear"
+description: "General equipment model"
+attributes:
+  name:
+    type: str
+  cost:
+    type: int
+    range: "0.."
+    default: 0
+  weight:
+    type: float
+    range: "0.."
+    default: 0.0
+  category:
+    type: str
+    enum: ["tool", "weapon", "armor", "misc"]

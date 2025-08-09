@@ -93,6 +93,20 @@ steps:
       - set_value:
           path: "outputs.knave.hit_points.current"
           value: "{{ result }}"
+    next_step: "choose_weapon"
+
+  - id: "choose_weapon"
+    name: "Choose Starting Weapon"
+    type: "player_choice"
+    prompt: "Choose one weapon to start with:"
+    choice_source:
+      table: "weapons"
+    actions:
+      - flow_call:
+          flow: "add_item_to_character"
+          inputs:
+            character: "outputs.knave"
+            item: "{{ result }}"
     next_step: "roll_starting_gear"
 
   - id: "roll_starting_gear"
@@ -145,19 +159,6 @@ steps:
             item: "rations"
             quantity: 2
 
-  - id: "choose_weapon"
-    name: "Choose Starting Weapon"
-    type: "player_choice"
-    prompt: "Choose one weapon to start with:"
-    choice_source:
-      table: "weapons"
-    actions:
-      - flow_call:
-          flow: "add_item_to_character"
-          inputs:
-            character: "outputs.knave"
-            item: "{{ selected_item }}"
-
   - id: "generate_traits"
     name: "Determine Character Traits"
     type: "table_roll"
@@ -209,6 +210,11 @@ steps:
           - set_value:
               path: "outputs.knave.traits.background"
               value: "{{ result }}"
+      - table: "misfortunes"
+        actions:
+          - set_value:
+              path: "outputs.knave.traits.misfortunes"
+              value: "{{ result }}"
       - table: "alignment"
         actions:
           - set_value:
@@ -225,8 +231,8 @@ steps:
       abilities: "{{ get_value('outputs.knave.abilities') }}"
       background: "{{ get_value('outputs.knave.traits.background') }}"
     llm_settings:
-      provider: "anthropic"
-      model: "claude-3-haiku"
+      provider: "ollama"
+      model: "gemma3"
       max_tokens: 200
     actions:
       - set_value:

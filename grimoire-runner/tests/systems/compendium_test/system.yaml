@@ -1,0 +1,5 @@
+id: "compendium_test"
+kind: "system"
+name: "Compendium Test System"
+description: "Test system for compendium loading and validation"
+version: "1.0"

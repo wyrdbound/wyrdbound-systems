@@ -1,0 +1,5 @@
+id: "compendium_table_integration"
+kind: "system"
+name: "Compendium Table Integration"
+description: "Test system for compendium and table integration"
+version: "1.0"
