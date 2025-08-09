@@ -6,13 +6,7 @@ from pathlib import Path
 from typing import Any
 
 from ..executors.action_executor import ActionExecutor
-from ..executors.base import BaseStepExecutor
-from ..executors.choice_executor import ChoiceExecutor
-from ..executors.dice_executor import DiceExecutor
-from ..executors.flow_executor import FlowExecutor
-from ..executors.llm_executor import LLMExecutor
-from ..executors.player_input_executor import PlayerInputExecutor
-from ..executors.table_executor import TableExecutor
+from ..executors.executor_factory import DefaultExecutorFactory, ExecutorFactory, StepExecutorInterface
 from ..models.context_data import ExecutionContext
 from ..models.flow import FlowDefinition, FlowResult, StepResult
 from ..models.system import System
@@ -24,9 +18,10 @@ logger = logging.getLogger(__name__)
 class GrimoireEngine:
     """Main orchestrator for GRIMOIRE system execution."""
 
-    def __init__(self):
+    def __init__(self, executor_factory: ExecutorFactory = None):
         self.loader = SystemLoader()
-        self.executors: dict[str, BaseStepExecutor] = {}
+        self.executor_factory = executor_factory or DefaultExecutorFactory()
+        self.executors: dict[str, StepExecutorInterface] = {}
         self.action_executor = ActionExecutor()
         self.breakpoints: dict[str, list[str]] = {}  # flow_id -> step_ids
         self._debug_mode = False
@@ -35,22 +30,26 @@ class GrimoireEngine:
         self._initialize_executors()
 
     def _initialize_executors(self) -> None:
-        """Initialize the default step executors."""
-        self.executors = {
-            "dice_roll": DiceExecutor(),
-            "dice_sequence": DiceExecutor(),
-            "player_choice": ChoiceExecutor(self),
-            "player_input": PlayerInputExecutor(),
-            "table_roll": TableExecutor(),
-            "llm_generation": LLMExecutor(),
-            "completion": FlowExecutor(),
-            "flow_call": FlowExecutor(),
-        }
+        """Initialize the default step executors using the factory."""
+        supported_types = self.executor_factory.get_supported_step_types()
+        for step_type in supported_types:
+            try:
+                executor = self.executor_factory.create_executor(step_type, self)
+                self.executors[step_type] = executor
+                logger.debug(f"Initialized executor for step type: {step_type}")
+            except Exception as e:
+                logger.warning(f"Failed to create executor for {step_type}: {e}")
 
-    def register_executor(self, step_type: str, executor: BaseStepExecutor) -> None:
+    def register_executor(self, step_type: str, executor: StepExecutorInterface) -> None:
         """Register a custom step executor."""
         self.executors[step_type] = executor
         logger.debug(f"Registered executor for step type: {step_type}")
+
+    def set_executor_factory(self, factory: ExecutorFactory) -> None:
+        """Set a custom executor factory and reinitialize executors."""
+        self.executor_factory = factory
+        self.executors.clear()
+        self._initialize_executors()
 
     def load_system(self, system_path: str | Path) -> System:
         """Load a GRIMOIRE system from filesystem."""
