@@ -217,6 +217,31 @@ class ExecutionContext:
             self._derived_field_manager,
         )
 
+    def resolve_template_with_context(self, template_str: str, additional_context: dict[str, Any]) -> Any:
+        """Resolve a template string with additional context variables."""
+        # Merge additional context with existing context
+        merged_variables = {**self.variables, **additional_context}
+        merged_outputs = {**self.outputs}
+        merged_inputs = {**self.inputs}
+        
+        # If additional_context has variables/outputs/inputs, merge those too
+        if "variables" in additional_context:
+            merged_variables.update(additional_context["variables"])
+        if "outputs" in additional_context:
+            merged_outputs.update(additional_context["outputs"])
+        if "inputs" in additional_context:
+            merged_inputs.update(additional_context["inputs"])
+            
+        return self.template_resolver.resolve_template(
+            template_str,
+            merged_variables,
+            merged_outputs,
+            merged_inputs,
+            self.system_metadata,
+            self.namespace_manager,
+            self._derived_field_manager,
+        )
+
     def resolve_path_value(self, path: str) -> Any:
         """Resolve a path that might reference variables, outputs, or inputs."""
         logger.info(f"resolve_path_value({path})")

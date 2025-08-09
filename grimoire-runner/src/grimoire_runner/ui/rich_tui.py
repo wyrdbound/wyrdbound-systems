@@ -290,7 +290,7 @@ class RichTUI:
                             f"[cyan]Executing {len(step.actions)} step actions after choice...[/cyan]"
                         )
                         try:
-                            self.engine._execute_actions(
+                            self.engine.action_executor.execute_actions(
                                 step.actions,
                                 self.context,
                                 choice_result.data if choice_result else {},
