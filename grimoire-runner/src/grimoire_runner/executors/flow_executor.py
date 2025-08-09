@@ -3,10 +3,10 @@
 import logging
 from typing import TYPE_CHECKING
 
-from .action_executor import ActionExecutor
 from .base import BaseStepExecutor
 
 if TYPE_CHECKING:
+    from .action_executor import ActionExecutor
     from ..models.context_data import ExecutionContext
     from ..models.flow import StepDefinition, StepResult
     from ..models.system import System
@@ -17,8 +17,12 @@ logger = logging.getLogger(__name__)
 class FlowExecutor(BaseStepExecutor):
     """Executor for flow control steps like completion and flow calls."""
 
-    def __init__(self):
-        self.action_executor = ActionExecutor()
+    def __init__(self, action_executor: "ActionExecutor" = None):
+        if action_executor is None:
+            # Fallback to direct creation for backward compatibility
+            from .action_executor import ActionExecutor
+            action_executor = ActionExecutor()
+        self.action_executor = action_executor
 
     def execute(
         self, step: "StepDefinition", context: "ExecutionContext", system: "System"

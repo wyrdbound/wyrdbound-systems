@@ -42,6 +42,10 @@ class ExecutorFactory(ABC):
 class DefaultExecutorFactory(ExecutorFactory):
     """Default factory that creates the built-in step executors."""
 
+    def __init__(self, executor_registry: "ExecutorRegistry" = None):
+        """Initialize with optional executor registry for dependency injection."""
+        self.executor_registry = executor_registry
+
     def create_executor(self, step_type: str, engine: "GrimoireEngine") -> StepExecutorInterface:
         """Create an executor for the given step type."""
         from ..executors.choice_executor import ChoiceExecutor
@@ -62,7 +66,12 @@ class DefaultExecutorFactory(ExecutorFactory):
         elif step_type == "llm_generation":
             return LLMExecutor()
         elif step_type in ["completion", "flow_call"]:
-            return FlowExecutor()
+            # Inject action executor dependency if registry is available
+            if self.executor_registry:
+                action_executor = self.executor_registry.create_action_executor()
+                return FlowExecutor(action_executor)
+            else:
+                return FlowExecutor()  # Falls back to internal creation
         else:
             raise ValueError(f"Unsupported step type: {step_type}")
 
@@ -83,3 +92,4 @@ class DefaultExecutorFactory(ExecutorFactory):
 # Import here to avoid circular imports
 if TYPE_CHECKING:
     from ..core.engine import GrimoireEngine
+    from .executor_factories import ExecutorRegistry

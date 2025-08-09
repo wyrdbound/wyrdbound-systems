@@ -8,6 +8,7 @@ from .action_strategies import ActionStrategyRegistry
 if TYPE_CHECKING:
     from ..models.context_data import ExecutionContext
     from ..models.system import System
+    from .executor_factories import TableExecutorFactory
 
 logger = logging.getLogger(__name__)
 
@@ -15,9 +16,15 @@ logger = logging.getLogger(__name__)
 class ActionExecutor:
     """Handles execution of step actions using Strategy Pattern for extensibility."""
 
-    def __init__(self, strategy_registry: ActionStrategyRegistry | None = None):
-        """Initialize with an optional custom strategy registry."""
-        self.strategy_registry = strategy_registry or ActionStrategyRegistry()
+    def __init__(
+        self, 
+        strategy_registry: ActionStrategyRegistry | None = None,
+        table_executor_factory: "TableExecutorFactory" = None,
+    ):
+        """Initialize with an optional custom strategy registry and table executor factory."""
+        if strategy_registry is None:
+            strategy_registry = ActionStrategyRegistry(table_executor_factory)
+        self.strategy_registry = strategy_registry
 
     def execute_actions(
         self,

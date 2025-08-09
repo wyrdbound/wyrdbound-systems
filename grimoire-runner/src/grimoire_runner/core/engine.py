@@ -5,8 +5,8 @@ from collections.abc import Iterator
 from pathlib import Path
 from typing import Any
 
-from ..executors.action_executor import ActionExecutor
-from ..executors.executor_factory import DefaultExecutorFactory, ExecutorFactory, StepExecutorInterface
+from ..executors.executor_factories import ExecutorRegistry
+from ..executors.executor_factory import ExecutorFactory, StepExecutorInterface
 from ..models.context_data import ExecutionContext
 from ..models.flow import FlowDefinition, FlowResult, StepResult
 from ..models.system import System
@@ -18,11 +18,11 @@ logger = logging.getLogger(__name__)
 class GrimoireEngine:
     """Main orchestrator for GRIMOIRE system execution."""
 
-    def __init__(self, executor_factory: ExecutorFactory = None):
+    def __init__(self, executor_registry: ExecutorRegistry = None):
         self.loader = SystemLoader()
-        self.executor_factory = executor_factory or DefaultExecutorFactory()
+        self.executor_registry = executor_registry or ExecutorRegistry()
         self.executors: dict[str, StepExecutorInterface] = {}
-        self.action_executor = ActionExecutor()
+        self.action_executor = self.executor_registry.create_action_executor()
         self.breakpoints: dict[str, list[str]] = {}  # flow_id -> step_ids
         self._debug_mode = False
 
@@ -30,11 +30,11 @@ class GrimoireEngine:
         self._initialize_executors()
 
     def _initialize_executors(self) -> None:
-        """Initialize the default step executors using the factory."""
-        supported_types = self.executor_factory.get_supported_step_types()
+        """Initialize the default step executors using the registry."""
+        supported_types = self.executor_registry.get_supported_step_types()
         for step_type in supported_types:
             try:
-                executor = self.executor_factory.create_executor(step_type, self)
+                executor = self.executor_registry.create_step_executor(step_type, self)
                 self.executors[step_type] = executor
                 logger.debug(f"Initialized executor for step type: {step_type}")
             except Exception as e:
@@ -45,9 +45,16 @@ class GrimoireEngine:
         self.executors[step_type] = executor
         logger.debug(f"Registered executor for step type: {step_type}")
 
+    def set_executor_registry(self, registry: ExecutorRegistry) -> None:
+        """Set a custom executor registry and reinitialize executors."""
+        self.executor_registry = registry
+        self.executors.clear()
+        self.action_executor = self.executor_registry.create_action_executor()
+        self._initialize_executors()
+
     def set_executor_factory(self, factory: ExecutorFactory) -> None:
         """Set a custom executor factory and reinitialize executors."""
-        self.executor_factory = factory
+        self.executor_registry.set_step_executor_factory(factory)
         self.executors.clear()
         self._initialize_executors()
 

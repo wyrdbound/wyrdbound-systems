@@ -7,6 +7,7 @@ import logging
 if TYPE_CHECKING:
     from ..models.context_data import ExecutionContext
     from ..models.system import System
+    from .executor_factories import TableExecutorFactory
 
 logger = logging.getLogger(__name__)
 
@@ -168,6 +169,10 @@ class SwapValuesActionStrategy(ActionStrategy):
 class FlowCallActionStrategy(ActionStrategy):
     """Strategy for handling flow_call actions."""
 
+    def __init__(self, table_executor_factory: "TableExecutorFactory" = None):
+        """Initialize with optional table executor factory for dependency injection."""
+        self.table_executor_factory = table_executor_factory
+
     def get_action_type(self) -> str:
         return "flow_call"
 
@@ -216,12 +221,16 @@ class FlowCallActionStrategy(ActionStrategy):
 
         logger.info(f"Engine action flow_call resolved inputs: {resolved_inputs}")
 
-        # Import here to avoid circular imports
-        from ..executors.table_executor import TableExecutor
+        # Create table executor using factory or fallback to direct creation
+        if self.table_executor_factory:
+            table_executor = self.table_executor_factory.create_table_executor()
+        else:
+            # Fallback to direct import and creation for backward compatibility
+            from ..executors.table_executor import TableExecutor
+            table_executor = TableExecutor()
 
         # Use the table executor's sub-flow execution logic
         # since it already handles the template resolution and typing correctly
-        table_executor = TableExecutor()
         try:
             if system:
                 table_executor._execute_sub_flow(
@@ -271,8 +280,9 @@ class ValidateValueActionStrategy(ActionStrategy):
 class ActionStrategyRegistry:
     """Registry for managing action strategies."""
 
-    def __init__(self):
+    def __init__(self, table_executor_factory: "TableExecutorFactory" = None):
         self._strategies: dict[str, ActionStrategy] = {}
+        self.table_executor_factory = table_executor_factory
         self._register_default_strategies()
 
     def _register_default_strategies(self) -> None:
@@ -282,7 +292,7 @@ class ActionStrategyRegistry:
             DisplayValueActionStrategy(),
             LogEventActionStrategy(),
             SwapValuesActionStrategy(),
-            FlowCallActionStrategy(),
+            FlowCallActionStrategy(self.table_executor_factory),
             GetValueActionStrategy(),
             ValidateValueActionStrategy(),
         ]
