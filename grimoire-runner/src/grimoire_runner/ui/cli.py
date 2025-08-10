@@ -109,6 +109,9 @@ def validate(
 def execute(
     system_path: Path = typer.Argument(..., help="Path to GRIMOIRE system directory"),
     flow: str = typer.Option(..., "--flow", "-f", help="Flow ID to execute"),
+    inputs: Path | None = typer.Option(
+        None, "--inputs", "-i", help="YAML file containing input values for the flow"
+    ),
     output: Path | None = typer.Option(
         None, "--output", "-o", help="Save results to file"
     ),
@@ -118,7 +121,6 @@ def execute(
     interactive: bool = typer.Option(
         True,
         "--interactive/--no-interactive",
-        "-i",
         help="Enable interactive mode for user choices",
     ),
 ):
@@ -131,8 +133,20 @@ def execute(
         logging.basicConfig(level=logging.INFO)
 
     try:
+        # Load inputs from YAML file if provided
+        input_values = {}
+        if inputs:
+            import yaml
+            try:
+                with open(inputs, 'r') as f:
+                    input_values = yaml.safe_load(f)
+                console.print(f"[dim]Loaded inputs from {inputs}[/dim]")
+            except Exception as e:
+                console.print(f"[red]Error loading inputs file {inputs}: {e}[/red]")
+                raise typer.Exit(1) from None
+
         # Use Rich TUI interface - no fallback, just fix issues in Rich TUI
-        run_rich_tui_executor(system_path, flow)
+        run_rich_tui_executor(system_path, flow, input_values)
     except Exception as e:
         console.print(f"[bold red]Textual interface error:[/bold red] {e}")
         raise typer.Exit(1) from None
@@ -165,7 +179,7 @@ def interactive(
     try:
         if flow:
             # If a specific flow is requested, use Rich TUI for execution
-            run_rich_tui_executor(system_path, flow)
+            run_rich_tui_executor(system_path, flow, {})
         else:
             # If no flow specified, use Rich browser for system exploration
             run_rich_browser(system_path)

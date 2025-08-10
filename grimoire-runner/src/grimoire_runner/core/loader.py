@@ -396,6 +396,10 @@ class SystemLoader:
             prompt_id=data.get("prompt_id"),
             prompt_data=data.get("prompt_data", {}),
             llm_settings=llm_settings,
+            # Conditional step fields
+            if_condition=data.get("if"),  # Map 'if' to 'if_condition'
+            then_actions=data.get("then"),
+            else_actions=data.get("else"),
         )
 
     def reload_system(self, system_id: str) -> System | None:

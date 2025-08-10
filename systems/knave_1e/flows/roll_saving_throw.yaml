@@ -1,0 +1,85 @@
+id: roll_saving_throw
+type: flow
+name: "Roll Saving Throw"
+description: "Roll a saving throw in {{ system.name }}"
+version: "1.0"
+
+inputs:
+  - type: str
+    id: saving_throw_type
+    enum: ["basic", "advantage", "disadvantage"]
+  - type: str
+    id: saving_throw_target
+    enum: ["player", "enemy"]
+  - type: str
+    id: saving_throw_dc
+    description: "The difficulty class for the saving throw"
+  - type: str
+    id: saving_throw_modifier
+    description: "The modifier to apply to the saving throw"
+outputs:
+  - type: bool
+    id: saving_throw_result
+    description: "Whether the saving throw was successful"
+
+variables:
+  base_dice_roll: ""
+  roll_result: ""
+
+steps:
+  - id: "determine_dice_roll"
+    name: "Determine Saving Throw Type"
+    type: "conditional"
+    if: "'{{ inputs.saving_throw_type }}' == 'basic'"
+    then:
+      # Basic
+      - set_value:
+          path: "variables.base_dice_roll"
+          value: 1d20
+    else:
+      if: "'{{ inputs.saving_throw_type }}' == 'advantage'"
+      then:
+        # Advantage
+        - set_value:
+            path: "variables.base_dice_roll"
+            value: 2d20kh1
+      else:
+        # Disadvantage
+        - set_value:
+            path: "variables.base_dice_roll"
+            value: 2d20kl1
+    next_step: "execute_saving_throw_roll"
+
+  - id: "execute_saving_throw_roll"
+    name: "Roll Saving Throw"
+    type: "dice_roll"
+    prompt: "Rolling {{ variables.base_dice_roll }} + {{ inputs.saving_throw_modifier }} for saving throw..."
+    roll: "{{ variables.base_dice_roll }} + {{ inputs.saving_throw_modifier }}"
+    actions:
+      - set_value:
+          path: "variables.roll_result"
+          value: "{{ result }}"
+    next_step: "evaluate_saving_throw_result"
+
+  - id: "evaluate_saving_throw_result"
+    name: "Evaluate Saving Throw Result"
+    type: "conditional"
+    if: "{{ variables.roll_result }} > {{ inputs.saving_throw_dc }}"
+    then:
+      - set_value:
+          path: "outputs.saving_throw_result"
+          value: true
+    else:
+      - set_value:
+          path: "outputs.saving_throw_result"
+          value: false
+    next_step: complete_saving_throw
+
+  - id: "complete_saving_throw"
+    name: "Complete Saving Throw"
+    type: "completion"
+    actions:
+      - display_value: "outputs.saving_throw_result"
+      - log_event:
+          type: "saving_throw_rolled"
+          data: "{{ outputs.saving_throw_result }}"

@@ -18,9 +18,10 @@ logger = logging.getLogger(__name__)
 class RichTUI:
     """Rich-based TUI for accessible step-by-step flow execution."""
 
-    def __init__(self, system_path: Path, flow_id: str):
+    def __init__(self, system_path: Path, flow_id: str, input_values: dict = None):
         self.system_path = system_path
         self.flow_id = flow_id
+        self.input_values = input_values or {}
         self.console = Console()
         self.engine = GrimoireEngine()
         self.system = None
@@ -77,6 +78,13 @@ class RichTUI:
         # Initialize flow variables
         for var_name, var_value in self.flow_obj.variables.items():
             self.context.set_variable(var_name, var_value)
+
+        # Initialize input values if provided
+        if self.input_values:
+            self.console.print(f"[dim]Setting input values:[/dim]")
+            for input_name, input_value in self.input_values.items():
+                self.context.set_input(input_name, input_value)
+                self.console.print(f"  [cyan]{input_name}[/cyan] = [yellow]{input_value}[/yellow]")
 
         # Initialize observable derived fields from output models
         for output_def in self.flow_obj.outputs:
@@ -607,7 +615,7 @@ class RichTUI:
         self.console.print(summary_table)
 
 
-def run_rich_tui_executor(system_path: Path, flow_id: str) -> None:
+def run_rich_tui_executor(system_path: Path, flow_id: str, input_values: dict = None) -> None:
     """Run the Rich TUI executor."""
-    tui = RichTUI(system_path, flow_id)
+    tui = RichTUI(system_path, flow_id, input_values)
     tui.run()

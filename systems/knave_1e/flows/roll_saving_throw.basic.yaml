@@ -1,0 +1,4 @@
+saving_throw_type: basic
+saving_throw_target: player
+saving_throw_modifier: 0
+saving_throw_dc: 15
