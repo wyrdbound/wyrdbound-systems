@@ -9,9 +9,6 @@ inputs:
     id: saving_throw_type
     enum: ["basic", "advantage", "disadvantage"]
   - type: str
-    id: saving_throw_target
-    enum: ["player", "enemy"]
-  - type: str
     id: saving_throw_dc
     description: "The difficulty class for the saving throw"
   - type: str
@@ -31,14 +28,14 @@ steps:
     name: "Determine Saving Throw Type"
     type: "conditional"
     result_message: "Selected {{ inputs.saving_throw_type }} dice ({{ variables.base_dice_roll }})"
-    if: "'{{ inputs.saving_throw_type }}' == 'basic'"
+    if: "{{ inputs.saving_throw_type == 'basic' }}"
     then:
       # Basic
       - set_value:
           path: "variables.base_dice_roll"
           value: 1d20
     else:
-      if: "'{{ inputs.saving_throw_type }}' == 'advantage'"
+      if: "{{ inputs.saving_throw_type == 'advantage' }}"
       then:
         # Advantage
         - set_value:
@@ -63,27 +60,11 @@ steps:
           value: "{{ result }}"
     next_step: "evaluate_saving_throw_result"
 
-  - id: "evaluate_saving_throw_result"
+  - id: evaluate_saving_throw_result
     name: "Evaluate Saving Throw Result"
-    type: "conditional"
-    result_message: "Saving throw {% if outputs.saving_throw_result %}succeeded{% else %}failed{% endif %}"
-    if: "{{ variables.roll_result }} > {{ inputs.saving_throw_dc }}"
-    then:
-      - set_value:
-          path: "outputs.saving_throw_result"
-          value: true
-    else:
-      - set_value:
-          path: "outputs.saving_throw_result"
-          value: false
-    next_step: complete_saving_throw
-
-  - id: "complete_saving_throw"
-    name: "Complete Saving Throw"
     type: "completion"
     result_message: "Saving throw complete - {% if outputs.saving_throw_result %}Success{% else %}Failure{% endif %}"
     actions:
-      - display_value: "outputs.saving_throw_result"
-      - log_event:
-          type: "saving_throw_rolled"
-          data: "{{ outputs.saving_throw_result }}"
+      - set_value:
+          path: "outputs.saving_throw_result"
+          value: "{{ variables.roll_result > inputs.saving_throw_dc }}"
