@@ -115,6 +115,12 @@ class RuntimeTemplateStrategy(TemplateResolutionStrategy):
         except ValueError:
             pass
 
+        # Explicitly handle boolean strings
+        if result.lower() == "true":
+            return True
+        elif result.lower() == "false":
+            return False
+
         # Try JSON for clearly JSON-formatted results
         if (result.startswith("{") and result.endswith("}")) or (
             result.startswith("[") and result.endswith("]")
