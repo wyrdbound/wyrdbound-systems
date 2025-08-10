@@ -245,7 +245,7 @@ class LLMIntegration:
         try:
             self._setup_langchain(provider)
             self.provider = provider
-            logger.info(f"LLM provider changed to: {provider}")
+            logger.debug(f"LLM provider changed to: {provider}")
         except Exception as e:
             logger.error(f"Failed to change provider to {provider}: {e}")
             raise RuntimeError(f"Failed to change provider to {provider}: {e}") from e

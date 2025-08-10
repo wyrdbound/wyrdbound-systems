@@ -51,13 +51,15 @@ class FlowExecutor(BaseStepExecutor):
         from ..models.flow import StepResult
 
         try:
-            logger.info(f"Flow completion: {step.name}")
+            logger.debug(f"Flow completion: {step.name}")
             if step.prompt:
-                logger.info(f"Completion message: {step.prompt}")
+                logger.debug(f"Completion message: {step.prompt}")
 
             # Execute any actions defined in the completion step
             if hasattr(step, "actions") and step.actions:
-                logger.info(f"Executing {len(step.actions)} actions in completion step")
+                logger.debug(
+                    f"Executing {len(step.actions)} actions in completion step"
+                )
                 self.action_executor.execute_actions(step.actions, context, {})
 
             return StepResult(
@@ -82,7 +84,7 @@ class FlowExecutor(BaseStepExecutor):
         try:
             # For now, just log the flow call
             # Full implementation would require access to the engine
-            logger.info(f"Flow call requested: {step.name}")
+            logger.debug(f"Flow call requested: {step.name}")
             logger.warning("Flow call execution not yet fully implemented")
 
             return StepResult(

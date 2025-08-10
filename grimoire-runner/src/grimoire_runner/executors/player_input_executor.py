@@ -24,9 +24,9 @@ class PlayerInputExecutor(BaseStepExecutor):
 
         try:
             step_name = getattr(step, "name", None) or step.id if step else "unknown"
-            logger.info(f"Player input step: {step_name}")
+            logger.debug(f"Player input step: {step_name}")
             if step and step.prompt:
-                logger.info(f"Prompt: {step.prompt}")
+                logger.debug(f"Prompt: {step.prompt}")
 
             return StepResult(
                 step_id=step.id if step else "unknown",
@@ -65,7 +65,7 @@ class PlayerInputExecutor(BaseStepExecutor):
                 for action in step.actions:
                     self._execute_action(action, context, user_input)
 
-            logger.info(f"User input processed: '{user_input}'")
+            logger.debug(f"User input processed: '{user_input}'")
 
             return StepResult(
                 step_id=step.id,
@@ -114,7 +114,7 @@ class PlayerInputExecutor(BaseStepExecutor):
                     namespaced_path = f"{current_namespace}.outputs.{path}"
 
                 context.set_namespaced_value(namespaced_path, resolved_value)
-                logger.info(
+                logger.debug(
                     f"Set namespaced value: {namespaced_path} = {resolved_value}"
                 )
             else:

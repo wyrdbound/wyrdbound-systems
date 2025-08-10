@@ -79,7 +79,7 @@ class TemplateResolver:
 
         def resolve_path(path: str, default: Any = None) -> Any:
             """Resolve a path that might reference variables, outputs, or inputs."""
-            logger.info(f"resolve_path_value({path})")
+            logger.debug(f"resolve_path_value({path})")
             if path.startswith("variables."):
                 return self._get_nested_value(variables, path[10:], default)
             elif path.startswith("outputs."):
@@ -188,7 +188,7 @@ class TemplateResolver:
 
                 # Debug log for inventory field
                 if field_name == "knave.inventory":
-                    logger.info(
+                    logger.debug(
                         f"Template context overlay: {field_name} = {type(observable_value.value).__name__} "
                         f"with {len(observable_value.value) if isinstance(observable_value.value, list) else 'non-list'} items"
                     )
@@ -196,13 +196,13 @@ class TemplateResolver:
         # Debug: check if knave.inventory is in the context and what type it is
         if "knave.inventory" in context:
             inventory_value = context["knave.inventory"]
-            logger.info(
+            logger.debug(
                 f"Template context has knave.inventory: {type(inventory_value).__name__}"
             )
             if isinstance(inventory_value, list):
-                logger.info(f"Inventory has {len(inventory_value)} items")
+                logger.debug(f"Inventory has {len(inventory_value)} items")
             else:
-                logger.info(f"Inventory is not a list: {inventory_value}")
+                logger.debug(f"Inventory is not a list: {inventory_value}")
 
     def _resolve_template_fields_in_dict(
         self, data: dict[str, Any], context: dict[str, Any]

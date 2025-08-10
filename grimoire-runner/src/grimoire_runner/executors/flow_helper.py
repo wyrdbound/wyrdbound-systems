@@ -29,7 +29,7 @@ class FlowExecutionHelper:
         flow_name = flow_call_data["flow"]
         flow_inputs = flow_call_data.get("inputs", {})
 
-        logger.info(f"Executing flow call: {flow_name}")
+        logger.debug(f"Executing flow call: {flow_name}")
 
         # Resolve flow inputs with special handling for object types
         resolved_inputs = {}
@@ -38,7 +38,7 @@ class FlowExecutionHelper:
                 input_template, context, step_result_data
             )
             resolved_inputs[input_name] = resolved_value
-            logger.info(
+            logger.debug(
                 f"Flow input {input_name}: {type(resolved_value).__name__} = {resolved_value}"
             )
 
@@ -66,7 +66,7 @@ class FlowExecutionHelper:
             # Direct access to result from step data to avoid string conversion
             if step_result_data and "result" in step_result_data:
                 result = step_result_data["result"]
-                logger.info(
+                logger.debug(
                     f"Flow input {{ result }}: Using direct access = {type(result).__name__}"
                 )
                 return result
@@ -79,11 +79,11 @@ class FlowExecutionHelper:
                 if isinstance(selected_item, str) and selected_item.startswith("{"):
                     typed_item = self._try_parse_structured_data(selected_item)
                     if typed_item is not None:
-                        logger.info(
+                        logger.debug(
                             f"Flow input {{ selected_item }}: Parsed from string to {type(typed_item).__name__}"
                         )
                         return typed_item
-                logger.info(
+                logger.debug(
                     f"Flow input {{ selected_item }}: Using direct value = {type(selected_item).__name__}"
                 )
                 return selected_item
@@ -92,7 +92,7 @@ class FlowExecutionHelper:
             # Handle results from table rolls with multiple items
             if step_result_data and "results" in step_result_data:
                 results = step_result_data["results"]
-                logger.info(
+                logger.debug(
                     f"Flow input {{ results }}: Using direct access = {type(results).__name__}"
                 )
                 return results
@@ -105,7 +105,7 @@ class FlowExecutionHelper:
             # Direct path access for outputs
             path = input_template[8:]  # Remove "outputs." prefix
             value = context.get_output(path)
-            logger.info(
+            logger.debug(
                 f"Flow input {input_template}: Direct path access = {type(value).__name__}"
             )
             return value
@@ -113,7 +113,7 @@ class FlowExecutionHelper:
         # Fall back to template resolution for other cases
         try:
             resolved = context.resolve_template(input_template)
-            logger.info(
+            logger.debug(
                 f"Flow input {input_template}: Template resolved = {type(resolved).__name__}"
             )
             return resolved
@@ -188,13 +188,13 @@ class FlowExecutionHelper:
                 sub_context.set_variable(var_name, var_value)
 
         # Execute the sub-flow
-        logger.info(
+        logger.debug(
             f"Executing sub-flow '{flow_name}' with inputs: {list(flow_inputs.keys())}"
         )
         result = self.engine.execute_flow(flow_name, sub_context, system)
 
         if result.success:
-            logger.info(f"Sub-flow '{flow_name}' completed successfully")
+            logger.debug(f"Sub-flow '{flow_name}' completed successfully")
 
             # Copy sub-flow outputs back to main context
             # This allows the main flow to access results from the sub-flow
@@ -203,7 +203,7 @@ class FlowExecutionHelper:
                 # to avoid overwriting main flow data
                 if not context.outputs.get(output_key):
                     context.set_output(output_key, output_value)
-                    logger.info(f"Copied sub-flow output: {output_key}")
+                    logger.debug(f"Copied sub-flow output: {output_key}")
         else:
             logger.error(f"Sub-flow '{flow_name}' failed: {result.error}")
 

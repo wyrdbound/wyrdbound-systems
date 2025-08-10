@@ -47,7 +47,7 @@ class TableExecutor(BaseStepExecutor):
                     result = self._execute_table_roll(table_roll, context, system)
                     all_results.append(result)
 
-            logger.info(f"Table rolling completed: {len(all_results)} rolls")
+            logger.debug(f"Table rolling completed: {len(all_results)} rolls")
 
             return StepResult(
                 step_id=step.id,
@@ -98,7 +98,7 @@ class TableExecutor(BaseStepExecutor):
 
             # Convert string result to typed object if table has entry_type
             typed_result = self._create_typed_object(table_result, table, system)
-            logger.info(
+            logger.debug(
                 f"table_result={table_result}, typed_result type={type(typed_result).__name__}"
             )
 
@@ -112,13 +112,13 @@ class TableExecutor(BaseStepExecutor):
             results.append(result_data)
 
             # Log the individual table roll result
-            logger.info(
+            logger.debug(
                 f"Table roll result: {table_name.title()}: {table_result} (rolled {roll_value})"
             )
 
             # Execute table actions with result context
             if table_roll.actions:
-                logger.info(
+                logger.debug(
                     f"Executing table actions with typed_result: {type(typed_result).__name__}"
                 )
                 self._execute_table_actions(
@@ -142,7 +142,7 @@ class TableExecutor(BaseStepExecutor):
         """Execute actions after a table roll."""
         # Skip actions if result is None (from "none" table entries)
         if result is None:
-            logger.info(
+            logger.debug(
                 "Skipping table actions because result is None (table rolled 'none')"
             )
             return
@@ -151,7 +151,7 @@ class TableExecutor(BaseStepExecutor):
         original_result = context.get_variable("result")
         original_results = context.get_variable("results")
 
-        logger.info(f"Setting context result to: {type(result).__name__} = {result}")
+        logger.debug(f"Setting context result to: {type(result).__name__} = {result}")
         context.set_variable("result", result)
         context.set_variable("results", all_results)
 
@@ -207,13 +207,13 @@ class TableExecutor(BaseStepExecutor):
                     context.set_variable(path[10:], resolved_value)
                 else:
                     context.set_output(path, resolved_value)
-                logger.info(f"Set non-namespaced value: {path} = {resolved_value}")
+                logger.debug(f"Set non-namespaced value: {path} = {resolved_value}")
 
         elif action_type == "flow_call":
             # Handle sub-flow calls
             flow_id = action_data["flow"]
             inputs = action_data.get("inputs", {})
-            logger.info(f"Flow call requested: {flow_id} (inputs: {inputs})")
+            logger.debug(f"Flow call requested: {flow_id} (inputs: {inputs})")
 
             # Check if the flow exists in the system
             flow_obj = system.get_flow(flow_id)
@@ -245,7 +245,7 @@ class TableExecutor(BaseStepExecutor):
         """Execute a sub-flow call from within a table action."""
         from ..models.context_data import ExecutionContext
 
-        logger.info(f"Executing sub-flow: {flow_id}")
+        logger.debug(f"Executing sub-flow: {flow_id}")
 
         # Create a new execution context for the sub-flow
         sub_context = ExecutionContext()
@@ -316,16 +316,16 @@ class TableExecutor(BaseStepExecutor):
     def _resolve_result_variable(self, context: "ExecutionContext") -> Any:
         """Resolve the 'result' variable with special handling for dict types."""
         current_result = context.get_variable("result")
-        logger.info(
+        logger.debug(
             f"Context result variable: {type(current_result).__name__} = {current_result}"
         )
 
         if current_result is not None and isinstance(current_result, dict):
-            logger.info(f"Used direct result access: {type(current_result).__name__}")
+            logger.debug(f"Used direct result access: {type(current_result).__name__}")
             return current_result
         else:
             resolved_value = context.resolve_template("{{ result }}")
-            logger.info(
+            logger.debug(
                 f"Used template resolution for result: {type(resolved_value).__name__}"
             )
             return resolved_value
@@ -335,7 +335,7 @@ class TableExecutor(BaseStepExecutor):
     ) -> Any:
         """Resolve the 'selected_item' variable with type conversion if needed."""
         selected_item = context.get_variable("selected_item")
-        logger.info(
+        logger.debug(
             f"Context selected_item variable: {type(selected_item).__name__} = {selected_item}"
         )
 
@@ -345,18 +345,18 @@ class TableExecutor(BaseStepExecutor):
                 selected_item, "weapon", system
             )
             if typed_result:
-                logger.info(
+                logger.debug(
                     f"Converted selected_item string to typed object: {type(typed_result).__name__}"
                 )
                 return typed_result
             else:
-                logger.info(
+                logger.debug(
                     f"Could not convert selected_item, using string: {selected_item}"
                 )
                 return selected_item
         else:
             resolved_value = context.resolve_template("{{ selected_item }}")
-            logger.info(
+            logger.debug(
                 f"Used template resolution for selected_item: {type(resolved_value).__name__}"
             )
             return resolved_value
@@ -367,7 +367,7 @@ class TableExecutor(BaseStepExecutor):
         """Resolve a direct output reference."""
         try:
             resolved_value = context.resolve_path_value(input_value)
-            logger.info(
+            logger.debug(
                 f"Resolved output reference {input_key}: {input_value} -> {type(resolved_value).__name__}"
             )
             return resolved_value
@@ -385,14 +385,16 @@ class TableExecutor(BaseStepExecutor):
 
         engine = GrimoireEngine()
         flow_result = engine.execute_flow(flow_id, sub_context, system)
-        logger.info(f"Sub-flow {flow_id} completed with success: {flow_result.success}")
+        logger.debug(
+            f"Sub-flow {flow_id} completed with success: {flow_result.success}"
+        )
 
         # Debug logging
-        logger.info(
+        logger.debug(
             f"Sub-flow outputs after completion: {list(sub_context.outputs.keys())}"
         )
         for key, value in sub_context.outputs.items():
-            logger.info(f"Sub-flow output {key}: {type(value).__name__} = {value}")
+            logger.debug(f"Sub-flow output {key}: {type(value).__name__} = {value}")
 
         return flow_result
 
@@ -404,7 +406,7 @@ class TableExecutor(BaseStepExecutor):
     ) -> None:
         """Merge sub-flow outputs back into the main context."""
         for output_key, output_value in sub_context.outputs.items():
-            logger.info(
+            logger.debug(
                 f"Merging sub-flow output: {output_key} = {type(output_value).__name__}"
             )
 
@@ -431,7 +433,7 @@ class TableExecutor(BaseStepExecutor):
                 and original_input_value.startswith("outputs.")
             ):
                 target_key = original_input_value[8:]  # Remove "outputs." prefix
-                logger.info(
+                logger.debug(
                     f"Mapping sub-flow output '{output_key}' back to main context "
                     f"'{target_key}' based on input mapping"
                 )
@@ -444,7 +446,7 @@ class TableExecutor(BaseStepExecutor):
     ) -> None:
         """Merge an output value into the context."""
         if target_key in context.outputs:
-            logger.info(f"Updating output {target_key} with sub-flow result")
+            logger.debug(f"Updating output {target_key} with sub-flow result")
 
             if isinstance(output_value, dict) and isinstance(
                 context.outputs.get(target_key), dict
@@ -453,18 +455,18 @@ class TableExecutor(BaseStepExecutor):
                 existing_data = context.outputs[target_key]
                 updated_data = {**existing_data, **output_value}
                 context.outputs[target_key] = updated_data
-                logger.info(f"Merged data to {target_key}: {updated_data}")
+                logger.debug(f"Merged data to {target_key}: {updated_data}")
             else:
                 context.outputs[target_key] = output_value
         else:
-            logger.info(f"Creating new output {target_key}")
+            logger.debug(f"Creating new output {target_key}")
             context.outputs[target_key] = output_value
 
     def _update_observables_if_needed(
         self, context: "ExecutionContext", target_key: str, output_value: Any
     ) -> None:
         """Update observables if the context has a derived field manager."""
-        logger.info(
+        logger.debug(
             f"Checking if observable update needed for {target_key}: "
             f"has_derived_field_manager={hasattr(context, '_derived_field_manager')}"
         )
@@ -473,10 +475,10 @@ class TableExecutor(BaseStepExecutor):
             hasattr(context, "_derived_field_manager")
             and context._derived_field_manager
         ):
-            logger.info("No derived field manager available")
+            logger.debug("No derived field manager available")
             return
 
-        logger.info(
+        logger.debug(
             f"Output value type: {type(output_value)}, "
             f"existing type: {type(context.outputs.get(target_key))}"
         )
@@ -484,12 +486,12 @@ class TableExecutor(BaseStepExecutor):
         if isinstance(output_value, dict) and isinstance(
             context.outputs.get(target_key), dict
         ):
-            logger.info(f"Updating observables for {target_key}")
+            logger.debug(f"Updating observables for {target_key}")
             self._update_observables_from_dict(
                 context, "", output_value, instance_id=target_key
             )
         else:
-            logger.info("Skipping observable update - not both dicts")
+            logger.debug("Skipping observable update - not both dicts")
             raise
 
     def _update_observables_from_dict(
@@ -520,13 +522,13 @@ class TableExecutor(BaseStepExecutor):
                 elif isinstance(value, list):
                     # Handle lists specially to preserve them as lists, not strings
                     try:
-                        logger.info(
+                        logger.debug(
                             f"_update_observables_from_dict: Processing list for {qualified_path} = {type(value).__name__} with {len(value)} items"
                         )
                         context._derived_field_manager.set_field_value(
                             qualified_path, value
                         )
-                        logger.info(
+                        logger.debug(
                             f"Updated observable field {qualified_path} = {type(value).__name__} with {len(value)} items"
                         )
                     except Exception as e:
@@ -571,7 +573,7 @@ class TableExecutor(BaseStepExecutor):
                         context._derived_field_manager.set_field_value(
                             qualified_path, value
                         )
-                    logger.info(f"Updated observable field {qualified_path} = {value}")
+                    logger.debug(f"Updated observable field {qualified_path} = {value}")
                     try:
                         pass
                     except Exception as e:
@@ -612,7 +614,7 @@ class TableExecutor(BaseStepExecutor):
             # Handle generation flag
             if entry_result.get("generate", False):
                 # TODO: Implement dynamic generation
-                logger.info(
+                logger.debug(
                     f"Generation requested for type '{entry_type}' - not yet implemented"
                 )
                 return f"Generated {entry_type}"
@@ -620,7 +622,7 @@ class TableExecutor(BaseStepExecutor):
             # Handle type-only entries (no specific id)
             if not entry_name:
                 # TODO: Implement random selection from compendium
-                logger.info(
+                logger.debug(
                     f"Random selection requested for type '{entry_type}' - not yet implemented"
                 )
                 return f"Random {entry_type}"
@@ -631,19 +633,19 @@ class TableExecutor(BaseStepExecutor):
 
         # Handle "none" as a special case - return None instead of creating an object
         if entry_name == "none":
-            logger.info(
+            logger.debug(
                 "_create_typed_object: entry_name is 'none', returning None (no item)"
             )
             return None
 
         # If the entry type is "str", return the string as-is
         if not entry_type or entry_type == "str":
-            logger.info(
+            logger.debug(
                 f"_create_typed_object: entry_type is str or empty, returning string: {entry_name}"
             )
             return entry_name
 
-        logger.info(f"Creating {entry_type} object for entry: {entry_name}")
+        logger.debug(f"Creating {entry_type} object for entry: {entry_name}")
 
         # Find the specific compendium that contains this entry
         compendium = self._find_compendium_with_entry(entry_name, entry_type, system)
@@ -657,7 +659,7 @@ class TableExecutor(BaseStepExecutor):
                 entry_type, entry_name, system
             )
             if not entry_data:
-                logger.info(
+                logger.debug(
                     f"_create_typed_object: could not create minimal object, returning string: {entry_name}"
                 )
                 return entry_name
@@ -672,10 +674,10 @@ class TableExecutor(BaseStepExecutor):
         # Apply model inheritance and defaults
         typed_object = self._apply_model_inheritance(typed_object, entry_type, system)
 
-        logger.info(
+        logger.debug(
             f"Created {entry_type} object: {entry_name} with attributes: {list(typed_object.keys())}"
         )
-        logger.info(
+        logger.debug(
             f"_create_typed_object returning: {type(typed_object).__name__} = {typed_object}"
         )
         return typed_object
@@ -685,7 +687,7 @@ class TableExecutor(BaseStepExecutor):
         # Search through all compendiums to find one with the matching model type
         for compendium_id, compendium in system.compendiums.items():
             if hasattr(compendium, "model") and compendium.model == entry_type:
-                logger.info(
+                logger.debug(
                     f"Found compendium '{compendium_id}' for type '{entry_type}'"
                 )
                 return compendium
@@ -697,7 +699,7 @@ class TableExecutor(BaseStepExecutor):
                 entry_type.lower() in compendium_id.lower()
                 or entry_type.lower() in compendium.name.lower()
             ):
-                logger.info(
+                logger.debug(
                     f"Found compendium '{compendium_id}' for type '{entry_type}' by name matching"
                 )
                 return compendium
@@ -714,7 +716,7 @@ class TableExecutor(BaseStepExecutor):
                 # Check if this compendium has the entry
                 entry_data = compendium.get_entry(entry_name)
                 if entry_data:
-                    logger.info(
+                    logger.debug(
                         f"Found entry '{entry_name}' in compendium '{compendium_id}' for type '{entry_type}'"
                     )
                     return compendium
@@ -727,7 +729,7 @@ class TableExecutor(BaseStepExecutor):
             ):
                 entry_data = compendium.get_entry(entry_name)
                 if entry_data:
-                    logger.info(
+                    logger.debug(
                         f"Found entry '{entry_name}' in compendium '{compendium_id}' for type '{entry_type}' by name matching"
                     )
                     return compendium
@@ -780,7 +782,7 @@ class TableExecutor(BaseStepExecutor):
         # Apply model inheritance and defaults if the model exists
         try:
             base_object = self._apply_model_inheritance(base_object, entry_type, system)
-            logger.info(
+            logger.debug(
                 f"Applied model inheritance for minimal {entry_type} object '{entry_name}'"
             )
         except Exception as e:
@@ -788,7 +790,7 @@ class TableExecutor(BaseStepExecutor):
             # Fall back to manual defaults
             self._add_fallback_defaults(base_object, entry_type, entry_name)
 
-        logger.info(
+        logger.debug(
             f"Created minimal {entry_type} object for '{entry_name}' with attributes: {list(base_object.keys())}"
         )
         return base_object

@@ -69,9 +69,9 @@ class DiceExecutor(BaseStepExecutor):
 
             # Log with detailed information if available, otherwise fall back to simple format
             if result.detailed_result:
-                logger.info(f"Dice roll: {result.detailed_result}")
+                logger.debug(f"Dice roll: {result.detailed_result}")
             else:
-                logger.info(f"Dice roll: {roll_expression} = {result.total}")
+                logger.debug(f"Dice roll: {roll_expression} = {result.total}")
 
             # Prepare result data
             result_data = {
@@ -146,7 +146,7 @@ class DiceExecutor(BaseStepExecutor):
 
                     try:
                         display_text = context.resolve_template(sequence.display_as)
-                        logger.info(f"Dice sequence result: {display_text}")
+                        logger.debug(f"Dice sequence result: {display_text}")
                     finally:
                         # Restore original values
                         if original_item is not None:
@@ -158,7 +158,7 @@ class DiceExecutor(BaseStepExecutor):
                         else:
                             context.variables.pop("result", None)
 
-            logger.info(f"Dice sequence completed: {len(results)} rolls")
+            logger.debug(f"Dice sequence completed: {len(results)} rolls")
 
             return StepResult(
                 step_id=step.id,
@@ -231,7 +231,7 @@ class DiceExecutor(BaseStepExecutor):
                         )
 
                     context.set_namespaced_value(namespaced_path, resolved_value)
-                    logger.info(
+                    logger.debug(
                         f"Set namespaced dice value: {namespaced_path} = {resolved_value}"
                     )
                 else:

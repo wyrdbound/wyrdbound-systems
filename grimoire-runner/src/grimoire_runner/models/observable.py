@@ -103,7 +103,7 @@ class DerivedFieldManager:
 
     def register_derived_field(self, field_name: str, expression: str) -> None:
         """Register a derived field with its template expression."""
-        logger.info(f"Registering derived field: {field_name} = '{expression}'")
+        logger.debug(f"Registering derived field: {field_name} = '{expression}'")
 
         # Build qualified field name if we have an instance ID
         qualified_field_name = (
@@ -142,13 +142,13 @@ class DerivedFieldManager:
                 self.dependency_graph[dep] = set()
             self.dependency_graph[dep].add(qualified_field_name)
 
-        logger.info(
+        logger.debug(
             f"Derived field '{qualified_field_name}' depends on: {qualified_dependencies}"
         )
 
     def set_field_value(self, field_name: str, value: Any) -> None:
         """Set a value and trigger recomputation of dependent fields."""
-        logger.info(f"Observable: Setting field {field_name} = {value}")
+        logger.debug(f"Observable: Setting field {field_name} = {value}")
 
         # First, set the value directly in the execution context outputs to avoid recursion
         # We use _set_nested_value directly instead of set_output to prevent circular calls
@@ -158,36 +158,36 @@ class DerivedFieldManager:
 
         # Then create/update observable which will trigger recomputation
         if field_name not in self.observable_values:
-            logger.info(f"Observable: Creating new ObservableValue for {field_name}")
+            logger.debug(f"Observable: Creating new ObservableValue for {field_name}")
             # Create with None first, then set the value to trigger observers
             self.observable_values[field_name] = ObservableValue(field_name, None)
             # Add observer to trigger recomputation
             self.observable_values[field_name].add_observer(self._on_value_changed)
-            logger.info(
+            logger.debug(
                 f"Observable: Added observer to {field_name}, observers: {len(self.observable_values[field_name]._observers)}"
             )
             # Now set the actual value (this will trigger observers)
             self.observable_values[field_name].value = value
         else:
             # Update existing observable (this will trigger observers)
-            logger.info(
+            logger.debug(
                 f"Observable: Updating existing ObservableValue for {field_name}"
             )
             self.observable_values[field_name].value = value
 
     def _on_value_changed(self, field: str, old_value: Any, new_value: Any) -> None:
         """Called when a value changes."""
-        logger.info(f"Observable: {field} changed from {old_value} to {new_value}")
+        logger.debug(f"Observable: {field} changed from {old_value} to {new_value}")
         self._recompute_dependent_fields(field)
 
     def _recompute_dependent_fields(self, changed_field: str) -> None:
         """Recompute all fields that depend on the changed field."""
-        logger.info(f"Recomputing fields that depend on: {changed_field}")
+        logger.debug(f"Recomputing fields that depend on: {changed_field}")
 
         # Check if any derived fields depend on this field
         if changed_field in self.dependency_graph:
             dependent_fields = self.dependency_graph[changed_field]
-            logger.info(
+            logger.debug(
                 f"Found {len(dependent_fields)} dependent fields: {dependent_fields}"
             )
 
@@ -195,10 +195,10 @@ class DerivedFieldManager:
                 if (
                     dependent_field not in self._computing
                 ):  # Prevent circular dependencies
-                    logger.info(f"Recomputing dependent field: {dependent_field}")
+                    logger.debug(f"Recomputing dependent field: {dependent_field}")
                     self._recompute_field(dependent_field)
         else:
-            logger.info(f"No dependent fields found for: {changed_field}")
+            logger.debug(f"No dependent fields found for: {changed_field}")
         logger.debug(f"Field '{changed_field}' changed, checking dependencies...")
 
         if changed_field not in self.dependency_graph:
@@ -222,15 +222,17 @@ class DerivedFieldManager:
 
     def _recompute_field(self, field: str) -> None:
         """Recompute a single derived field."""
-        logger.info(f"_recompute_field called for: {field}")
+        logger.debug(f"_recompute_field called for: {field}")
 
         # The field is already qualified (e.g., "knave.abilities.strength.defense")
         # Look for it directly in the fields registry
-        logger.info(f"_recompute_field: looking for qualified field = {field}")
-        logger.info(f"_recompute_field: registered fields = {list(self.fields.keys())}")
+        logger.debug(f"_recompute_field: looking for qualified field = {field}")
+        logger.debug(
+            f"_recompute_field: registered fields = {list(self.fields.keys())}"
+        )
 
         if field not in self.fields:
-            logger.info(f"Qualified field {field} not registered for recomputation")
+            logger.debug(f"Qualified field {field} not registered for recomputation")
             return
 
         self._computing.add(field)
@@ -238,10 +240,12 @@ class DerivedFieldManager:
             template_expr = self.fields[field]["derived"]
             # Convert $variable syntax to {{ variable }} syntax for Jinja2
             jinja_expr = self._convert_to_jinja_syntax(template_expr)
-            logger.info(f"Computing field {field}: '{template_expr}' -> '{jinja_expr}'")
+            logger.debug(
+                f"Computing field {field}: '{template_expr}' -> '{jinja_expr}'"
+            )
 
             result = self.template_resolver(jinja_expr)
-            logger.info(f"Field {field} computed to: {result}")
+            logger.debug(f"Field {field} computed to: {result}")
 
             # Store the result directly in outputs to avoid circular calls to set_output
             self.execution_context._set_nested_value(
@@ -250,7 +254,7 @@ class DerivedFieldManager:
 
             # Create/update observable for this computed field
             if field not in self.observable_values:
-                logger.info(
+                logger.debug(
                     f"Creating observable for computed field {field} = {result}"
                 )
                 self.observable_values[field] = ObservableValue(field, None)
@@ -258,7 +262,7 @@ class DerivedFieldManager:
                 # Set the value, which will trigger observers naturally
                 self.observable_values[field].value = result
             else:
-                logger.info(
+                logger.debug(
                     f"Updating observable for computed field {field} = {result}"
                 )
                 old_value = self.observable_values[field].value
@@ -266,7 +270,7 @@ class DerivedFieldManager:
                 # If the value didn't change but this is a computed field, still trigger dependencies
                 # in case this is the first time dependent fields need to be computed
                 if old_value == result:
-                    logger.info(
+                    logger.debug(
                         f"Computed field {field} value unchanged ({result}), but triggering dependent field recomputation"
                     )
                     self._recompute_dependent_fields(field)
@@ -348,7 +352,7 @@ class DerivedFieldManager:
         self, model_def: "ModelDefinition", instance_id: str = None
     ) -> None:
         """Initialize observable system from a model definition."""
-        logger.info(
+        logger.debug(
             f"Initializing observable system for model {getattr(model_def, 'id', 'unknown')} with instance_id: {instance_id}"
         )
         self.current_instance_id = instance_id
@@ -379,7 +383,7 @@ class DerivedFieldManager:
         # Get the prefix for this instance
         prefix = f"{instance_id}."
 
-        logger.info(
+        logger.debug(
             f"get_computed_values_for_instance({instance_id}): observable_values keys = {list(self.observable_values.keys())}"
         )
 
@@ -393,7 +397,7 @@ class DerivedFieldManager:
                     if len(str(observable_value.value)) > 100
                     else str(observable_value.value)
                 )
-                logger.info(
+                logger.debug(
                     f"get_computed_values_for_instance({instance_id}): {field_name} -> {relative_path} = {value_type}: {value_preview}"
                 )
 
@@ -408,7 +412,7 @@ class DerivedFieldManager:
                     )
                 final_value = self._try_parse_structured_data(observable_value.value)
                 if final_value is not None:
-                    logger.info(
+                    logger.debug(
                         f"Parsed serialized data for {relative_path}: {type(final_value).__name__}"
                     )
                     self._set_nested_value_in_dict(
@@ -419,7 +423,7 @@ class DerivedFieldManager:
                         computed_values, relative_path, observable_value.value
                     )
 
-        logger.info(
+        logger.debug(
             f"get_computed_values_for_instance({instance_id}): final computed_values = {computed_values}"
         )
         return computed_values

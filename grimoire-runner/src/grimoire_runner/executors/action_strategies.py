@@ -49,11 +49,15 @@ class SetValueActionStrategy(ActionStrategy):
         if isinstance(value, dict):
             # Use dictionary directly without template resolution
             resolved_value = value
-            logger.info(f"Action set_value: Using dict directly for {path}")
+            logger.debug(f"Action set_value: Using dict directly for {path}")
+        elif isinstance(value, bool):
+            # Preserve boolean values without template resolution
+            resolved_value = value
+            logger.debug(f"Action set_value: Using boolean directly for {path}")
         else:
-            # Resolve template in value for non-dict values
+            # Resolve template in value for non-dict, non-boolean values
             resolved_value = context.resolve_template(str(value))
-            logger.info(f"Action set_value: Resolved template for {path}")
+            logger.debug(f"Action set_value: Resolved template for {path}")
 
         # Use namespaced paths to avoid collision during flow execution
         current_namespace = context.get_current_flow_namespace()
@@ -99,7 +103,7 @@ class DisplayValueActionStrategy(ActionStrategy):
         )
         try:
             value = context.resolve_path_value(path)
-            logger.info(f"Display: {path} = {value}")
+            logger.debug(f"Display: {path} = {value}")
         except Exception as e:
             logger.warning(f"Could not display value at path {path}: {e}")
 
@@ -119,7 +123,7 @@ class LogEventActionStrategy(ActionStrategy):
         """Execute a log_event action."""
         event_type = action_data.get("type", "unknown")
         event_data = action_data.get("data", {})
-        logger.info(f"Event: {event_type} - {event_data}")
+        logger.debug(f"Event: {event_type} - {event_data}")
 
 
 class SwapValuesActionStrategy(ActionStrategy):
@@ -152,7 +156,7 @@ class SwapValuesActionStrategy(ActionStrategy):
             self._set_value_at_path(context, path1, value2)
             self._set_value_at_path(context, path2, value1)
 
-            logger.info(f"Swapped values: {path1} <-> {path2}")
+            logger.debug(f"Swapped values: {path1} <-> {path2}")
 
         except Exception as e:
             logger.error(f"Error swapping values between {path1} and {path2}: {e}")
@@ -190,7 +194,7 @@ class FlowCallActionStrategy(ActionStrategy):
         # Handle sub-flow calls
         flow_id = action_data["flow"]
         raw_inputs = action_data.get("inputs", {})
-        logger.info(f"Engine action flow_call: {flow_id} (raw inputs: {raw_inputs})")
+        logger.debug(f"Engine action flow_call: {flow_id} (raw inputs: {raw_inputs})")
 
         # Resolve input templates using the current context
         resolved_inputs = {}
@@ -201,13 +205,13 @@ class FlowCallActionStrategy(ActionStrategy):
                     if input_value.startswith("{{") and input_value.endswith("}}"):
                         # This is a template, resolve it while preserving object types
                         resolved_value = context.resolve_template(input_value)
-                        logger.info(
+                        logger.debug(
                             f"Resolved template {input_key}: {input_value} -> {type(resolved_value).__name__}"
                         )
                     elif "outputs." in input_value:
                         # This is a path reference, resolve it
                         resolved_value = context.resolve_path_value(input_value)
-                        logger.info(
+                        logger.debug(
                             f"Resolved path {input_key}: {input_value} -> {type(resolved_value).__name__}"
                         )
                     else:
@@ -223,7 +227,7 @@ class FlowCallActionStrategy(ActionStrategy):
                 # Non-string values, use as-is
                 resolved_inputs[input_key] = input_value
 
-        logger.info(f"Engine action flow_call resolved inputs: {resolved_inputs}")
+        logger.debug(f"Engine action flow_call resolved inputs: {resolved_inputs}")
 
         # Create table executor using factory or fallback to direct creation
         if self.table_executor_factory:
@@ -241,7 +245,7 @@ class FlowCallActionStrategy(ActionStrategy):
                 table_executor._execute_sub_flow(
                     flow_id, resolved_inputs, context, system, raw_inputs
                 )
-                logger.info(f"Successfully executed sub-flow: {flow_id}")
+                logger.debug(f"Successfully executed sub-flow: {flow_id}")
             else:
                 logger.error(f"No system available for sub-flow execution: {flow_id}")
         except Exception as e:
@@ -279,7 +283,7 @@ class ValidateValueActionStrategy(ActionStrategy):
     ) -> None:
         """Execute a validate_value action."""
         # TODO: Implement validation
-        logger.info(
+        logger.debug(
             f"Validate value action called - not yet implemented: {action_data}"
         )
 

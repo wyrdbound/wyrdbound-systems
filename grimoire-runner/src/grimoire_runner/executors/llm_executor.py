@@ -67,7 +67,7 @@ class LLMExecutor(BaseStepExecutor):
                 **(settings.__dict__ if hasattr(settings, "__dict__") else {}),
             )
 
-            logger.info(f"LLM generation completed for step {step.id}")
+            logger.debug(f"LLM generation completed for step {step.id}")
             logger.debug(f"Generated content: {generated_content[:100]}...")
 
             # Store result in context for actions and provide a common 'result' key

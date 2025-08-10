@@ -201,7 +201,7 @@ class TestPlayerInputExecutor:
         with patch(
             "grimoire_runner.executors.player_input_executor.logger"
         ) as mock_logger:
-            mock_logger.info.side_effect = RuntimeError("Simulated error")
+            mock_logger.debug.side_effect = RuntimeError("Simulated error")
 
             step = StepDefinition(id="test_step", type=StepType.PLAYER_INPUT)
             result = player_input_executor.execute(step, context, mock_system)

@@ -50,7 +50,7 @@ class SystemLoader:
         if system_id in self._loaded_systems:
             return self._loaded_systems[system_id]
 
-        logger.info(f"Loading GRIMOIRE system from {system_path}")
+        logger.debug(f"Loading GRIMOIRE system from {system_path}")
 
         # Load system.yaml first
         system_file = system_path / "system.yaml"
@@ -71,7 +71,7 @@ class SystemLoader:
         # Cache the loaded system
         self._loaded_systems[system.id] = system
 
-        logger.info(f"Successfully loaded system '{system.name}' ({system.id})")
+        logger.debug(f"Successfully loaded system '{system.name}' ({system.id})")
         return system
 
     def _load_system_definition(self, system_file: Path) -> System:
@@ -382,6 +382,9 @@ class SystemLoader:
             type=step_type,
             prompt=data.get("prompt"),
             condition=data.get("condition"),
+            result_message=data.get(
+                "result_message"
+            ),  # Add support for custom result messages
             parallel=data.get("parallel", False),
             actions=data.get("actions", []),
             next_step=data.get("next_step"),
@@ -396,6 +399,10 @@ class SystemLoader:
             prompt_id=data.get("prompt_id"),
             prompt_data=data.get("prompt_data", {}),
             llm_settings=llm_settings,
+            # Conditional step fields
+            if_condition=data.get("if"),  # Map 'if' to 'if_condition'
+            then_actions=data.get("then"),
+            else_actions=data.get("else"),
         )
 
     def reload_system(self, system_id: str) -> System | None:

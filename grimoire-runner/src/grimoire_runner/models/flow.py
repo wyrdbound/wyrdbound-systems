@@ -16,6 +16,7 @@ class StepType(Enum):
     LLM_GENERATION = "llm_generation"
     COMPLETION = "completion"
     FLOW_CALL = "flow_call"
+    CONDITIONAL = "conditional"
 
 
 @dataclass
@@ -26,6 +27,7 @@ class InputDefinition:
     id: str
     required: bool = True
     description: str | None = None
+    enum: list[str] | None = None
 
 
 @dataclass
@@ -96,6 +98,9 @@ class StepDefinition:
     type: StepType | None = None
     prompt: str | None = None
     condition: str | None = None
+    result_message: str | None = (
+        None  # Custom result message (emoji will be auto-prepended)
+    )
     parallel: bool = False
     actions: list[dict[str, Any]] = field(default_factory=list)
     next_step: str | None = None
@@ -121,6 +126,15 @@ class StepDefinition:
     prompt_id: str | None = None
     prompt_data: dict[str, Any] = field(default_factory=dict)
     llm_settings: LLMSettingsDefinition | None = None
+
+    # For conditional
+    if_condition: str | None = None  # Condition to evaluate (alias for condition)
+    then_actions: list[dict[str, Any]] = field(
+        default_factory=list
+    )  # Actions to execute if condition is true
+    else_actions: dict[str, Any] | None = (
+        None  # Actions to execute if condition is false (can be nested conditional)
+    )
 
 
 @dataclass

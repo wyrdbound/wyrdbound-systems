@@ -53,6 +53,7 @@ class DefaultExecutorFactory(ExecutorFactory):
     ) -> StepExecutorInterface:
         """Create an executor for the given step type."""
         from ..executors.choice_executor import ChoiceExecutor
+        from ..executors.conditional_executor import ConditionalExecutor
         from ..executors.dice_executor import DiceExecutor
         from ..executors.flow_executor import FlowExecutor
         from ..executors.llm_executor import LLMExecutor
@@ -69,6 +70,13 @@ class DefaultExecutorFactory(ExecutorFactory):
             return TableExecutor()
         elif step_type == "llm_generation":
             return LLMExecutor()
+        elif step_type == "conditional":
+            # Inject action executor dependency if registry is available
+            if self.executor_registry:
+                action_executor = self.executor_registry.create_action_executor()
+                return ConditionalExecutor(action_executor)
+            else:
+                return ConditionalExecutor()  # Falls back to internal creation
         elif step_type in ["completion", "flow_call"]:
             # Inject action executor dependency if registry is available
             if self.executor_registry:
@@ -90,6 +98,7 @@ class DefaultExecutorFactory(ExecutorFactory):
             "llm_generation",
             "completion",
             "flow_call",
+            "conditional",
         ]
 
 
