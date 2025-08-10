@@ -385,7 +385,9 @@ class TableExecutor(BaseStepExecutor):
 
         engine = GrimoireEngine()
         flow_result = engine.execute_flow(flow_id, sub_context, system)
-        logger.debug(f"Sub-flow {flow_id} completed with success: {flow_result.success}")
+        logger.debug(
+            f"Sub-flow {flow_id} completed with success: {flow_result.success}"
+        )
 
         # Debug logging
         logger.debug(

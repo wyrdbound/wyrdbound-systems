@@ -98,7 +98,9 @@ class StepDefinition:
     type: StepType | None = None
     prompt: str | None = None
     condition: str | None = None
-    result_message: str | None = None  # Custom result message (emoji will be auto-prepended)
+    result_message: str | None = (
+        None  # Custom result message (emoji will be auto-prepended)
+    )
     parallel: bool = False
     actions: list[dict[str, Any]] = field(default_factory=list)
     next_step: str | None = None
@@ -127,8 +129,12 @@ class StepDefinition:
 
     # For conditional
     if_condition: str | None = None  # Condition to evaluate (alias for condition)
-    then_actions: list[dict[str, Any]] = field(default_factory=list)  # Actions to execute if condition is true
-    else_actions: dict[str, Any] | None = None  # Actions to execute if condition is false (can be nested conditional)
+    then_actions: list[dict[str, Any]] = field(
+        default_factory=list
+    )  # Actions to execute if condition is true
+    else_actions: dict[str, Any] | None = (
+        None  # Actions to execute if condition is false (can be nested conditional)
+    )
 
 
 @dataclass

@@ -227,7 +227,9 @@ class DerivedFieldManager:
         # The field is already qualified (e.g., "knave.abilities.strength.defense")
         # Look for it directly in the fields registry
         logger.debug(f"_recompute_field: looking for qualified field = {field}")
-        logger.debug(f"_recompute_field: registered fields = {list(self.fields.keys())}")
+        logger.debug(
+            f"_recompute_field: registered fields = {list(self.fields.keys())}"
+        )
 
         if field not in self.fields:
             logger.debug(f"Qualified field {field} not registered for recomputation")
@@ -238,7 +240,9 @@ class DerivedFieldManager:
             template_expr = self.fields[field]["derived"]
             # Convert $variable syntax to {{ variable }} syntax for Jinja2
             jinja_expr = self._convert_to_jinja_syntax(template_expr)
-            logger.debug(f"Computing field {field}: '{template_expr}' -> '{jinja_expr}'")
+            logger.debug(
+                f"Computing field {field}: '{template_expr}' -> '{jinja_expr}'"
+            )
 
             result = self.template_resolver(jinja_expr)
             logger.debug(f"Field {field} computed to: {result}")

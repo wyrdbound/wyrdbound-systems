@@ -6,7 +6,7 @@ from pathlib import Path
 
 from rich.console import Console
 from rich.panel import Panel
-from rich.prompt import Confirm, Prompt
+from rich.prompt import Prompt
 from rich.table import Table
 
 from ..core.engine import GrimoireEngine
@@ -32,7 +32,7 @@ STEP_TYPE_EMOJIS = {
 def get_step_start_message(step_type: StepType) -> str:
     """Get generic start message for a step type."""
     emoji = STEP_TYPE_EMOJIS.get(step_type, "⚙️")
-    
+
     messages = {
         StepType.DICE_ROLL: "Rolling dice...",
         StepType.DICE_SEQUENCE: "Rolling dice sequence...",
@@ -44,7 +44,7 @@ def get_step_start_message(step_type: StepType) -> str:
         StepType.FLOW_CALL: "Calling sub-flow...",
         StepType.CONDITIONAL: "Evaluating conditions...",
     }
-    
+
     message = messages.get(step_type, "Executing step...")
     return f"{emoji} {message}"
 
@@ -52,10 +52,10 @@ def get_step_start_message(step_type: StepType) -> str:
 def get_step_success_message(step_type: StepType, custom_message: str = None) -> str:
     """Get success message for a step type, with optional custom message."""
     emoji = STEP_TYPE_EMOJIS.get(step_type, "⚙️")
-    
+
     if custom_message:
         return f"{emoji} {custom_message}"
-    
+
     # Default messages (without emoji since we'll prepend it)
     default_messages = {
         StepType.DICE_ROLL: "Dice rolled successfully",
@@ -68,7 +68,7 @@ def get_step_success_message(step_type: StepType, custom_message: str = None) ->
         StepType.FLOW_CALL: "Sub-flow completed",
         StepType.CONDITIONAL: "Conditions evaluated",
     }
-    
+
     default_message = default_messages.get(step_type, "Step completed successfully")
     return f"{emoji} {default_message}"
 
@@ -76,7 +76,7 @@ def get_step_success_message(step_type: StepType, custom_message: str = None) ->
 def get_step_failure_message(step_type: StepType) -> str:
     """Get generic failure message for a step type."""
     emoji = STEP_TYPE_EMOJIS.get(step_type, "⚙️")
-    
+
     failure_messages = {
         StepType.DICE_ROLL: "Dice roll failed",
         StepType.DICE_SEQUENCE: "Dice sequence failed",
@@ -88,7 +88,7 @@ def get_step_failure_message(step_type: StepType) -> str:
         StepType.FLOW_CALL: "Sub-flow failed",
         StepType.CONDITIONAL: "Condition evaluation failed",
     }
-    
+
     message = failure_messages.get(step_type, "Step failed")
     return f"{emoji} {message}"
 
@@ -96,7 +96,14 @@ def get_step_failure_message(step_type: StepType) -> str:
 class RichTUI:
     """Rich-based TUI for accessible step-by-step flow execution."""
 
-    def __init__(self, system_path: Path, flow_id: str, input_values: dict = None, debug: bool = False, interactive: bool = True):
+    def __init__(
+        self,
+        system_path: Path,
+        flow_id: str,
+        input_values: dict = None,
+        debug: bool = False,
+        interactive: bool = True,
+    ):
         self.system_path = system_path
         self.flow_id = flow_id
         self.input_values = input_values or {}
@@ -161,10 +168,12 @@ class RichTUI:
 
         # Initialize input values if provided
         if self.input_values:
-            self.console.print(f"[dim]Setting input values:[/dim]")
+            self.console.print("[dim]Setting input values:[/dim]")
             for input_name, input_value in self.input_values.items():
                 self.context.set_input(input_name, input_value)
-                self.console.print(f"  [cyan]{input_name}[/cyan] = [yellow]{input_value}[/yellow]")
+                self.console.print(
+                    f"  [cyan]{input_name}[/cyan] = [yellow]{input_value}[/yellow]"
+                )
 
         # Initialize observable derived fields from output models
         for output_def in self.flow_obj.outputs:
@@ -275,7 +284,7 @@ class RichTUI:
         # Show generic start message for step type
         start_message = get_step_start_message(step.type)
         self.console.print(f"[cyan]{start_message}[/cyan]")
-        
+
         # Execute the step through the engine
         step_result = self.engine._execute_step(step, self.context, self.system)
 
@@ -424,32 +433,37 @@ class RichTUI:
                 # Resolve any templates in the custom message
                 try:
                     from ..services.template_service import TemplateService
+
                     template_service = TemplateService()
-                    
+
                     # Debug: Log current context state before template resolution
-                    logger.debug(f"Template resolution context - outputs.saving_throw_result: {self.context.outputs.get('saving_throw_result', 'NOT_FOUND')}")
-                    
-                    resolved_message = template_service.resolve_template_with_execution_context(
-                        step.result_message, 
-                        self.context,
-                        self.system
+                    logger.debug(
+                        f"Template resolution context - outputs.saving_throw_result: {self.context.outputs.get('saving_throw_result', 'NOT_FOUND')}"
                     )
-                    
-                    logger.debug(f"Template '{step.result_message}' resolved to: '{resolved_message}'")
-                    success_message = get_step_success_message(step.type, resolved_message)
+
+                    resolved_message = (
+                        template_service.resolve_template_with_execution_context(
+                            step.result_message, self.context, self.system
+                        )
+                    )
+
+                    logger.debug(
+                        f"Template '{step.result_message}' resolved to: '{resolved_message}'"
+                    )
+                    success_message = get_step_success_message(
+                        step.type, resolved_message
+                    )
                 except Exception as e:
                     # If template resolution fails, fall back to generic message
                     logger.debug(f"Failed to resolve result_message template: {e}")
                     success_message = get_step_success_message(step.type)
             else:
                 success_message = get_step_success_message(step.type)
-            
+
             self.console.print(f"[green]{success_message}[/green]")
         else:
             failure_message = get_step_failure_message(step.type)
-            self.console.print(
-                f"[red]{failure_message}: {step_result.error}[/red]"
-            )
+            self.console.print(f"[red]{failure_message}: {step_result.error}[/red]")
 
         self.step_results.append(step_result)
         return step_result.success, step_result.next_step_id
@@ -716,7 +730,13 @@ class RichTUI:
         self.console.print(summary_table)
 
 
-def run_rich_tui_executor(system_path: Path, flow_id: str, input_values: dict = None, debug: bool = False, interactive: bool = True) -> None:
+def run_rich_tui_executor(
+    system_path: Path,
+    flow_id: str,
+    input_values: dict = None,
+    debug: bool = False,
+    interactive: bool = True,
+) -> None:
     """Run the Rich TUI executor."""
     tui = RichTUI(system_path, flow_id, input_values, debug=debug)
     tui.run()

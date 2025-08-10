@@ -130,22 +130,29 @@ def execute(
     """Execute a complete flow with enhanced visual output."""
     # TODO: Implement interactive mode functionality
     _ = interactive  # Currently unused - planned for future implementation
-    
+
     # Configure logging based on debug flag
     if debug:
-        logging.basicConfig(level=logging.DEBUG, format='%(levelname)s:%(name)s:%(message)s')
+        logging.basicConfig(
+            level=logging.DEBUG, format="%(levelname)s:%(name)s:%(message)s"
+        )
     elif verbose:
-        logging.basicConfig(level=logging.INFO, format='%(levelname)s:%(name)s:%(message)s')
+        logging.basicConfig(
+            level=logging.INFO, format="%(levelname)s:%(name)s:%(message)s"
+        )
     else:
-        logging.basicConfig(level=logging.WARNING, format='%(levelname)s:%(name)s:%(message)s')
+        logging.basicConfig(
+            level=logging.WARNING, format="%(levelname)s:%(name)s:%(message)s"
+        )
 
     try:
         # Load inputs from YAML file if provided
         input_values = {}
         if inputs:
             import yaml
+
             try:
-                with open(inputs, 'r') as f:
+                with open(inputs) as f:
                     input_values = yaml.safe_load(f)
                 console.print(f"[dim]Loaded inputs from {inputs}[/dim]")
             except Exception as e:

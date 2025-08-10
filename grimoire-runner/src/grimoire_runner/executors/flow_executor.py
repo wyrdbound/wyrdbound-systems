@@ -57,7 +57,9 @@ class FlowExecutor(BaseStepExecutor):
 
             # Execute any actions defined in the completion step
             if hasattr(step, "actions") and step.actions:
-                logger.debug(f"Executing {len(step.actions)} actions in completion step")
+                logger.debug(
+                    f"Executing {len(step.actions)} actions in completion step"
+                )
                 self.action_executor.execute_actions(step.actions, context, {})
 
             return StepResult(

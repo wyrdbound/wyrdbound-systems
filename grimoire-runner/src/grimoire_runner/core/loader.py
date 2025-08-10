@@ -382,7 +382,9 @@ class SystemLoader:
             type=step_type,
             prompt=data.get("prompt"),
             condition=data.get("condition"),
-            result_message=data.get("result_message"),  # Add support for custom result messages
+            result_message=data.get(
+                "result_message"
+            ),  # Add support for custom result messages
             parallel=data.get("parallel", False),
             actions=data.get("actions", []),
             next_step=data.get("next_step"),
