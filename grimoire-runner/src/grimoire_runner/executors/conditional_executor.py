@@ -25,7 +25,7 @@ class ConditionalExecutor(BaseStepExecutor):
         """Execute a conditional step."""
         from ..models.flow import StepResult, StepType
 
-        logger.info(f"Executing conditional step: {step.id}")
+        logger.debug(f"Executing conditional step: {step.id}")
         
         # Get condition from either 'if' or 'condition' field  
         condition = getattr(step, 'if_condition', None) or step.condition
@@ -57,7 +57,7 @@ class ConditionalExecutor(BaseStepExecutor):
             logger.debug(f"Condition after template resolution: '{condition_result}'")
             # Convert to boolean
             is_true = self._evaluate_condition(condition_result)
-            logger.info(f"Condition '{condition}' -> '{condition_result}' -> {is_true}")
+            logger.debug(f"Condition '{condition}' -> '{condition_result}' -> {is_true}")
 
         except Exception as e:
             logger.error(f"Error evaluating condition '{condition}': {e}")
@@ -69,11 +69,11 @@ class ConditionalExecutor(BaseStepExecutor):
 
         # Execute appropriate branch
         if is_true and step.then_actions:
-            logger.info("Executing 'then' branch")
+            logger.debug("Executing 'then' branch")
             if isinstance(step.then_actions, list):
                 self._execute_action_list(step.then_actions, context, system)
         elif not is_true and step.else_actions:
-            logger.info("Executing 'else' branch")
+            logger.debug("Executing 'else' branch")
             if isinstance(step.else_actions, list):
                 self._execute_action_list(step.else_actions, context, system)
             else:
@@ -135,7 +135,7 @@ class ConditionalExecutor(BaseStepExecutor):
                 )
                 logger.debug(f"Nested condition after template resolution: '{condition_result}'")
                 is_true = self._evaluate_condition(condition_result)
-                logger.info(f"Nested condition '{condition}' -> '{condition_result}' -> {is_true}")
+                logger.debug(f"Nested condition '{condition}' -> '{condition_result}' -> {is_true}")
                 
                 if is_true and 'then' in conditional_data:
                     then_actions = conditional_data['then']

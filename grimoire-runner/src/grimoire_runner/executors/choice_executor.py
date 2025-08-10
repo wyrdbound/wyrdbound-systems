@@ -62,9 +62,9 @@ class ChoiceExecutor(BaseStepExecutor):
                     resolved_choice.label = context.resolve_template(choice.label)
                 resolved_choices.append(resolved_choice)
 
-            logger.info(f"Player choice step: {step.name}")
+            logger.debug(f"Player choice step: {step.name}")
             for i, choice in enumerate(resolved_choices):
-                logger.info(f"  {i + 1}. {choice.label}")
+                logger.debug(f"  {i + 1}. {choice.label}")
 
             return StepResult(
                 step_id=step.id,
@@ -101,7 +101,7 @@ class ChoiceExecutor(BaseStepExecutor):
                     )
                     try:
                         value = context.resolve_path_value(path)
-                        logger.info(f"Display: {value}")
+                        logger.debug(f"Display: {value}")
                     except Exception as e:
                         logger.warning(f"Could not display value at path {path}: {e}")
 
@@ -159,7 +159,7 @@ class ChoiceExecutor(BaseStepExecutor):
                             )
                             choices.append(choice)
 
-                        logger.info(f"Generated {len(choices)} choices from {path}")
+                        logger.debug(f"Generated {len(choices)} choices from {path}")
                         return choices
                     else:
                         logger.warning(
@@ -191,7 +191,7 @@ class ChoiceExecutor(BaseStepExecutor):
                             )
                             choices.append(choice)
 
-                        logger.info(
+                        logger.debug(
                             f"Generated {len(choices)} choices from compendium {comp_name}"
                         )
                         return choices
@@ -256,7 +256,7 @@ class ChoiceExecutor(BaseStepExecutor):
                             )
                             choices.append(choice)
 
-                        logger.info(
+                        logger.debug(
                             f"Generated {len(choices)} choices from table {table_name}"
                         )
                         return choices
@@ -324,7 +324,7 @@ class ChoiceExecutor(BaseStepExecutor):
 
             # Execute step-level actions (including flow calls) if present
             if step.actions and system and self.engine:
-                logger.info(
+                logger.debug(
                     f"Executing {len(step.actions)} step actions after choice..."
                 )
                 step_result_data = {
@@ -333,9 +333,9 @@ class ChoiceExecutor(BaseStepExecutor):
                 self.engine.action_executor.execute_actions(
                     step.actions, context, step_result_data, system
                 )
-                logger.info("✅ Step actions executed successfully")
+                logger.debug("✅ Step actions executed successfully")
 
-            logger.info(f"User chose: {selected_choice.label} ({choice_id})")
+            logger.debug(f"User chose: {selected_choice.label} ({choice_id})")
 
             return StepResult(
                 step_id=step.id,
@@ -363,11 +363,11 @@ class ChoiceExecutor(BaseStepExecutor):
             if isinstance(value, dict):
                 # Use dictionary directly without template resolution
                 resolved_value = value
-                logger.info(f"Choice action set_value: Using dict directly for {path}")
+                logger.debug(f"Choice action set_value: Using dict directly for {path}")
             else:
                 # Resolve templates for non-dict values
                 resolved_value = context.resolve_template(str(value))
-                logger.info(f"Choice action set_value: Resolved template for {path}")
+                logger.debug(f"Choice action set_value: Resolved template for {path}")
 
             # Set the value
             if path.startswith("outputs."):
@@ -381,7 +381,7 @@ class ChoiceExecutor(BaseStepExecutor):
             # Handle sub-flow calls - similar to table executor
             flow_id = action_data["flow"]
             inputs = action_data.get("inputs", {})
-            logger.info(f"Choice action flow_call: {flow_id} (inputs: {inputs})")
+            logger.debug(f"Choice action flow_call: {flow_id} (inputs: {inputs})")
 
             # This should be handled by the engine after choice processing
             # For now, we'll log it but not execute it here

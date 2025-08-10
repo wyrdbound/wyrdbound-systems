@@ -50,7 +50,7 @@ class SystemLoader:
         if system_id in self._loaded_systems:
             return self._loaded_systems[system_id]
 
-        logger.info(f"Loading GRIMOIRE system from {system_path}")
+        logger.debug(f"Loading GRIMOIRE system from {system_path}")
 
         # Load system.yaml first
         system_file = system_path / "system.yaml"
@@ -71,7 +71,7 @@ class SystemLoader:
         # Cache the loaded system
         self._loaded_systems[system.id] = system
 
-        logger.info(f"Successfully loaded system '{system.name}' ({system.id})")
+        logger.debug(f"Successfully loaded system '{system.name}' ({system.id})")
         return system
 
     def _load_system_definition(self, system_file: Path) -> System:

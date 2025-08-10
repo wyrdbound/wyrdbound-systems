@@ -118,6 +118,9 @@ def execute(
     verbose: bool = typer.Option(
         False, "--verbose", "-v", help="Enable verbose output"
     ),
+    debug: bool = typer.Option(
+        False, "--debug", "-d", help="Enable debug logging output"
+    ),
     interactive: bool = typer.Option(
         True,
         "--interactive/--no-interactive",
@@ -127,10 +130,14 @@ def execute(
     """Execute a complete flow with enhanced visual output."""
     # TODO: Implement interactive mode functionality
     _ = interactive  # Currently unused - planned for future implementation
-    if verbose:
-        logging.basicConfig(level=logging.DEBUG)
+    
+    # Configure logging based on debug flag
+    if debug:
+        logging.basicConfig(level=logging.DEBUG, format='%(levelname)s:%(name)s:%(message)s')
+    elif verbose:
+        logging.basicConfig(level=logging.INFO, format='%(levelname)s:%(name)s:%(message)s')
     else:
-        logging.basicConfig(level=logging.INFO)
+        logging.basicConfig(level=logging.WARNING, format='%(levelname)s:%(name)s:%(message)s')
 
     try:
         # Load inputs from YAML file if provided
@@ -146,7 +153,7 @@ def execute(
                 raise typer.Exit(1) from None
 
         # Use Rich TUI interface - no fallback, just fix issues in Rich TUI
-        run_rich_tui_executor(system_path, flow, input_values)
+        run_rich_tui_executor(system_path, flow, input_values, debug=debug)
     except Exception as e:
         console.print(f"[bold red]Textual interface error:[/bold red] {e}")
         raise typer.Exit(1) from None

@@ -119,7 +119,7 @@ class FlowExecutionContextManager:
         execution_id = str(uuid.uuid4())[:8]
         namespace_id = f"flow_{execution_id}"
 
-        logger.info(
+        logger.debug(
             f"Starting flow execution: {flow_id} (execution_id: {execution_id}, namespace: {namespace_id})"
         )
 
@@ -158,7 +158,7 @@ class FlowExecutionContextManager:
         execution_state = self.execution_stack.pop()
         execution_state.complete()
 
-        logger.info(
+        logger.debug(
             f"Ending flow execution: {execution_state.flow_id} (namespace: {execution_state.namespace_id})"
         )
 
@@ -389,7 +389,7 @@ class CheckpointManager:
         )
         self.checkpoints[checkpoint_id] = checkpoint
 
-        logger.info(
+        logger.debug(
             f"Checkpoint created: {checkpoint_id} for execution {execution_state.execution_id}"
         )
         return checkpoint
@@ -412,7 +412,7 @@ class CheckpointManager:
         try:
             # Restore namespace data
             # Note: This would require implementing namespace data restoration in the data access layer
-            logger.info(
+            logger.debug(
                 f"Restoring checkpoint: {checkpoint_id} for execution {checkpoint.execution_state.execution_id}"
             )
 
@@ -443,7 +443,7 @@ class CheckpointManager:
         """
         if checkpoint_id in self.checkpoints:
             del self.checkpoints[checkpoint_id]
-            logger.info(f"Checkpoint removed: {checkpoint_id}")
+            logger.debug(f"Checkpoint removed: {checkpoint_id}")
             return True
         return False
 
@@ -455,5 +455,5 @@ class CheckpointManager:
         """
         count = len(self.checkpoints)
         self.checkpoints.clear()
-        logger.info(f"Cleared {count} checkpoints")
+        logger.debug(f"Cleared {count} checkpoints")
         return count

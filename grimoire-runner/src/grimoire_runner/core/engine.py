@@ -95,7 +95,7 @@ class GrimoireEngine:
         if not flow:
             raise ValueError(f"Flow '{flow_id}' not found in system")
 
-        logger.info(f"Executing flow: {flow.name} ({flow_id})")
+        logger.debug(f"Executing flow: {flow.name} ({flow_id})")
 
         # Create unique execution namespace for this flow
         import uuid
@@ -127,7 +127,7 @@ class GrimoireEngine:
             for output_def in flow.outputs:
                 if output_def.type in system.models:
                     model = system.models[output_def.type]
-                    logger.info(
+                    logger.debug(
                         f"Initializing model observables for {output_def.type} ({output_def.id})"
                     )
                     context.initialize_model_observables(model, output_def.id)
@@ -146,7 +146,7 @@ class GrimoireEngine:
 
                 # Check for breakpoints
                 if self._debug_mode and self._has_breakpoint(flow_id, current_step_id):
-                    logger.info(f"Breakpoint hit at step: {current_step_id}")
+                    logger.debug(f"Breakpoint hit at step: {current_step_id}")
                     break
 
                 # Execute the step
@@ -209,7 +209,7 @@ class GrimoireEngine:
                 flow_namespace_data["variables"].copy() if flow_namespace_data else {}
             )
 
-            logger.info(
+            logger.debug(
                 f"Flow execution completed: {flow_id} (namespace: {namespace_id})"
             )
             return FlowResult(
@@ -351,14 +351,14 @@ class GrimoireEngine:
 
         if step_id not in self.breakpoints[flow_id]:
             self.breakpoints[flow_id].append(step_id)
-            logger.info(f"Breakpoint set: {flow_id}.{step_id}")
+            logger.debug(f"Breakpoint set: {flow_id}.{step_id}")
 
     def remove_breakpoint(self, flow_id: str, step_id: str) -> None:
         """Remove a breakpoint from a specific step."""
         if flow_id in self.breakpoints:
             if step_id in self.breakpoints[flow_id]:
                 self.breakpoints[flow_id].remove(step_id)
-                logger.info(f"Breakpoint removed: {flow_id}.{step_id}")
+                logger.debug(f"Breakpoint removed: {flow_id}.{step_id}")
 
     def clear_breakpoints(self, flow_id: str | None = None) -> None:
         """Clear breakpoints for a flow or all flows."""
@@ -367,7 +367,7 @@ class GrimoireEngine:
                 del self.breakpoints[flow_id]
         else:
             self.breakpoints.clear()
-        logger.info(f"Breakpoints cleared for {flow_id or 'all flows'}")
+        logger.debug(f"Breakpoints cleared for {flow_id or 'all flows'}")
 
     def _has_breakpoint(self, flow_id: str, step_id: str) -> bool:
         """Check if there's a breakpoint on a specific step."""
@@ -386,12 +386,12 @@ class GrimoireEngine:
     def enable_debug_mode(self) -> None:
         """Enable debug mode with breakpoint support."""
         self._debug_mode = True
-        logger.info("Debug mode enabled")
+        logger.debug("Debug mode enabled")
 
     def disable_debug_mode(self) -> None:
         """Disable debug mode."""
         self._debug_mode = False
-        logger.info("Debug mode disabled")
+        logger.debug("Debug mode disabled")
 
     def set_debug_mode(self, enabled: bool) -> None:
         """Set debug mode on or off."""

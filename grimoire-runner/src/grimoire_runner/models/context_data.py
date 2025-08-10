@@ -107,24 +107,24 @@ class ExecutionContext:
         """Get an output at the specified path, including computed derived fields."""
         try:
             base_value = self.path_resolver.get_value(self, f"outputs.{path}")
-            logger.info(f"get_output({path}): base_value = {base_value}")
+            logger.debug(f"get_output({path}): base_value = {base_value}")
 
             # If we have a derived field manager and this looks like a model instance,
             # try to merge in the computed derived fields
             if self._derived_field_manager and isinstance(base_value, dict):
-                logger.info(f"get_output({path}): checking for computed values")
+                logger.debug(f"get_output({path}): checking for computed values")
                 # Check if this path corresponds to a model instance
                 # For paths like "knave", check if we have derived fields for that instance
                 computed_values = (
                     self._derived_field_manager.get_computed_values_for_instance(path)
                 )
-                logger.info(f"get_output({path}): computed_values = {computed_values}")
+                logger.debug(f"get_output({path}): computed_values = {computed_values}")
                 if computed_values:
                     # Deep merge the computed values into the base value
                     merged_value = self._deep_merge_dicts(
                         base_value.copy(), computed_values
                     )
-                    logger.info(f"get_output({path}): merged_value = {merged_value}")
+                    logger.debug(f"get_output({path}): merged_value = {merged_value}")
                     return merged_value
 
             return base_value
@@ -251,7 +251,7 @@ class ExecutionContext:
 
     def resolve_path_value(self, path: str) -> Any:
         """Resolve a path that might reference variables, outputs, inputs, or system metadata."""
-        logger.info(f"resolve_path_value({path})")
+        logger.debug(f"resolve_path_value({path})")
 
         # Use the centralized path resolver
         try:
