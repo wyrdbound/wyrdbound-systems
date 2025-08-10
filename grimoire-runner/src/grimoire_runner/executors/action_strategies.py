@@ -50,8 +50,12 @@ class SetValueActionStrategy(ActionStrategy):
             # Use dictionary directly without template resolution
             resolved_value = value
             logger.debug(f"Action set_value: Using dict directly for {path}")
+        elif isinstance(value, bool):
+            # Preserve boolean values without template resolution
+            resolved_value = value
+            logger.debug(f"Action set_value: Using boolean directly for {path}")
         else:
-            # Resolve template in value for non-dict values
+            # Resolve template in value for non-dict, non-boolean values
             resolved_value = context.resolve_template(str(value))
             logger.debug(f"Action set_value: Resolved template for {path}")
 

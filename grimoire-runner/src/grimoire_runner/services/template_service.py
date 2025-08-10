@@ -340,6 +340,46 @@ class TemplateService:
             raise ValueError(f"Unknown template resolution mode: {mode}")
 
         return self._strategies[mode].resolve_template(template_str, context_data)
+    
+    def resolve_template_with_execution_context(
+        self, template_str: str, execution_context, system=None, mode: str = "runtime"
+    ) -> Any:
+        """Resolve a template using ExecutionContext, automatically converting to dict format."""
+        # Debug logging for template resolution
+        import logging
+        logger = logging.getLogger(__name__)
+        
+        # Let's check the actual ExecutionContext outputs before conversion
+        logger.debug(f"BEFORE dict conversion - execution_context.outputs type: {type(execution_context.outputs)}")
+        logger.debug(f"BEFORE dict conversion - execution_context.outputs content: {execution_context.outputs}")
+        if hasattr(execution_context.outputs, 'items'):
+            for key, value in execution_context.outputs.items():
+                logger.debug(f"BEFORE dict conversion - outputs[{key}] = {value} (type: {type(value)})")
+        
+        # Convert ExecutionContext to dict for template resolution
+        context_dict = {
+            'inputs': dict(execution_context.inputs),
+            'variables': dict(execution_context.variables),
+            'outputs': dict(execution_context.outputs),
+        }
+        
+        logger.debug(f"Template resolution input: '{template_str}'")
+        logger.debug(f"Context dict outputs: {context_dict['outputs']}")
+        if 'outputs' in context_dict:
+            for key, value in context_dict['outputs'].items():
+                logger.debug(f"AFTER dict conversion - outputs[{key}] = {value} (type: {type(value)})")
+        
+        # Add system metadata if available
+        if system:
+            context_dict['system'] = {
+                'id': system.id,
+                'name': system.name,
+                'description': system.description,
+            }
+        
+        result = self.resolve_template(template_str, context_dict, mode)
+        logger.debug(f"Template resolution result: '{result}'")
+        return result
 
     def is_template(self, text: str, mode: str = "runtime") -> bool:
         """Check if a string contains template syntax."""

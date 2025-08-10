@@ -98,6 +98,7 @@ class StepDefinition:
     type: StepType | None = None
     prompt: str | None = None
     condition: str | None = None
+    result_message: str | None = None  # Custom result message (emoji will be auto-prepended)
     parallel: bool = False
     actions: list[dict[str, Any]] = field(default_factory=list)
     next_step: str | None = None

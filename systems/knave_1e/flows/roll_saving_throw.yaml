@@ -30,6 +30,7 @@ steps:
   - id: "determine_dice_roll"
     name: "Determine Saving Throw Type"
     type: "conditional"
+    result_message: "Selected {{ inputs.saving_throw_type }} dice ({{ variables.base_dice_roll }})"
     if: "'{{ inputs.saving_throw_type }}' == 'basic'"
     then:
       # Basic
@@ -53,6 +54,7 @@ steps:
   - id: "execute_saving_throw_roll"
     name: "Roll Saving Throw"
     type: "dice_roll"
+    result_message: "Rolled {{ variables.roll_result }} vs DC {{ inputs.saving_throw_dc }}"
     prompt: "Rolling {{ variables.base_dice_roll }} + {{ inputs.saving_throw_modifier }} for saving throw..."
     roll: "{{ variables.base_dice_roll }} + {{ inputs.saving_throw_modifier }}"
     actions:
@@ -64,6 +66,7 @@ steps:
   - id: "evaluate_saving_throw_result"
     name: "Evaluate Saving Throw Result"
     type: "conditional"
+    result_message: "Saving throw {% if outputs.saving_throw_result %}succeeded{% else %}failed{% endif %}"
     if: "{{ variables.roll_result }} > {{ inputs.saving_throw_dc }}"
     then:
       - set_value:
@@ -78,6 +81,7 @@ steps:
   - id: "complete_saving_throw"
     name: "Complete Saving Throw"
     type: "completion"
+    result_message: "Saving throw complete - {% if outputs.saving_throw_result %}Success{% else %}Failure{% endif %}"
     actions:
       - display_value: "outputs.saving_throw_result"
       - log_event:
