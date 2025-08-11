@@ -1,0 +1,21 @@
+id: test_nested_flow_calls
+name: Test Nested Flow Calls
+description: Test flow for demonstrating nested flow_call execution
+
+outputs:
+  - id: final_result
+    type: text
+
+steps:
+  - id: level_1_flow_call
+    name: Level 1 Flow Call
+    description: Calls a sub-flow that contains another flow call
+    type: flow_call
+    flow: test_level_2_flow
+    inputs:
+      input_value: "Level 1 Input"
+
+  - id: completion
+    name: Complete Test
+    type: completion
+    prompt: "All nested flows completed"

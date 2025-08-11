@@ -354,7 +354,7 @@ class TestFlowIntegration:
         # Verify all components are loaded
         assert len(test_system.models) == 1  # character model
         assert len(test_system.tables) == 1  # simple-names table
-        assert len(test_system.flows) == 6  # all test flows
+        assert len(test_system.flows) == 9  # all test flows including nested test flows
 
         # Verify flows reference valid system components
         assert "character" in test_system.models

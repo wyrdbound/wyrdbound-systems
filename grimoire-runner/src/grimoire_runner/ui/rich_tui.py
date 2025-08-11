@@ -352,16 +352,23 @@ class RichTUI:
 
             step_num += 1
 
-            # Show step header - simplified for sub-flows
+            # Show step header - detailed for sub-flows
             step_description = getattr(step, "description", None) or ""
+            step_info = f"Step {step_num}/{len(self.flow_obj.steps)}: {step.name or step.id}"
+            step_type_info = f"Type: {step.type}"
+            
             if step_description:
-                self._print_indented(
-                    f"[blue]  📝 {step.name or step.id}: {step_description}[/blue]"
-                )
+                panel_content = f"[bold]{step_info}[/bold]\n[dim]{step_type_info}[/dim]\n[dim]Description: {step_description}[/dim]"
             else:
-                self._print_indented(
-                    f"[blue]  📝 {step.name or step.id}[/blue]"
-                )
+                panel_content = f"[bold]{step_info}[/bold]\n[dim]{step_type_info}[/dim]"
+            
+            # Use indented panel for nested flows
+            panel = self._create_indented_panel(
+                panel_content,
+                title="Sub-Flow Step",
+                border_style="cyan"
+            )
+            self.console.print(panel)
 
             # Update context
             self.context.current_step = current_step_id
@@ -622,9 +629,131 @@ class RichTUI:
                 success_message = get_step_success_message(step.type)
             
             self._print_indented(f"[green]{success_message}[/green]")
-        else:
-            failure_message = get_step_failure_message(step.type)
-            self._print_indented(f"[red]{failure_message}: {step_result.error}[/red]")
+    def _execute_flow_call_step(self, step, step_num: int) -> tuple[bool, str | None]:
+        """Execute a flow_call step with nested TUI display showing all sub-flow steps."""
+        from ..models.flow import StepResult
+        
+        try:
+            if not hasattr(step, 'flow') or not step.flow:
+                raise ValueError(f"flow_call step '{step.id}' missing required 'flow' field")
+            
+            sub_flow_name = step.flow
+            self._print_indented(f"[blue]🔗 Starting sub-flow: {sub_flow_name}[/blue]")
+            
+            # Get the target flow
+            target_flow = self.system.get_flow(sub_flow_name)
+            if not target_flow:
+                raise ValueError(f"Target flow '{sub_flow_name}' not found in system '{self.system.id}'")
+            
+            # Resolve input templates for the sub-flow
+            from ..services.template_service import TemplateService
+            template_service = TemplateService()
+            
+            resolved_inputs = {}
+            if hasattr(step, 'inputs') and step.inputs:
+                for key, value in step.inputs.items():
+                    try:
+                        resolved_value = template_service.resolve_template_with_execution_context(
+                            value, self.context, self.system, mode="runtime"
+                        )
+                        resolved_inputs[key] = resolved_value
+                        self._print_indented(f"[dim]  📥 Input {key}: {resolved_value}[/dim]")
+                    except Exception as e:
+                        raise ValueError(f"Failed to resolve flow_call input '{key}': {e}") from e
+            
+            # Create a new execution context for the sub-flow
+            from ..models.context_data import ExecutionContext
+            sub_context = ExecutionContext()
+            
+            # Set the resolved inputs in the sub-flow context
+            for key, value in resolved_inputs.items():
+                sub_context.set_input(key, value)
+            
+            # Initialize flow variables if any
+            if target_flow.variables:
+                for variable in target_flow.variables:
+                    sub_context.set_variable(variable.id, variable.default)
+            
+            # Initialize observable derived fields from output models
+            for output_def in target_flow.outputs:
+                if output_def.type in self.system.models:
+                    model = self.system.models[output_def.type]
+                    sub_context.initialize_model_observables(model, output_def.id)
+            
+            # Create nested TUI for sub-flow execution
+            nested_tui = RichTUI(
+                engine=self.engine,
+                console=self.console,
+                indent_level=self.indent_level + 1,
+                parent_tui=self
+            )
+            
+            self._print_indented(f"[blue]  📋 Sub-flow has {len(target_flow.steps)} steps[/blue]")
+            
+            # Execute the sub-flow using the nested TUI - this will show all steps
+            result = nested_tui.execute_flow(target_flow, sub_context, self.system)
+            
+            if result:
+                # Get the sub-flow outputs
+                sub_flow_outputs = sub_context.outputs
+                
+                # Store the result in the main context for template resolution
+                self.context.outputs["result"] = sub_flow_outputs
+                
+                self._print_indented(f"[green]🔗 Sub-flow '{sub_flow_name}' completed successfully[/green]")
+                if sub_flow_outputs:
+                    self._print_indented(f"[dim]  📤 Outputs: {list(sub_flow_outputs.keys())}[/dim]")
+                
+                # Execute any flow_call step actions with result context
+                if hasattr(step, "actions") and step.actions:
+                    self._print_indented("[cyan]  ⚙️ Executing flow_call step actions...[/cyan]")
+                    
+                    # Create result object for template resolution
+                    class ResultObject:
+                        """Result object that allows dot notation access to sub-flow outputs."""
+                        def __init__(self, outputs):
+                            for key, value in outputs.items():
+                                setattr(self, key, value)
+
+                    result_obj = ResultObject(sub_flow_outputs)
+                    
+                    # Set result in the main context for template resolution
+                    self.context.set_variable('result', result_obj)
+                    
+                    try:
+                        self.engine.action_executor.execute_actions(step.actions, self.context, {}, self.system)
+                        self._print_indented("[green]  ✅ Step actions completed[/green]")
+                    except Exception as e:
+                        self._print_indented(f"[red]  ❌ Step action failed: {e}[/red]")
+                        return False, None
+                
+                # Create step result
+                step_result = StepResult(
+                    step_id=step.id,
+                    success=True,
+                    data={
+                        "flow_call": True,
+                        "target_flow": sub_flow_name,
+                        "sub_flow_outputs": sub_flow_outputs,
+                    },
+                    prompt=step.prompt,
+                )
+            else:
+                self._print_indented(f"[red]🔗 Sub-flow '{sub_flow_name}' failed[/red]")
+                step_result = StepResult(
+                    step_id=step.id,
+                    success=False,
+                    error=f"Sub-flow '{sub_flow_name}' execution failed",
+                )
+        
+        except Exception as e:
+            logger.error(f"Error executing flow_call step: {e}")
+            self._print_indented(f"[red]🔗 Sub-flow execution error: {e}[/red]")
+            step_result = StepResult(
+                step_id=step.id,
+                success=False,
+                error=str(e),
+            )
         
         self.step_results.append(step_result)
         return step_result.success, step_result.next_step_id
