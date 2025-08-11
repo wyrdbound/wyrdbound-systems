@@ -14,7 +14,7 @@ import pytest
 
 from grimoire_runner.core.engine import GrimoireEngine
 from grimoire_runner.core.loader import SystemLoader
-from grimoire_runner.models.flow import FlowResult, StepResult
+from grimoire_runner.models.flow import FlowResult
 
 
 @pytest.fixture
@@ -71,7 +71,7 @@ class TestNestedFlowExecution:
         # Should have the expected output and variables
         assert "level_2_result" in result.outputs
         assert isinstance(result.outputs["level_2_result"], str)
-        
+
         # Should also have the dice result in variables
         assert "level_2_dice" in result.variables
         dice_result = result.variables["level_2_dice"]
@@ -140,11 +140,11 @@ class TestNestedFlowExecution:
         assert result.success is True
 
         # The flow should have successfully resolved templates
-        # Level 2 flow sets level_2_result output  
+        # Level 2 flow sets level_2_result output
         assert "level_2_result" in result.outputs
         level_2_output = result.outputs["level_2_result"]
         assert isinstance(level_2_output, str)
-        
+
         # The output should be the expected completion message
         assert level_2_output == "Level 2 complete"
 
@@ -158,8 +158,10 @@ class TestNestedFlowExecution:
         for _ in range(5):
             test_context = engine.create_execution_context()
             test_context.set_input("input_value", "Dice Test")
-            
-            result = engine.execute_flow("test_nested_flow_calls", test_context, test_system)
+
+            result = engine.execute_flow(
+                "test_nested_flow_calls", test_context, test_system
+            )
             assert result.success is True
             results.append(result)
 
@@ -186,7 +188,7 @@ class TestNestedFlowExecution:
         # But it should not crash the entire system
         assert isinstance(result, FlowResult)
         assert result.flow_id == "test_nested_flow_calls"
-        
+
         # Either it fails cleanly or succeeds with default/empty values
         # The important thing is it doesn't crash
         if not result.success:
@@ -205,15 +207,17 @@ class TestNestedFlowExecution:
         for i in range(3):
             test_context = engine.create_execution_context()
             test_context.set_input("input_value", f"Sequential Test {i}")
-            
-            result = engine.execute_flow("test_nested_flow_calls", test_context, test_system)
-            
+
+            result = engine.execute_flow(
+                "test_nested_flow_calls", test_context, test_system
+            )
+
             assert result.success is True
             assert result.flow_id == "test_nested_flow_calls"
-            
+
             # Should have the same structure each time
             assert len(result.step_results) == 2
-            
+
             # All steps should succeed
             for step_result in result.step_results:
                 assert step_result.success is True
@@ -231,13 +235,13 @@ class TestFlowCallResultHandling:
         result = engine.execute_flow("test_level_3_flow", context, test_system)
 
         assert result.success is True
-        
+
         # Should have produced the level 3 output and variables
         assert "level_3_result" in result.outputs
         level_3_output = result.outputs["level_3_result"]
         assert isinstance(level_3_output, str)
         assert level_3_output == "Level 3 complete"
-        
+
         # Should have the dice result in variables
         assert "deep_dice_result" in result.variables
         dice_result = result.variables["deep_dice_result"]
@@ -246,7 +250,7 @@ class TestFlowCallResultHandling:
 
         # The output should contain the dice roll result (templated from {{ variables.deep_dice_result }})
         # This tests that the result variable mechanism is working
-        
+
     def test_result_variable_accessible_in_templates(self, engine, test_system):
         """Test that {{ result.* }} templates can access sub-flow outputs."""
         context = engine.create_execution_context()
@@ -256,12 +260,12 @@ class TestFlowCallResultHandling:
         result = engine.execute_flow("test_level_2_flow", context, test_system)
 
         assert result.success is True
-        
+
         # The template should have been resolved successfully
         # If the template resolution failed, the flow would have failed or
         # produced invalid output
         assert "level_2_result" in result.outputs
-        
+
         # The output should contain resolved template content
         level_2_output = result.outputs["level_2_result"]
         assert isinstance(level_2_output, str)
@@ -277,15 +281,15 @@ class TestFlowCallResultHandling:
         result = engine.execute_flow("test_nested_flow_calls", context, test_system)
 
         assert result.success is True
-        
+
         # The successful completion of this flow indicates that:
         # 1. Level 1 passed input to Level 2
-        # 2. Level 2 passed processed input to Level 3  
+        # 2. Level 2 passed processed input to Level 3
         # 3. Level 3 produced results
         # 4. Level 3 results were accessible in Level 2 via {{ result.* }}
         # 5. Level 2 results were accessible in Level 1
         # 6. All template resolutions worked correctly
-        
+
         # Verify the complete chain executed
         assert len(result.step_results) == 2
         for step_result in result.step_results:
@@ -299,7 +303,7 @@ class TestFlowExecutionContext:
         """Test that execution contexts are properly isolated between nested flows."""
         context = engine.create_execution_context()
         context.set_input("input_value", "Context Isolation Test")
-        
+
         # Set some additional variables in the main context
         context.set_variable("main_var", "main_value")
         context.set_variable("shared_var", "original_value")
@@ -308,7 +312,7 @@ class TestFlowExecutionContext:
         result = engine.execute_flow("test_nested_flow_calls", context, test_system)
 
         assert result.success is True
-        
+
         # The main context should still have its original variables
         # (though the exact state depends on how context isolation is implemented)
         # The important thing is that the nested flows executed successfully
@@ -323,12 +327,12 @@ class TestFlowExecutionContext:
         result = engine.execute_flow("test_nested_flow_calls", context, test_system)
 
         assert result.success is True
-        
+
         # The fact that the flow completed successfully indicates that:
         # 1. Each nested flow had access to its required inputs
         # 2. Variables didn't leak between scopes inappropriately
         # 3. Template resolution worked within each scope
-        
+
         # Test that the main flow context wasn't corrupted
         assert result.flow_id == "test_nested_flow_calls"
 
@@ -342,13 +346,13 @@ class TestFlowExecutionContext:
         result = engine.execute_flow("test_nested_flow_calls", context, test_system)
 
         assert result.success is True
-        
+
         # The successful execution indicates that:
         # 1. The main flow received the input_value parameter
-        # 2. It was correctly passed to the level 2 flow  
+        # 2. It was correctly passed to the level 2 flow
         # 3. Level 2 processed it and passed processed version to level 3
         # 4. All levels had access to their required inputs
-        
+
         # Verify flow completed all steps
         assert len(result.step_results) == 2
         for step_result in result.step_results:
@@ -357,18 +361,20 @@ class TestFlowExecutionContext:
 
 # Utility functions for nested flow testing
 
+
 def verify_nested_flow_success(result: FlowResult, expected_steps: int = None):
     """Verify that a nested flow execution was successful."""
     assert isinstance(result, FlowResult)
     assert result.success is True
     assert len(result.step_results) > 0
-    
+
     if expected_steps:
         assert len(result.step_results) == expected_steps
-    
+
     # All steps should be successful
     for step_result in result.step_results:
         assert step_result.success is True
+
 
 def verify_dice_result_in_variables(result: FlowResult, variable_name: str):
     """Verify that a dice roll result is properly stored in variables."""
@@ -376,6 +382,7 @@ def verify_dice_result_in_variables(result: FlowResult, variable_name: str):
     dice_result = result.variables[variable_name]
     assert isinstance(dice_result, int)
     assert dice_result >= 1  # Dice results should be positive
+
 
 def verify_template_resolution(output_value: str):
     """Verify that template strings have been properly resolved."""

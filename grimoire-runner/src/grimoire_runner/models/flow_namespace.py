@@ -124,29 +124,33 @@ class FlowNamespaceManager:
             # Convert to dictionary for internal storage
             variables_dict = {}
             for var_def in variables:
-                if hasattr(var_def, 'id') and hasattr(var_def, 'default'):
+                if hasattr(var_def, "id") and hasattr(var_def, "default"):
                     # VariableDefinition object
                     variables_dict[var_def.id] = var_def.default
                 elif isinstance(var_def, dict):
                     # Convert dict representation to proper format
-                    var_id = var_def.get('id')
+                    var_id = var_def.get("id")
                     if var_id:
                         # Use default value if provided, otherwise use appropriate default based on type
-                        default_value = var_def.get('default', '')
-                        if var_def.get('type') == 'bool':
-                            default_value = var_def.get('default', False)
-                        elif var_def.get('type') in ['int', 'number']:
-                            default_value = var_def.get('default', 0)
-                        elif var_def.get('type') == 'list':
-                            default_value = var_def.get('default', [])
-                        elif var_def.get('type') == 'dict':
-                            default_value = var_def.get('default', {})
+                        default_value = var_def.get("default", "")
+                        if var_def.get("type") == "bool":
+                            default_value = var_def.get("default", False)
+                        elif var_def.get("type") in ["int", "number"]:
+                            default_value = var_def.get("default", 0)
+                        elif var_def.get("type") == "list":
+                            default_value = var_def.get("default", [])
+                        elif var_def.get("type") == "dict":
+                            default_value = var_def.get("default", {})
                         variables_dict[var_id] = default_value
                     else:
-                        raise ValueError(f"Variable definition missing 'id' field: {var_def}")
+                        raise ValueError(
+                            f"Variable definition missing 'id' field: {var_def}"
+                        )
                 else:
-                    raise TypeError(f"Expected variable definition to be a VariableDefinition object or dict, got {type(var_def).__name__}: {var_def}")
-            
+                    raise TypeError(
+                        f"Expected variable definition to be a VariableDefinition object or dict, got {type(var_def).__name__}: {var_def}"
+                    )
+
             variables = variables_dict
         elif isinstance(variables, dict):
             # Old format: dictionary mapping variable names to values - still supported for now
@@ -157,7 +161,7 @@ class FlowNamespaceManager:
             raise TypeError(
                 f"Expected variables to be a list of VariableDefinition objects or a dictionary, but got {actual_type}. "
                 f"Variables should use the new list format like inputs/outputs:\n"
-                f"variables:\n  - id: variable_name\n    type: string\n    default: \"value\"\n"
+                f'variables:\n  - id: variable_name\n    type: string\n    default: "value"\n'
                 f"Actual value: {variables}"
             )
 

@@ -123,7 +123,7 @@ class RichTUI:
             self.input_values = input_values or {}
             self.console = Console() if parent_tui is None else parent_tui.console
             self.engine = GrimoireEngine()
-            
+
         self.debug = debug
         self.interactive = interactive
         self.indent_level = indent_level
@@ -145,7 +145,9 @@ class RichTUI:
         else:
             self.console.print(f"{indent}{message}")
 
-    def _create_indented_panel(self, content: str, title: str = None, border_style: str = "blue") -> Panel:
+    def _create_indented_panel(
+        self, content: str, title: str = None, border_style: str = "blue"
+    ) -> Panel:
         """Create a panel with indented content."""
         indent = self._get_indent()
         indented_content = "\n".join(f"{indent}{line}" for line in content.split("\n"))
@@ -275,7 +277,7 @@ class RichTUI:
                 f"{progress_text}: [bold]{step.name or step.id}[/bold]\n"
                 f"[dim]Type: {step.type}[/dim]" + description_text
             )
-            
+
             if self.indent_level == 0:
                 # Top level - use full panel
                 self.console.print(
@@ -287,11 +289,11 @@ class RichTUI:
                 )
             else:
                 # Nested level - use indented panel
-                self.console.print(self._create_indented_panel(
-                    panel_content,
-                    title="Current Step",
-                    border_style="blue"
-                ))
+                self.console.print(
+                    self._create_indented_panel(
+                        panel_content, title="Current Step", border_style="blue"
+                    )
+                )
 
             # Update context
             self.context.current_step = current_step_id
@@ -338,7 +340,7 @@ class RichTUI:
         self.context = context
         self.system = system
         self.step_results = []
-        
+
         current_step_id = self.flow_obj.steps[0].id if self.flow_obj.steps else None
         step_num = 0
 
@@ -354,19 +356,19 @@ class RichTUI:
 
             # Show step header - detailed for sub-flows
             step_description = getattr(step, "description", None) or ""
-            step_info = f"Step {step_num}/{len(self.flow_obj.steps)}: {step.name or step.id}"
+            step_info = (
+                f"Step {step_num}/{len(self.flow_obj.steps)}: {step.name or step.id}"
+            )
             step_type_info = f"Type: {step.type}"
-            
+
             if step_description:
                 panel_content = f"[bold]{step_info}[/bold]\n[dim]{step_type_info}[/dim]\n[dim]Description: {step_description}[/dim]"
             else:
                 panel_content = f"[bold]{step_info}[/bold]\n[dim]{step_type_info}[/dim]"
-            
+
             # Use indented panel for nested flows
             panel = self._create_indented_panel(
-                panel_content,
-                title="Sub-Flow Step",
-                border_style="cyan"
+                panel_content, title="Sub-Flow Step", border_style="cyan"
             )
             self.console.print(panel)
 
@@ -409,7 +411,7 @@ class RichTUI:
         # Special handling for flow_call steps to show sub-flow execution
         if step.type == StepType.FLOW_CALL:
             return self._execute_flow_call_step(step, step_num)
-        
+
         # Execute the step through the engine
         step_result = self.engine._execute_step(step, self.context, self.system)
 
@@ -594,22 +596,24 @@ class RichTUI:
         return step_result.success, step_result.next_step_id
 
     def _execute_flow_call_step(self, step, step_num: int) -> tuple[bool, str | None]:
-        """Execute a flow_call step with nested TUI display."""        
+        """Execute a flow_call step with nested TUI display."""
         # Execute the step normally first to get the result
         step_result = self.engine._execute_step(step, self.context, self.system)
-        
+
         # Show sub-flow execution details if it succeeded
-        if step_result.success and hasattr(step, 'flow'):
+        if step_result.success and hasattr(step, "flow"):
             sub_flow_name = step.flow
             self._print_indented(f"[blue]  📄 Sub-flow: {sub_flow_name}[/blue]")
-            self._print_indented(f"[blue]  🚀 Sub-flow executed successfully[/blue]")
-            
+            self._print_indented("[blue]  🚀 Sub-flow executed successfully[/blue]")
+
             # Show any outputs from the sub-flow
-            if step_result.data and 'sub_flow_outputs' in step_result.data:
-                outputs = step_result.data['sub_flow_outputs']
+            if step_result.data and "sub_flow_outputs" in step_result.data:
+                outputs = step_result.data["sub_flow_outputs"]
                 if outputs:
-                    self._print_indented(f"[blue]  � Sub-flow outputs: {list(outputs.keys())}[/blue]")
-        
+                    self._print_indented(
+                        f"[blue]  � Sub-flow outputs: {list(outputs.keys())}[/blue]"
+                    )
+
         # Handle the result display
         if step_result.success:
             # Check if step has a custom result message
@@ -617,116 +621,147 @@ class RichTUI:
                 # Resolve any templates in the custom message
                 try:
                     from ..services.template_service import TemplateService
+
                     template_service = TemplateService()
-                    resolved_message = template_service.resolve_template_with_execution_context(
-                        step.result_message, self.context, self.system
+                    resolved_message = (
+                        template_service.resolve_template_with_execution_context(
+                            step.result_message, self.context, self.system
+                        )
                     )
-                    success_message = get_step_success_message(step.type, resolved_message)
+                    success_message = get_step_success_message(
+                        step.type, resolved_message
+                    )
                 except Exception as e:
                     logger.debug(f"Failed to resolve result_message template: {e}")
                     success_message = get_step_success_message(step.type)
             else:
                 success_message = get_step_success_message(step.type)
-            
+
             self._print_indented(f"[green]{success_message}[/green]")
+
     def _execute_flow_call_step(self, step, step_num: int) -> tuple[bool, str | None]:
         """Execute a flow_call step with nested TUI display showing all sub-flow steps."""
         from ..models.flow import StepResult
-        
+
         try:
-            if not hasattr(step, 'flow') or not step.flow:
-                raise ValueError(f"flow_call step '{step.id}' missing required 'flow' field")
-            
+            if not hasattr(step, "flow") or not step.flow:
+                raise ValueError(
+                    f"flow_call step '{step.id}' missing required 'flow' field"
+                )
+
             sub_flow_name = step.flow
             self._print_indented(f"[blue]🔗 Starting sub-flow: {sub_flow_name}[/blue]")
-            
+
             # Get the target flow
             target_flow = self.system.get_flow(sub_flow_name)
             if not target_flow:
-                raise ValueError(f"Target flow '{sub_flow_name}' not found in system '{self.system.id}'")
-            
+                raise ValueError(
+                    f"Target flow '{sub_flow_name}' not found in system '{self.system.id}'"
+                )
+
             # Resolve input templates for the sub-flow
             from ..services.template_service import TemplateService
+
             template_service = TemplateService()
-            
+
             resolved_inputs = {}
-            if hasattr(step, 'inputs') and step.inputs:
+            if hasattr(step, "inputs") and step.inputs:
                 for key, value in step.inputs.items():
                     try:
-                        resolved_value = template_service.resolve_template_with_execution_context(
-                            value, self.context, self.system, mode="runtime"
+                        resolved_value = (
+                            template_service.resolve_template_with_execution_context(
+                                value, self.context, self.system, mode="runtime"
+                            )
                         )
                         resolved_inputs[key] = resolved_value
-                        self._print_indented(f"[dim]  📥 Input {key}: {resolved_value}[/dim]")
+                        self._print_indented(
+                            f"[dim]  📥 Input {key}: {resolved_value}[/dim]"
+                        )
                     except Exception as e:
-                        raise ValueError(f"Failed to resolve flow_call input '{key}': {e}") from e
-            
+                        raise ValueError(
+                            f"Failed to resolve flow_call input '{key}': {e}"
+                        ) from e
+
             # Create a new execution context for the sub-flow
             from ..models.context_data import ExecutionContext
+
             sub_context = ExecutionContext()
-            
+
             # Set the resolved inputs in the sub-flow context
             for key, value in resolved_inputs.items():
                 sub_context.set_input(key, value)
-            
+
             # Initialize flow variables if any
             if target_flow.variables:
                 for variable in target_flow.variables:
                     sub_context.set_variable(variable.id, variable.default)
-            
+
             # Initialize observable derived fields from output models
             for output_def in target_flow.outputs:
                 if output_def.type in self.system.models:
                     model = self.system.models[output_def.type]
                     sub_context.initialize_model_observables(model, output_def.id)
-            
+
             # Create nested TUI for sub-flow execution
             nested_tui = RichTUI(
                 engine=self.engine,
                 console=self.console,
                 indent_level=self.indent_level + 1,
-                parent_tui=self
+                parent_tui=self,
             )
-            
-            self._print_indented(f"[blue]  📋 Sub-flow has {len(target_flow.steps)} steps[/blue]")
-            
+
+            self._print_indented(
+                f"[blue]  📋 Sub-flow has {len(target_flow.steps)} steps[/blue]"
+            )
+
             # Execute the sub-flow using the nested TUI - this will show all steps
             result = nested_tui.execute_flow(target_flow, sub_context, self.system)
-            
+
             if result:
                 # Get the sub-flow outputs
                 sub_flow_outputs = sub_context.outputs
-                
+
                 # Store the result in the main context for template resolution
                 self.context.outputs["result"] = sub_flow_outputs
-                
-                self._print_indented(f"[green]🔗 Sub-flow '{sub_flow_name}' completed successfully[/green]")
+
+                self._print_indented(
+                    f"[green]🔗 Sub-flow '{sub_flow_name}' completed successfully[/green]"
+                )
                 if sub_flow_outputs:
-                    self._print_indented(f"[dim]  📤 Outputs: {list(sub_flow_outputs.keys())}[/dim]")
-                
+                    self._print_indented(
+                        f"[dim]  📤 Outputs: {list(sub_flow_outputs.keys())}[/dim]"
+                    )
+
                 # Execute any flow_call step actions with result context
                 if hasattr(step, "actions") and step.actions:
-                    self._print_indented("[cyan]  ⚙️ Executing flow_call step actions...[/cyan]")
-                    
+                    self._print_indented(
+                        "[cyan]  ⚙️ Executing flow_call step actions...[/cyan]"
+                    )
+
                     # Create result object for template resolution
                     class ResultObject:
                         """Result object that allows dot notation access to sub-flow outputs."""
+
                         def __init__(self, outputs):
                             for key, value in outputs.items():
                                 setattr(self, key, value)
 
                     result_obj = ResultObject(sub_flow_outputs)
-                    
+
                     # Set result in the main context for template resolution
-                    self.context.set_variable('result', result_obj)
-                    
+                    self.context.set_variable("result", result_obj)
+
                     try:
-                        self.engine.action_executor.execute_actions(step.actions, self.context, {}, self.system)
-                        self._print_indented("[green]  ✅ Step actions completed[/green]")
+                        self.engine.action_executor.execute_actions(
+                            step.actions, self.context, {}, self.system
+                        )
+                        self._print_indented(
+                            "[green]  ✅ Step actions completed[/green]"
+                        )
                     except Exception as e:
                         self._print_indented(f"[red]  ❌ Step action failed: {e}[/red]")
                         return False, None
-                
+
                 # Create step result
                 step_result = StepResult(
                     step_id=step.id,
@@ -745,7 +780,7 @@ class RichTUI:
                     success=False,
                     error=f"Sub-flow '{sub_flow_name}' execution failed",
                 )
-        
+
         except Exception as e:
             logger.error(f"Error executing flow_call step: {e}")
             self._print_indented(f"[red]🔗 Sub-flow execution error: {e}[/red]")
@@ -754,7 +789,7 @@ class RichTUI:
                 success=False,
                 error=str(e),
             )
-        
+
         self.step_results.append(step_result)
         return step_result.success, step_result.next_step_id
 

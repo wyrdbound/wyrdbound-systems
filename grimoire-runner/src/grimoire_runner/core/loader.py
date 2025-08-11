@@ -343,10 +343,9 @@ class SystemLoader:
             elif isinstance(variables_data, dict):
                 # Old format: dict with id: default_value pairs
                 for var_id, default_value in variables_data.items():
-                    variables.append(VariableDefinition(
-                        id=var_id,
-                        default=default_value
-                    ))
+                    variables.append(
+                        VariableDefinition(id=var_id, default=default_value)
+                    )
 
         # Parse steps
         steps = []
@@ -459,7 +458,7 @@ class SystemLoader:
                     )
                     execution_vars = {
                         "inputs",
-                        "outputs", 
+                        "outputs",
                         "result",
                         "results",
                         "item",

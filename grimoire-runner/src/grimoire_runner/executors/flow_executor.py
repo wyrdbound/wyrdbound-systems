@@ -24,9 +24,10 @@ class FlowExecutor(BaseStepExecutor):
 
             action_executor = ActionExecutor()
         self.action_executor = action_executor
-        
+
         # Initialize template service
         from ..services.template_service import TemplateService
+
         self.template_service = TemplateService()
 
     def execute(
@@ -86,10 +87,12 @@ class FlowExecutor(BaseStepExecutor):
         from ..models.flow import StepResult
 
         try:
-            if not hasattr(step, 'flow') or not step.flow:
-                raise ValueError(f"flow_call step '{step.id}' missing required 'flow' field")
-            
-            if not hasattr(step, 'inputs'):
+            if not hasattr(step, "flow") or not step.flow:
+                raise ValueError(
+                    f"flow_call step '{step.id}' missing required 'flow' field"
+                )
+
+            if not hasattr(step, "inputs"):
                 raise ValueError(f"flow_call step '{step.id}' missing 'inputs' field")
 
             flow_name = step.flow
@@ -101,10 +104,14 @@ class FlowExecutor(BaseStepExecutor):
             # Validate that target flow exists
             target_flow = system.get_flow(flow_name)
             if not target_flow:
-                raise ValueError(f"Target flow '{flow_name}' not found in system '{system.id}'")
+                raise ValueError(
+                    f"Target flow '{flow_name}' not found in system '{system.id}'"
+                )
 
             # Resolve template inputs for the sub-flow
-            resolved_inputs = self._resolve_flow_call_inputs(flow_inputs, context, system)
+            resolved_inputs = self._resolve_flow_call_inputs(
+                flow_inputs, context, system
+            )
 
             # Execute the sub-flow
             sub_flow_result = self._execute_sub_flow(
@@ -112,29 +119,41 @@ class FlowExecutor(BaseStepExecutor):
             )
 
             if not sub_flow_result.success:
-                raise RuntimeError(f"Sub-flow '{flow_name}' execution failed: {sub_flow_result.error}")
+                raise RuntimeError(
+                    f"Sub-flow '{flow_name}' execution failed: {sub_flow_result.error}"
+                )
 
             # Get sub-flow outputs
             sub_flow_outputs = sub_flow_result.outputs or {}
 
-            logger.debug(f"Sub-flow {flow_name} completed with success: {sub_flow_result.success}")
-            logger.debug(f"Sub-flow outputs after completion: {list(sub_flow_outputs.keys())}")
+            logger.debug(
+                f"Sub-flow {flow_name} completed with success: {sub_flow_result.success}"
+            )
+            logger.debug(
+                f"Sub-flow outputs after completion: {list(sub_flow_outputs.keys())}"
+            )
 
             # Log output details for debugging
             for key, value in sub_flow_outputs.items():
                 logger.debug(f"Sub-flow output {key}: {type(value).__name__} = {value}")
 
-            logger.debug(f"Sub-flow {flow_name} completed successfully with outputs: {list(sub_flow_outputs.keys())}")
+            logger.debug(
+                f"Sub-flow {flow_name} completed successfully with outputs: {list(sub_flow_outputs.keys())}"
+            )
 
             # Execute flow_call step actions with result context
             if hasattr(step, "actions") and step.actions:
                 logger.debug(f"Executing {len(step.actions)} actions in flow_call step")
-                
+
                 # Create action context that includes 'result' variable
-                action_context = self._create_action_context_with_result(context, sub_flow_outputs)
-                
+                action_context = self._create_action_context_with_result(
+                    context, sub_flow_outputs
+                )
+
                 # Execute actions with the enhanced context
-                self.action_executor.execute_actions(step.actions, action_context, {}, system)
+                self.action_executor.execute_actions(
+                    step.actions, action_context, {}, system
+                )
 
             return StepResult(
                 step_id=step.id,
@@ -157,14 +176,18 @@ class FlowExecutor(BaseStepExecutor):
         resolved_inputs = {}
         for key, value in flow_inputs.items():
             try:
-                resolved_value = self.template_service.resolve_template_with_execution_context(
-                    value, context, system, mode="runtime"
+                resolved_value = (
+                    self.template_service.resolve_template_with_execution_context(
+                        value, context, system, mode="runtime"
+                    )
                 )
                 resolved_inputs[key] = resolved_value
                 logger.debug(f"Resolved input {key}: {resolved_value}")
             except Exception as e:
-                raise ValueError(f"Failed to resolve flow_call input '{key}': {e}") from e
-        
+                raise ValueError(
+                    f"Failed to resolve flow_call input '{key}': {e}"
+                ) from e
+
         return resolved_inputs
 
     def _execute_sub_flow(self, flow_name, resolved_inputs, context, system):
@@ -175,22 +198,22 @@ class FlowExecutor(BaseStepExecutor):
 
         # Create a new execution context for the sub-flow
         sub_context = ExecutionContext()
-        
+
         # Set the resolved inputs in the sub-flow context
         for key, value in resolved_inputs.items():
             sub_context.set_input(key, value)
 
         engine = GrimoireEngine()
-        
+
         logger.debug(f"Starting sub-flow execution: {flow_name}")
         logger.debug(f"Sub-flow inputs: {resolved_inputs}")
-        
+
         try:
             result = engine.execute_flow(flow_name, sub_context, system)
             logger.debug(f"Sub-flow result type: {type(result)}")
-            if hasattr(result, 'success'):
+            if hasattr(result, "success"):
                 logger.debug(f"Sub-flow success: {result.success}")
-            if hasattr(result, 'outputs'):
+            if hasattr(result, "outputs"):
                 logger.debug(f"Sub-flow outputs: {result.outputs}")
             return result
         except Exception as e:
@@ -198,41 +221,46 @@ class FlowExecutor(BaseStepExecutor):
 
     def _create_action_context_with_result(self, context, sub_flow_outputs):
         """Create action execution context that includes 'result' variable."""
+
         class ResultObject:
             """Result object that allows dot notation access to sub-flow outputs."""
+
             def __init__(self, outputs):
                 for key, value in outputs.items():
                     setattr(self, key, value)
 
         class ActionContextWithResult:
             """Context wrapper that adds 'result' variable to action execution."""
+
             def __init__(self, original_context, result_obj):
                 self.original_context = original_context
                 self.result = result_obj
                 # Add result to variables for template resolution
-                self.original_context.set_variable('result', result_obj)
+                self.original_context.set_variable("result", result_obj)
 
             def __getattr__(self, name):
                 # First try to get from result object
-                if name == 'result':
+                if name == "result":
                     return self.result
                 # Then delegate to original context
                 return getattr(self.original_context, name)
-                
+
             def get_variable(self, name):
                 """Get variable with 'result' support."""
-                if name == 'result':
+                if name == "result":
                     return self.result
                 return self.original_context.get_variable(name)
 
         # Create result object from sub-flow outputs
         result_obj = ResultObject(sub_flow_outputs)
-        
+
         # Create enhanced context
         action_context = ActionContextWithResult(context, result_obj)
-        
-        logger.debug(f"Created action context with result object containing: {list(sub_flow_outputs.keys())}")
-        
+
+        logger.debug(
+            f"Created action context with result object containing: {list(sub_flow_outputs.keys())}"
+        )
+
         return action_context
 
     def can_execute(self, step: "StepDefinition") -> bool:
