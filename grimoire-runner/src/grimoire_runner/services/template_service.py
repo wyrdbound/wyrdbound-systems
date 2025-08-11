@@ -71,11 +71,13 @@ class RuntimeTemplateStrategy(TemplateResolutionStrategy):
 
             # context_data should be a dict with all template variables
             if not isinstance(context_data, dict):
-                logger.warning(
-                    f"Expected dict for runtime template context, got {type(context_data)}"
+                raise TypeError(
+                    f"Runtime template resolution requires dict context, got {type(context_data)}. "
+                    f"Template: '{template_str}'"
                 )
-                return template_str
 
+            # NO FALLBACKS - template resolution must be explicit about missing variables
+            # This will cause Jinja2 to raise UndefinedError for missing variables
             result = template.render(context_data)
 
             # Try to parse as structured data if it looks like it
@@ -86,10 +88,13 @@ class RuntimeTemplateStrategy(TemplateResolutionStrategy):
             return result
 
         except Exception as e:
-            logger.error(
-                f"Runtime template resolution failed for '{template_str}': {e}"
+            # Create explicit error with full context for debugging
+            error_msg = (
+                f"Runtime template resolution failed for '{template_str}': {e}. "
+                f"Available context keys: {list(context_data.keys()) if isinstance(context_data, dict) else 'N/A'}"
             )
-            return template_str
+            logger.error(error_msg)
+            raise RuntimeError(error_msg) from e
 
     def is_template(self, text: str) -> bool:
         """Check if a string contains template syntax."""

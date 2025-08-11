@@ -17,6 +17,7 @@ from ..models.flow import (
     StepDefinition,
     StepType,
     TableRollDefinition,
+    VariableDefinition,
 )
 from ..models.model import AttributeDefinition, ModelDefinition, ValidationRule
 from ..models.prompt import PromptDefinition
@@ -331,6 +332,22 @@ class SystemLoader:
             for output_data in data["outputs"]:
                 outputs.append(OutputDefinition(**output_data))
 
+        # Parse variables
+        variables = []
+        if "variables" in data:
+            variables_data = data["variables"]
+            if isinstance(variables_data, list):
+                # New format: list of variable definitions
+                for var_data in variables_data:
+                    variables.append(VariableDefinition(**var_data))
+            elif isinstance(variables_data, dict):
+                # Old format: dict with id: default_value pairs
+                for var_id, default_value in variables_data.items():
+                    variables.append(VariableDefinition(
+                        id=var_id,
+                        default=default_value
+                    ))
+
         # Parse steps
         steps = []
         if "steps" in data:
@@ -345,7 +362,7 @@ class SystemLoader:
             version=data.get("version"),
             inputs=inputs,
             outputs=outputs,
-            variables=data.get("variables", {}),
+            variables=variables,
             steps=steps,
             resume_points=data.get("resume_points", []),
         )
@@ -403,6 +420,10 @@ class SystemLoader:
             if_condition=data.get("if"),  # Map 'if' to 'if_condition'
             then_actions=data.get("then"),
             else_actions=data.get("else"),
+            # Flow call step fields
+            flow=data.get("flow"),
+            inputs=data.get("inputs", {}),
+            result=data.get("result"),
         )
 
     def reload_system(self, system_id: str) -> System | None:
@@ -437,6 +458,8 @@ class SystemLoader:
                         value, "loadtime"
                     )
                     execution_vars = {
+                        "inputs",
+                        "outputs", 
                         "result",
                         "results",
                         "item",

@@ -43,13 +43,10 @@ steps:
   - id: "character-creation"
     name: "Character Creation"
     type: "flow_call"
+    flow: "basic-flow"
+    inputs:
+      player_name: "{{ inputs.player_name }}"
     prompt: "Creating your character..."
-    actions:
-      - type: "call_flow"
-        data:
-          flow_id: "basic-flow"
-          inputs:
-            player_name: "{{ inputs.player_name }}"
     next_step: "final-review"
 
   - id: "final-review"

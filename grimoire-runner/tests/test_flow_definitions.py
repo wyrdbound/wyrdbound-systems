@@ -80,8 +80,10 @@ class TestBasicFlowLoading:
     def test_flow_variables(self, test_system):
         """Test flow variable definitions."""
         flow = test_system.flows["basic-flow"]
-        assert "temp_value" in flow.variables
-        assert flow.variables["temp_value"] == "initial"
+        # Variables are now a list of VariableDefinition objects
+        assert len(flow.variables) == 1
+        assert flow.variables[0].id == "temp_value"
+        assert flow.variables[0].default == "initial"
 
 
 class TestStepDefinitions:
@@ -296,12 +298,10 @@ class TestComplexFlowFeatures:
         flow_call_step = flow.get_step("character-creation")
 
         assert flow_call_step.type == StepType.FLOW_CALL
-        assert len(flow_call_step.actions) == 1
-
-        action = flow_call_step.actions[0]
-        assert action["type"] == "call_flow"
-        assert action["data"]["flow_id"] == "basic-flow"
-        assert "inputs" in action["data"]
+        assert flow_call_step.flow == "basic-flow"
+        assert flow_call_step.inputs == {"player_name": "{{ inputs.player_name }}"}
+        # flow_call steps don't have actions - they use flow, inputs, and result fields
+        assert len(flow_call_step.actions) == 0
 
 
 class TestFlowEdgeCases:
@@ -375,8 +375,7 @@ class TestFlowIntegration:
         flow_call_step = complex_flow.get_step("character-creation")
 
         # Verify referenced flow exists
-        action = flow_call_step.actions[0]
-        referenced_flow_id = action["data"]["flow_id"]
+        referenced_flow_id = flow_call_step.flow
         assert referenced_flow_id in test_system.flows
 
         # Verify referenced flow structure

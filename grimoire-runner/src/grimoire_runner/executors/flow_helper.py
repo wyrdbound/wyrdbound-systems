@@ -184,8 +184,8 @@ class FlowExecutionHelper:
 
         # Initialize flow variables
         if target_flow.variables:
-            for var_name, var_value in target_flow.variables.items():
-                sub_context.set_variable(var_name, var_value)
+            for variable in target_flow.variables:
+                sub_context.set_variable(variable.id, variable.default)
 
         # Execute the sub-flow
         logger.debug(

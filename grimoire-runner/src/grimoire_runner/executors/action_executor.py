@@ -36,9 +36,11 @@ class ActionExecutor:
         """Execute a list of actions."""
         for action in actions:
             try:
+                logger.debug(f"[ACTION_EXECUTOR] Executing action: {action}")
                 self.execute_single_action(action, context, step_data, system)
             except Exception as e:
-                logger.error(f"Error executing action {action}: {e}")
+                logger.error(f"[ACTION_EXECUTOR] Error executing action {action}: {e}")
+                raise  # Re-raise to see the full stack trace
 
     def execute_single_action(
         self,

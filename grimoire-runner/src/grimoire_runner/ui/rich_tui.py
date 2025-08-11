@@ -163,8 +163,9 @@ class RichTUI:
         }
 
         # Initialize flow variables
-        for var_name, var_value in self.flow_obj.variables.items():
-            self.context.set_variable(var_name, var_value)
+        if self.flow_obj.variables:
+            for variable in self.flow_obj.variables:
+                self.context.set_variable(variable.id, variable.default)
 
         # Initialize input values if provided
         if self.input_values:

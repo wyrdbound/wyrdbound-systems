@@ -119,8 +119,9 @@ class GrimoireEngine:
             }
 
             # Initialize flow variables in the namespace
+            variables_dict = {var.id: var.default for var in flow.variables} if flow.variables else {}
             context.initialize_flow_namespace_variables(
-                namespace_id, flow.variables.copy()
+                namespace_id, variables_dict
             )
 
             # Initialize observable derived fields from output models
@@ -250,8 +251,9 @@ class GrimoireEngine:
         }
 
         # Initialize flow variables
-        for var_name, var_value in flow.variables.items():
-            context.set_variable(var_name, var_value)
+        if flow.variables:
+            for variable in flow.variables:
+                context.set_variable(variable.id, variable.default)
 
         current_step_id = flow.steps[0].id if flow.steps else None
 
@@ -331,12 +333,18 @@ class GrimoireEngine:
 
             # Execute post-step actions, but skip for choice steps that require user input
             # Those will be handled after user interaction
+            # Also skip if the executor already handled the actions (e.g., flow_call)
+            actions_already_handled = getattr(result, 'actions_already_executed', False)
+            
             if step.actions and not (
                 result.requires_input and step_type == "player_choice"
-            ):
+            ) and not actions_already_handled:
+                logger.debug(f"Engine executing {len(step.actions)} post-step actions for step {step.id}")
                 self.action_executor.execute_actions(
                     step.actions, context, result.data, system
                 )
+            elif actions_already_handled:
+                logger.debug(f"Skipping post-step actions for step {step.id} - already handled by executor")
 
             return result
 
