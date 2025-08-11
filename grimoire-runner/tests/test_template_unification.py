@@ -208,11 +208,10 @@ class TestTemplateResolutionConsistency:
         # Invalid template syntax
         invalid_template = "{{ unclosed"
 
-        # Runtime strategy should return original string on error
-        runtime_result = service.resolve_template(invalid_template, {}, "runtime")
-        assert runtime_result == invalid_template  # Falls back to original
+        # Both runtime and loadtime strategies should raise exceptions for invalid syntax
+        with pytest.raises(RuntimeError):
+            service.resolve_template(invalid_template, {}, "runtime")
 
-        # Loadtime strategy should raise exception (which we can test for)
         with pytest.raises(ValueError):
             service.resolve_template(invalid_template, {}, "loadtime")
 

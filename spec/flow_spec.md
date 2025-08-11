@@ -235,6 +235,23 @@ Marks the end of a flow.
         data: "{{ outputs.new_character.name }}"
 ```
 
+#### `flow_call`
+
+Invokes another flow as a sub-routine.
+
+```yaml
+- id: "call_character_creation"
+  type: "flow_call"
+  flow: "generate_character_name"
+  inputs:
+    character: "{{ variables.character_without_name }}"
+  actions:
+    # for this step, result is the "outputs" of the sub-flow
+    - set_value:
+        path: "variables.character.name"
+        value: "result.character.name"
+```
+
 ## Actions
 
 Actions are operations performed during step execution. All actions use generic reference-based operations to maintain system agnosticism.

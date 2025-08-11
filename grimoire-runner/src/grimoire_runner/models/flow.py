@@ -41,6 +41,17 @@ class OutputDefinition:
 
 
 @dataclass
+@dataclass
+class VariableDefinition:
+    """Flow variable definition."""
+
+    id: str
+    type: str = "unknown"
+    description: str | None = None
+    default: Any = None  # Default value for the variable
+
+
+@dataclass
 class ChoiceDefinition:
     """Player choice option."""
 
@@ -136,6 +147,11 @@ class StepDefinition:
         None  # Actions to execute if condition is false (can be nested conditional)
     )
 
+    # For flow_call
+    flow: str | None = None  # Target flow ID to call
+    inputs: dict[str, Any] = field(default_factory=dict)  # Inputs to pass to sub-flow
+    result: str | None = None  # Where to store sub-flow result (variable path)
+
 
 @dataclass
 class FlowDefinition:
@@ -149,7 +165,7 @@ class FlowDefinition:
 
     inputs: list[InputDefinition] = field(default_factory=list)
     outputs: list[OutputDefinition] = field(default_factory=list)
-    variables: dict[str, Any] = field(default_factory=dict)
+    variables: list[VariableDefinition] = field(default_factory=list)
     steps: list[StepDefinition] = field(default_factory=list)
     resume_points: list[str] = field(default_factory=list)
 
@@ -188,6 +204,28 @@ class FlowDefinition:
             pass
 
         return None
+
+    def get_variables_dict(self) -> dict[str, Any]:
+        """Convert variables list to dictionary format for initialization."""
+        variables_dict = {}
+        for var_def in self.variables:
+            # Use default value if specified, otherwise use appropriate type default
+            if var_def.default is not None:
+                variables_dict[var_def.id] = var_def.default
+            elif var_def.type == "bool":
+                variables_dict[var_def.id] = False
+            elif var_def.type == "int":
+                variables_dict[var_def.id] = 0
+            elif var_def.type == "str":
+                variables_dict[var_def.id] = ""
+            elif var_def.type == "dict":
+                variables_dict[var_def.id] = {}
+            elif var_def.type == "list":
+                variables_dict[var_def.id] = []
+            else:
+                # Default to empty string for unknown types
+                variables_dict[var_def.id] = ""
+        return variables_dict
 
     def resolve_description(self, context) -> str:
         """Resolve the flow description using the provided context."""

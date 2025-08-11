@@ -1,0 +1,36 @@
+id: test_level_3_flow
+name: Test Level 3 Flow
+description: Third level flow (deepest)
+
+inputs:
+  - id: deep_input
+    type: text
+
+outputs:
+  - id: level_3_result
+    type: text
+
+variables:
+  deep_dice_result: 0
+
+steps:
+  - id: level_3_dice
+    name: Level 3 Dice Roll
+    description: Deepest level dice roll
+    type: dice_roll
+    roll: "1d4"
+    actions:
+      - type: set_value
+        data:
+          path: "variables.deep_dice_result"
+          value: "{{ result }}"
+
+  - id: level_3_completion
+    name: Level 3 Complete
+    type: completion
+    prompt: "Level 3 flow completed with input: {{ inputs.deep_input }} and roll: {{ variables.deep_dice_result }}"
+    actions:
+      - type: set_value
+        data:
+          path: "outputs.level_3_result"
+          value: "Level 3 complete"

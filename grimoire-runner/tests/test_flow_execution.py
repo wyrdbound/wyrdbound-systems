@@ -190,6 +190,9 @@ class TestOutputValidation:
         """Test that multiple outputs are handled correctly in complex flows."""
         context = engine.create_execution_context()
 
+        # Set required inputs for complex-flow
+        context.set_input("player_name", "TestPlayer")
+
         # Use complex-flow which may have multiple outputs
         result = engine.execute_flow("complex-flow", context, test_system)
 

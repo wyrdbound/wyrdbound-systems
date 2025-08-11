@@ -1,0 +1,44 @@
+id: test_level_2_flow
+name: Test Level 2 Flow
+description: Second level flow that calls a third level
+
+inputs:
+  - id: input_value
+    type: text
+
+outputs:
+  - id: level_2_result
+    type: text
+
+variables:
+  level_2_dice: 0
+
+steps:
+  - id: level_2_step
+    name: Level 2 Processing
+    description: Process input at level 2
+    type: dice_roll
+    roll: "1d6"
+    actions:
+      - type: set_value
+        data:
+          path: "variables.level_2_dice"
+          value: "{{ result }}"
+
+  - id: level_2_flow_call
+    name: Level 2 Flow Call
+    description: Calls a level 3 sub-flow
+    type: flow_call
+    flow: test_level_3_flow
+    inputs:
+      deep_input: "{{ inputs.input_value }} -> Level 2"
+
+  - id: level_2_completion
+    name: Level 2 Complete
+    type: completion
+    prompt: "Level 2 flow completed with dice roll: {{ variables.level_2_dice }}"
+    actions:
+      - type: set_value
+        data:
+          path: "outputs.level_2_result"
+          value: "Level 2 complete"
