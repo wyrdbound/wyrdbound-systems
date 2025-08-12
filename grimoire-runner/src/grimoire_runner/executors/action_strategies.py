@@ -240,7 +240,11 @@ class LogMessageActionStrategy(ActionStrategy):
         # Resolve templates in the message
         resolved_message = context.resolve_template(str(message))
 
-        logger.debug(f"Message: {resolved_message}")
+        # Add the message to the execution context for UI display
+        context.add_action_message(f"📝 {resolved_message}")
+        
+        # Also log it for debugging
+        logger.debug(f"Action log_message: {resolved_message}")
 
 
 class SwapValuesActionStrategy(ActionStrategy):

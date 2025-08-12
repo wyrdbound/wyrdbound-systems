@@ -52,6 +52,9 @@ class ExecutionContext:
     current_step: str | None = None
     step_history: list[str] = field(default_factory=list)
     checkpoints: dict[str, Checkpoint] = field(default_factory=dict)
+    
+    # Action messages for UI display
+    action_messages: list[str] = field(default_factory=list)
 
     # Template resolution (delegated to specialized resolver)
     template_resolver: TemplateResolver = field(default_factory=TemplateResolver)
@@ -384,6 +387,16 @@ class ExecutionContext:
             "step_history": self.step_history.copy(),
             "timestamp": datetime.now().isoformat(),
         }
+
+    def add_action_message(self, message: str) -> None:
+        """Add an action message to be displayed by the UI."""
+        self.action_messages.append(message)
+
+    def get_and_clear_action_messages(self) -> list[str]:
+        """Get all action messages and clear the list."""
+        messages = self.action_messages.copy()
+        self.action_messages.clear()
+        return messages
 
     def initialize_model_observables(
         self, model_definition, instance_id: str = None

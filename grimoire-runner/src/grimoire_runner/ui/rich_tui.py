@@ -555,6 +555,11 @@ class RichTUI:
 
         # Show step result with custom or generic messages
         if step_result.success:
+            # Display any action messages that were generated during step execution
+            action_messages = self.context.get_and_clear_action_messages()
+            for action_message in action_messages:
+                self._print_indented(f"[yellow]{action_message}[/yellow]")
+
             # Check if step has a custom result message
             if step.result_message:
                 # Resolve any templates in the custom message
