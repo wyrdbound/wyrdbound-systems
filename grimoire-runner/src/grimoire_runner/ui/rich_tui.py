@@ -581,11 +581,11 @@ class RichTUI:
                         "outputs": self.context.outputs,
                         "system": self.system,
                     }
-                    
+
                     # Add step result data if available
                     if step_result.data:
                         temp_context_data.update(step_result.data)
-                    
+
                     resolved_message = template_service.resolve_template(
                         step.result_message, temp_context_data
                     )

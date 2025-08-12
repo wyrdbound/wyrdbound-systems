@@ -11,7 +11,9 @@ outputs:
     type: text
 
 variables:
-  deep_dice_result: 0
+  - type: roll_result
+    id: deep_dice_result
+    description: "Result of the deep dice roll"
 
 steps:
   - id: level_3_dice

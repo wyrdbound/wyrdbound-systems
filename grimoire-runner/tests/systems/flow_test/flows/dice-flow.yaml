@@ -5,13 +5,17 @@ name: "Dice Rolling Flow"
 description: "Flow demonstrating dice step types"
 
 variables:
-  dice_result: 0
-  ability_scores: {}
+  - type: int
+    id: dice_result
+    description: "Result of the dice roll (just the total)"
+  - type: list
+    id: ability_scores
+    description: "List of ability scores"
 
 steps:
   - id: "simple-roll"
     name: "Simple Dice Roll"
-    type: "dice_roll"
+    type: dice_roll
     prompt: "Rolling a simple d6"
     roll: "1d6"
     output: "dice_result"
@@ -19,7 +23,7 @@ steps:
       - type: "set_value"
         data:
           path: "variables.dice_result"
-          value: "{{ result }}"
+          value: "{{ result.total }}"
     next_step: "sequence-roll"
 
   - id: "sequence-roll"

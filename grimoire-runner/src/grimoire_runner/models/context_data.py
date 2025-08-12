@@ -52,7 +52,7 @@ class ExecutionContext:
     current_step: str | None = None
     step_history: list[str] = field(default_factory=list)
     checkpoints: dict[str, Checkpoint] = field(default_factory=dict)
-    
+
     # Action messages for UI display
     action_messages: list[str] = field(default_factory=list)
 

@@ -11,7 +11,9 @@ outputs:
     type: text
 
 variables:
-  level_2_dice: 0
+  - type: roll_result
+    id: level_2_dice
+    description: "Result of the level 2 dice roll"
 
 steps:
   - id: level_2_step

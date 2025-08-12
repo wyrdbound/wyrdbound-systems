@@ -86,11 +86,11 @@ class SetValueActionStrategy(ActionStrategy):
                 context.set_output(path, resolved_value)
 
     def _resolve_value_with_type_preservation(
-        self, 
-        value: Any, 
-        path: str, 
-        context: "ExecutionContext", 
-        system: "System | None" = None
+        self,
+        value: Any,
+        path: str,
+        context: "ExecutionContext",
+        system: "System | None" = None,
     ) -> Any:
         """Resolve template value while preserving object types for typed variables."""
         # Get the expected variable type if this is a variable assignment
@@ -100,42 +100,47 @@ class SetValueActionStrategy(ActionStrategy):
             expected_type = self._get_variable_type(variable_name, context, system)
             logger.debug(f"Variable {variable_name} has expected type: {expected_type}")
 
-        logger.debug(f"Resolving value for {path}: {repr(value)} (type: {type(value).__name__})")
+        logger.debug(
+            f"Resolving value for {path}: {repr(value)} (type: {type(value).__name__})"
+        )
 
         # First resolve the template to get the actual value
         resolved_value = context.resolve_template(str(value))
-        logger.debug(f"Template resolved to: {repr(resolved_value)} (type: {type(resolved_value).__name__})")
+        logger.debug(
+            f"Template resolved to: {repr(resolved_value)} (type: {type(resolved_value).__name__})"
+        )
 
         # For roll_result type variables, try to preserve RollResult objects
         if expected_type == "roll_result":
             # Check if the resolved value is already a RollResult object
-            from wyrdbound_dice import RollResult
+            from ..models.roll_result import RollResult
+
             if isinstance(resolved_value, RollResult):
                 logger.debug(f"Template resolved to RollResult object for {path}")
                 return resolved_value
-        
+
         # Post-processing: if we expected a roll_result but got a string, try to convert
         if expected_type == "roll_result" and isinstance(resolved_value, str):
             converted_result = self._convert_string_to_roll_result(resolved_value)
             if converted_result:
                 logger.debug(f"Converted string to RollResult for {path}")
                 return converted_result
-        
+
         return resolved_value
 
     def _get_variable_type(
-        self, 
-        variable_name: str, 
-        context: "ExecutionContext", 
-        system: "System | None" = None
+        self,
+        variable_name: str,
+        context: "ExecutionContext",
+        system: "System | None" = None,
     ) -> str | None:
         """Get the expected type for a variable from the flow definition."""
         if not system:
             return None
-        
+
         # Try to get the current flow definition to find variable type
         current_execution = context.get_current_execution()
-        if current_execution and hasattr(current_execution, 'flow_id'):
+        if current_execution and hasattr(current_execution, "flow_id"):
             flow_id = current_execution.flow_id
             if flow_id in system.flows:
                 flow_def = system.flows[flow_id]
@@ -147,17 +152,18 @@ class SetValueActionStrategy(ActionStrategy):
     def _convert_string_to_roll_result(self, value_str: str) -> Any:
         """Try to convert a string back to a RollResult object if it looks like one."""
         from ..models.roll_result import RollResult
-        
+
         # This is a simple heuristic - in practice, once we preserve the object properly,
         # this shouldn't be needed, but it's here as a fallback
         if not isinstance(value_str, str):
             return None
-            
+
         # Look for patterns like "15 = 15 (1d20: 15) + 0" which indicate a dice roll result
         import re
-        pattern = r'^(\d+)\s*=.*\(1d\d+.*\).*$'
+
+        pattern = r"^(\d+)\s*=.*\(1d\d+.*\).*$"
         match = re.match(pattern, value_str.strip())
-        
+
         if match:
             try:
                 total = int(match.group(1))
@@ -169,7 +175,7 @@ class SetValueActionStrategy(ActionStrategy):
                 )
             except (ValueError, AttributeError):
                 pass
-        
+
         return None
 
 
@@ -242,7 +248,7 @@ class LogMessageActionStrategy(ActionStrategy):
 
         # Add the message to the execution context for UI display
         context.add_action_message(f"📝 {resolved_message}")
-        
+
         # Also log it for debugging
         logger.debug(f"Action log_message: {resolved_message}")
 

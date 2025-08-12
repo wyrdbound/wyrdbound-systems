@@ -80,7 +80,7 @@ class DiceExecutor(BaseStepExecutor):
                 detail=result.detailed_result or f"{result.total}",
                 expression=result.expression,
                 breakdown=result.breakdown,
-                individual_rolls=result.rolls
+                individual_rolls=result.rolls,
             )
 
             # Prepare result data with both the structured object and legacy fields
