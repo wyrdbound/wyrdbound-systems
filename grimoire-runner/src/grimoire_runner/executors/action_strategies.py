@@ -55,9 +55,11 @@ class SetValueActionStrategy(ActionStrategy):
             resolved_value = value
             logger.debug(f"Action set_value: Using boolean directly for {path}")
         else:
-            # Resolve template in value for non-dict, non-boolean values
-            resolved_value = context.resolve_template(str(value))
-            logger.debug(f"Action set_value: Resolved template for {path}")
+            # Check if this is a variable assignment and if we can preserve object types
+            resolved_value = self._resolve_value_with_type_preservation(
+                value, path, context, system
+            )
+            logger.debug(f"Action set_value: Resolved value for {path}")
 
         # Use namespaced paths to avoid collision during flow execution
         current_namespace = context.get_current_flow_namespace()
@@ -82,6 +84,93 @@ class SetValueActionStrategy(ActionStrategy):
             else:
                 # Default to outputs
                 context.set_output(path, resolved_value)
+
+    def _resolve_value_with_type_preservation(
+        self, 
+        value: Any, 
+        path: str, 
+        context: "ExecutionContext", 
+        system: "System | None" = None
+    ) -> Any:
+        """Resolve template value while preserving object types for typed variables."""
+        # Get the expected variable type if this is a variable assignment
+        expected_type = None
+        if path.startswith("variables.") and system:
+            variable_name = path[10:]  # Remove "variables." prefix
+            expected_type = self._get_variable_type(variable_name, context, system)
+            logger.debug(f"Variable {variable_name} has expected type: {expected_type}")
+
+        logger.debug(f"Resolving value for {path}: {repr(value)} (type: {type(value).__name__})")
+
+        # First resolve the template to get the actual value
+        resolved_value = context.resolve_template(str(value))
+        logger.debug(f"Template resolved to: {repr(resolved_value)} (type: {type(resolved_value).__name__})")
+
+        # For roll_result type variables, try to preserve RollResult objects
+        if expected_type == "roll_result":
+            # Check if the resolved value is already a RollResult object
+            from wyrdbound_dice import RollResult
+            if isinstance(resolved_value, RollResult):
+                logger.debug(f"Template resolved to RollResult object for {path}")
+                return resolved_value
+        
+        # Post-processing: if we expected a roll_result but got a string, try to convert
+        if expected_type == "roll_result" and isinstance(resolved_value, str):
+            converted_result = self._convert_string_to_roll_result(resolved_value)
+            if converted_result:
+                logger.debug(f"Converted string to RollResult for {path}")
+                return converted_result
+        
+        return resolved_value
+
+    def _get_variable_type(
+        self, 
+        variable_name: str, 
+        context: "ExecutionContext", 
+        system: "System | None" = None
+    ) -> str | None:
+        """Get the expected type for a variable from the flow definition."""
+        if not system:
+            return None
+        
+        # Try to get the current flow definition to find variable type
+        current_execution = context.get_current_execution()
+        if current_execution and hasattr(current_execution, 'flow_id'):
+            flow_id = current_execution.flow_id
+            if flow_id in system.flows:
+                flow_def = system.flows[flow_id]
+                for var_def in flow_def.variables:
+                    if var_def.id == variable_name:
+                        return var_def.type
+        return None
+
+    def _convert_string_to_roll_result(self, value_str: str) -> Any:
+        """Try to convert a string back to a RollResult object if it looks like one."""
+        from ..models.roll_result import RollResult
+        
+        # This is a simple heuristic - in practice, once we preserve the object properly,
+        # this shouldn't be needed, but it's here as a fallback
+        if not isinstance(value_str, str):
+            return None
+            
+        # Look for patterns like "15 = 15 (1d20: 15) + 0" which indicate a dice roll result
+        import re
+        pattern = r'^(\d+)\s*=.*\(1d\d+.*\).*$'
+        match = re.match(pattern, value_str.strip())
+        
+        if match:
+            try:
+                total = int(match.group(1))
+                # Create a basic RollResult from the parsed information
+                return RollResult(
+                    total=total,
+                    detail=value_str,
+                    expression="unknown",  # We'd need more parsing to get this
+                )
+            except (ValueError, AttributeError):
+                pass
+        
+        return None
 
 
 class DisplayValueActionStrategy(ActionStrategy):
@@ -131,6 +220,27 @@ class LogEventActionStrategy(ActionStrategy):
             resolved_event_data = event_data
 
         logger.debug(f"Event: {event_type} - {resolved_event_data}")
+
+
+class LogMessageActionStrategy(ActionStrategy):
+    """Strategy for handling log_message actions."""
+
+    def get_action_type(self) -> str:
+        return "log_message"
+
+    def execute(
+        self,
+        action_data: dict[str, Any],
+        context: "ExecutionContext",
+        system: "System | None" = None,
+    ) -> None:
+        """Execute a log_message action."""
+        message = action_data.get("message", "")
+
+        # Resolve templates in the message
+        resolved_message = context.resolve_template(str(message))
+
+        logger.debug(f"Message: {resolved_message}")
 
 
 class SwapValuesActionStrategy(ActionStrategy):
@@ -309,6 +419,7 @@ class ActionStrategyRegistry:
             SetValueActionStrategy(),
             DisplayValueActionStrategy(),
             LogEventActionStrategy(),
+            LogMessageActionStrategy(),
             SwapValuesActionStrategy(),
             FlowCallActionStrategy(self.table_executor_factory),
             GetValueActionStrategy(),

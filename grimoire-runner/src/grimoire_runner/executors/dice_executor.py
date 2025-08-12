@@ -4,6 +4,7 @@ import logging
 from typing import TYPE_CHECKING, Any
 
 from ..integrations.dice_integration import DiceIntegration
+from ..models.roll_result import RollResult
 from .base import BaseStepExecutor
 
 if TYPE_CHECKING:
@@ -73,12 +74,21 @@ class DiceExecutor(BaseStepExecutor):
             else:
                 logger.debug(f"Dice roll: {roll_expression} = {result.total}")
 
-            # Prepare result data
+            # Create structured RollResult object
+            roll_result = RollResult(
+                total=result.total,
+                detail=result.detailed_result or f"{result.total}",
+                expression=result.expression,
+                breakdown=result.breakdown,
+                individual_rolls=result.rolls
+            )
+
+            # Prepare result data with both the structured object and legacy fields
             result_data = {
-                "result": result.total,
-                "expression": roll_expression,
-                "breakdown": result.breakdown if hasattr(result, "breakdown") else None,
-                "individual_rolls": result.rolls if hasattr(result, "rolls") else None,
+                "result": roll_result,  # New structured result
+                "expression": result.expression,
+                "breakdown": result.breakdown,
+                "individual_rolls": result.rolls,
             }
 
             return StepResult(

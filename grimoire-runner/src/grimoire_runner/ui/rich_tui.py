@@ -568,10 +568,21 @@ class RichTUI:
                         f"Template resolution context - outputs.saving_throw_result: {self.context.outputs.get('saving_throw_result', 'NOT_FOUND')}"
                     )
 
-                    resolved_message = (
-                        template_service.resolve_template_with_execution_context(
-                            step.result_message, self.context, self.system
-                        )
+                    # Create a temporary context that includes step result data for template resolution
+                    # This makes the 'result' variable available in result_message templates
+                    temp_context_data = {
+                        "inputs": self.context.inputs,
+                        "variables": self.context.variables,
+                        "outputs": self.context.outputs,
+                        "system": self.system,
+                    }
+                    
+                    # Add step result data if available
+                    if step_result.data:
+                        temp_context_data.update(step_result.data)
+                    
+                    resolved_message = template_service.resolve_template(
+                        step.result_message, temp_context_data
                     )
 
                     logger.debug(

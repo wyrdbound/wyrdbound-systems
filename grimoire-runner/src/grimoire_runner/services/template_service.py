@@ -76,9 +76,32 @@ class RuntimeTemplateStrategy(TemplateResolutionStrategy):
                     f"Template: '{template_str}'"
                 )
 
+            # Enhance context with roll_result attribute access
+            enhanced_context = self._enhance_context_for_objects(context_data)
+
+            # Check for simple variable reference that should preserve object type
+            template_str_stripped = template_str.strip()
+            if (template_str_stripped.startswith('{{') and 
+                template_str_stripped.endswith('}}') and 
+                template_str_stripped.count('{{') == 1 and
+                template_str_stripped.count('}}') == 1):
+                # Extract variable name from {{ variable_name }}
+                var_content = template_str_stripped[2:-2].strip()
+                if '.' not in var_content and ' ' not in var_content:
+                    # Simple variable reference like {{ result }}
+                    if var_content in enhanced_context:
+                        original_obj = enhanced_context[var_content]
+                        # If we have the original object, return it to preserve type
+                        if isinstance(original_obj, dict) and '_original' in original_obj:
+                            logger.debug(f"Preserving original object type for variable: {var_content}")
+                            return original_obj['_original']
+                        # For other simple objects, return as-is
+                        logger.debug(f"Returning simple variable as-is: {var_content}")
+                        return original_obj
+
             # NO FALLBACKS - template resolution must be explicit about missing variables
             # This will cause Jinja2 to raise UndefinedError for missing variables
-            result = template.render(context_data)
+            result = template.render(enhanced_context)
 
             # Try to parse as structured data if it looks like it
             parsed_result = self._try_parse_structured_data(result)
@@ -95,6 +118,42 @@ class RuntimeTemplateStrategy(TemplateResolutionStrategy):
             )
             logger.error(error_msg)
             raise RuntimeError(error_msg) from e
+
+    def _enhance_context_for_objects(self, context_data: dict) -> dict:
+        """Enhance context to provide better object attribute access."""
+        enhanced_context = context_data.copy()
+        
+        # Make RollResult objects more accessible in templates
+        from ..models.roll_result import RollResult
+        
+        def make_object_accessible(obj):
+            """Convert objects to be more accessible in Jinja2 templates."""
+            if isinstance(obj, RollResult):
+                # Convert RollResult to a dict-like object that preserves all attributes
+                return {
+                    'total': obj.total,
+                    'detail': obj.detail,
+                    'description': obj.description,  # Alias for detail
+                    'expression': obj.expression,
+                    'breakdown': obj.breakdown,
+                    'individual_rolls': obj.individual_rolls,
+                    # Also preserve the original object for methods
+                    '_original': obj
+                }
+            elif isinstance(obj, dict):
+                # Recursively process dict values
+                return {k: make_object_accessible(v) for k, v in obj.items()}
+            elif isinstance(obj, list):
+                # Recursively process list items
+                return [make_object_accessible(item) for item in obj]
+            else:
+                return obj
+        
+        # Process all context values
+        for key, value in enhanced_context.items():
+            enhanced_context[key] = make_object_accessible(value)
+        
+        return enhanced_context
 
     def is_template(self, text: str) -> bool:
         """Check if a string contains template syntax."""
