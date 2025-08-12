@@ -5,11 +5,7 @@ import logging
 import re
 from typing import TYPE_CHECKING, Any, Dict, List, Tuple
 
-try:
-    import jsonschema
-    from jsonschema import validate
-except ImportError:
-    jsonschema = None
+import jsonschema
 
 from ..integrations.llm_integration import LLMIntegration
 from .base import BaseStepExecutor
@@ -70,12 +66,8 @@ class LLMExecutor(BaseStepExecutor):
         Returns (is_valid, error_messages)
         """
         try:
-            import jsonschema
             jsonschema.validate(data, schema)
             return True, []
-        except ImportError:
-            # Fallback if jsonschema not available
-            return True, ["jsonschema package not available"]
         except jsonschema.ValidationError as e:
             return False, [str(e)]
         except Exception as e:
