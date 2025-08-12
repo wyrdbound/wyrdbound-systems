@@ -1,0 +1,13 @@
+actor:
+  abilities:
+    strength: { bonus: 1 }
+    dexterity: { bonus: 2 }
+    constitution: { bonus: 3 }
+    intelligence: { bonus: 4 }
+    wisdom: { bonus: 5 }
+    charisma: { bonus: 6 }
+context_summary: |
+  The player is standing on the edge of a rocky cliffside. He is 
+  battling a wyrm who has used its wings to blow a gust of wind at the 
+  player, possibly causing him to lose his footing and fall from the 
+  cliff.
