@@ -123,7 +123,14 @@ class LogEventActionStrategy(ActionStrategy):
         """Execute a log_event action."""
         event_type = action_data.get("type", "unknown")
         event_data = action_data.get("data", {})
-        logger.debug(f"Event: {event_type} - {event_data}")
+        
+        # Resolve templates in event_data if it's a string
+        if isinstance(event_data, str):
+            resolved_event_data = context.resolve_template(event_data)
+        else:
+            resolved_event_data = event_data
+            
+        logger.debug(f"Event: {event_type} - {resolved_event_data}")
 
 
 class SwapValuesActionStrategy(ActionStrategy):

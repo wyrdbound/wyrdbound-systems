@@ -1,0 +1,66 @@
+id: test_schema_validation
+type: flow
+name: "Test Schema Validation"
+description: "Test flow for LLM JSON schema validation"
+version: "1.0"
+
+inputs:
+  - type: str
+    id: action_description
+    description: "Description of an action requiring a saving throw"
+
+outputs:
+  - type: str
+    id: saving_throw_ability
+    description: "The ability required for the saving throw"
+  - type: str
+    id: reason
+    description: "Reason for the saving throw"
+  - type: bool
+    id: validation_successful
+    description: "Whether validation was successful"
+
+steps:
+  - id: determine_save_ability_schema
+    name: "Determine Save Ability (Schema validation)"
+    type: llm_generation
+    prompt: |
+      Based on the following action, determine which D&D ability score should be used for a saving throw.
+
+      Action: {{ action_description }}
+
+      Respond with a JSON object containing:
+      - ability: one of "strength", "dexterity", "constitution", "intelligence", "wisdom", "charisma"
+      - reason: a descriptive reason (at least 10 characters)
+    prompt_data:
+      action_description: "{{ inputs.action_description }}"
+    validation:
+      type: "json_schema"
+      schema:
+        type: "object"
+        properties:
+          ability:
+            type: "string"
+            enum:
+              [
+                "strength",
+                "dexterity",
+                "constitution",
+                "intelligence",
+                "wisdom",
+                "charisma",
+              ]
+          reason:
+            type: "string"
+            minLength: 10
+        required: ["ability", "reason"]
+    actions:
+      - set_value:
+          path: "outputs.saving_throw_ability"
+          value: "{{ llm_result.ability }}"
+      - set_value:
+          path: "outputs.reason"
+          value: "{{ llm_result.reason }}"
+      - set_value:
+          path: "outputs.validation_successful"
+          value: "{{ llm_validation_successful }}"

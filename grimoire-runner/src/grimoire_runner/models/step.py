@@ -5,6 +5,7 @@ from .flow import (
     ChoiceDefinition,
     DiceSequenceDefinition,
     LLMSettingsDefinition,
+    LLMValidationDefinition,
     StepDefinition,
     StepResult,
     StepType,
@@ -20,4 +21,5 @@ __all__ = [
     "TableRollDefinition",
     "DiceSequenceDefinition",
     "LLMSettingsDefinition",
+    "LLMValidationDefinition",
 ]

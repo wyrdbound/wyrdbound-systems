@@ -13,6 +13,7 @@ from ..models.flow import (
     FlowDefinition,
     InputDefinition,
     LLMSettingsDefinition,
+    LLMValidationDefinition,
     OutputDefinition,
     StepDefinition,
     StepType,
@@ -392,6 +393,11 @@ class SystemLoader:
         if "llm_settings" in data:
             llm_settings = LLMSettingsDefinition(**data["llm_settings"])
 
+        # Parse LLM validation
+        validation = None
+        if "validation" in data:
+            validation = LLMValidationDefinition(**data["validation"])
+
         return StepDefinition(
             id=data["id"],
             name=data.get("name"),  # Make name optional
@@ -415,6 +421,7 @@ class SystemLoader:
             prompt_id=data.get("prompt_id"),
             prompt_data=data.get("prompt_data", {}),
             llm_settings=llm_settings,
+            validation=validation,
             # Conditional step fields
             if_condition=data.get("if"),  # Map 'if' to 'if_condition'
             then_actions=data.get("then"),

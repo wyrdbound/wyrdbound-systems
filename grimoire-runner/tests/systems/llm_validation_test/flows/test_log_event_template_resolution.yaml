@@ -1,0 +1,41 @@
+id: test_log_event_template_resolution
+type: flow
+name: "Test Log Event Template Resolution"
+description: "Test that log_event actions resolve templates correctly"
+version: "1.0"
+
+inputs:
+  - type: str
+    id: test_input
+    description: "Test input for template resolution"
+
+outputs:
+  - type: str
+    id: test_output
+    description: "Test output"
+
+variables:
+  - type: str
+    id: test_variable
+    description: "Test variable"
+
+steps:
+  - id: test_llm_with_log_event
+    name: "Test LLM Generation with Log Event"
+    type: llm_generation
+    prompt: |
+      Return a simple JSON object with a test message using the input: {{ test_input }}
+    prompt_data:
+      test_input: "{{ inputs.test_input }}"
+    validation:
+      type: "json"
+    actions:
+      - set_value:
+          path: "variables.test_variable"
+          value: "{{ llm_result.message if llm_result.message is defined else 'no message' }}"
+      - set_value:
+          path: "outputs.test_output"
+          value: "{{ variables.test_variable }}"
+      - log_event:
+          type: "test_event"
+          data: "Input: {{ inputs.test_input }}, Variable: {{ variables.test_variable }}, LLM Result: {{ llm_result }}, Raw Response: {{ raw_llm_response }}"
