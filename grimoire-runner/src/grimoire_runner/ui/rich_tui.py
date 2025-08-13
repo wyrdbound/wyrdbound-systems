@@ -29,9 +29,12 @@ STEP_TYPE_EMOJIS = {
 }
 
 
-def get_step_start_message(step_type: StepType) -> str:
-    """Get generic start message for a step type."""
+def get_step_start_message(step_type: StepType, step_prompt: str = None) -> str:
+    """Get start message for a step type, prioritizing custom prompt."""
     emoji = STEP_TYPE_EMOJIS.get(step_type, "⚙️")
+
+    if step_prompt:
+        return f"{emoji} {step_prompt}"
 
     messages = {
         StepType.DICE_ROLL: "Rolling dice...",
@@ -405,7 +408,7 @@ class RichTUI:
     def _execute_single_step(self, step, step_num: int) -> tuple[bool, str | None]:
         """Execute a single step."""
         # Show generic start message for step type
-        start_message = get_step_start_message(step.type)
+        start_message = get_step_start_message(step.type, step.prompt)
         self._print_indented(f"[cyan]{start_message}[/cyan]")
 
         # Special handling for flow_call steps to show sub-flow execution
