@@ -26,6 +26,7 @@ from grimoire_runner.models.flow import (
     StepDefinition,
     StepType,
     TableRollDefinition,
+    VariableDefinition,
 )
 
 
@@ -354,7 +355,7 @@ class TestFlowIntegration:
         # Verify all components are loaded
         assert len(test_system.models) == 1  # character model
         assert len(test_system.tables) == 1  # simple-names table
-        assert len(test_system.flows) == 9  # all test flows including nested test flows
+        assert len(test_system.flows) == 10  # all test flows including enum-flow
 
         # Verify flows reference valid system components
         assert "character" in test_system.models
@@ -442,3 +443,201 @@ class TestFlowBuilder:
         assert step.type == StepType.DICE_ROLL
         assert step.roll == "2d6"
         assert step.output == "roll_result"
+
+
+class TestEnumSupport:
+    """Test enum support for InputDefinition, OutputDefinition, and VariableDefinition."""
+
+    def test_input_definition_with_enum(self):
+        """Test InputDefinition supports enum parameter."""
+        input_def = InputDefinition(
+            id="test_input",
+            type="str",
+            enum=["option1", "option2", "option3"],
+            description="Test input with enum",
+        )
+
+        assert input_def.id == "test_input"
+        assert input_def.type == "str"
+        assert input_def.enum == ["option1", "option2", "option3"]
+        assert input_def.description == "Test input with enum"
+        assert input_def.required is True  # Default value
+
+    def test_input_definition_without_enum(self):
+        """Test InputDefinition works without enum parameter."""
+        input_def = InputDefinition(id="test_input", type="str")
+
+        assert input_def.id == "test_input"
+        assert input_def.type == "str"
+        assert input_def.enum is None
+
+    def test_output_definition_with_enum(self):
+        """Test OutputDefinition supports enum parameter."""
+        output_def = OutputDefinition(
+            id="test_output",
+            type="str",
+            enum=["success", "failure", "pending"],
+            description="Test output with enum",
+        )
+
+        assert output_def.id == "test_output"
+        assert output_def.type == "str"
+        assert output_def.enum == ["success", "failure", "pending"]
+        assert output_def.description == "Test output with enum"
+        assert output_def.validate is False  # Default value
+
+    def test_output_definition_without_enum(self):
+        """Test OutputDefinition works without enum parameter."""
+        output_def = OutputDefinition(id="test_output", type="str")
+
+        assert output_def.id == "test_output"
+        assert output_def.type == "str"
+        assert output_def.enum is None
+
+    def test_variable_definition_with_enum(self):
+        """Test VariableDefinition supports enum parameter."""
+        var_def = VariableDefinition(
+            id="test_variable",
+            type="str",
+            enum=["active", "inactive", "disabled"],
+            default="active",
+            description="Test variable with enum",
+        )
+
+        assert var_def.id == "test_variable"
+        assert var_def.type == "str"
+        assert var_def.enum == ["active", "inactive", "disabled"]
+        assert var_def.default == "active"
+        assert var_def.description == "Test variable with enum"
+
+    def test_variable_definition_without_enum(self):
+        """Test VariableDefinition works without enum parameter."""
+        var_def = VariableDefinition(id="test_variable", type="str")
+
+        assert var_def.id == "test_variable"
+        assert var_def.type == "str"
+        assert var_def.enum is None
+        assert var_def.default is None
+
+    def test_flow_definition_with_enum_parameters(self):
+        """Test creating a complete FlowDefinition with enum parameters."""
+        flow = FlowDefinition(
+            id="enum-test-flow",
+            name="Enum Test Flow",
+            inputs=[
+                InputDefinition(
+                    id="difficulty",
+                    type="str",
+                    enum=["easy", "medium", "hard"],
+                    required=True,
+                )
+            ],
+            outputs=[
+                OutputDefinition(id="result", type="str", enum=["success", "failure"])
+            ],
+            variables=[
+                VariableDefinition(
+                    id="status",
+                    type="str",
+                    enum=["running", "completed", "failed"],
+                    default="running",
+                )
+            ],
+            steps=[
+                StepDefinition(
+                    id="test_step",
+                    name="Test Step",
+                    type=StepType.COMPLETION,
+                    prompt="Testing enum support",
+                )
+            ],
+        )
+
+        # Test input with enum
+        input_def = flow.inputs[0]
+        assert input_def.enum == ["easy", "medium", "hard"]
+
+        # Test output with enum
+        output_def = flow.outputs[0]
+        assert output_def.enum == ["success", "failure"]
+
+        # Test variable with enum
+        var_def = flow.variables[0]
+        assert var_def.enum == ["running", "completed", "failed"]
+
+    def test_enum_parameter_type_validation(self):
+        """Test that enum parameters accept proper list types."""
+        # Test with list of strings
+        input_def = InputDefinition(id="string_enum", type="str", enum=["a", "b", "c"])
+        assert input_def.enum == ["a", "b", "c"]
+
+        # Test with empty list
+        output_def = OutputDefinition(id="empty_enum", type="str", enum=[])
+        assert output_def.enum == []
+
+        # Test with None (should work)
+        var_def = VariableDefinition(id="no_enum", type="str", enum=None)
+        assert var_def.enum is None
+
+    def test_enum_flow_loading(self, test_system):
+        """Test that flows with enum parameters load correctly from YAML."""
+        flow = test_system.flows.get("enum-flow")
+        assert flow is not None
+        assert flow.id == "enum-flow"
+        assert flow.name == "Enum Test Flow"
+
+        # Test input enums
+        difficulty_input = next(
+            (inp for inp in flow.inputs if inp.id == "difficulty"), None
+        )
+        assert difficulty_input is not None
+        assert difficulty_input.enum == ["easy", "medium", "hard"]
+
+        class_input = next(
+            (inp for inp in flow.inputs if inp.id == "character_class"), None
+        )
+        assert class_input is not None
+        assert class_input.enum == ["warrior", "mage", "rogue"]
+
+        # Test output enums
+        battle_output = next(
+            (out for out in flow.outputs if out.id == "battle_result"), None
+        )
+        assert battle_output is not None
+        assert battle_output.enum == ["victory", "defeat", "draw"]
+
+        initiative_output = next(
+            (out for out in flow.outputs if out.id == "initiative_side"), None
+        )
+        assert initiative_output is not None
+        assert initiative_output.enum == ["players", "enemies"]
+
+        # Test variable enums
+        phase_var = next(
+            (var for var in flow.variables if var.id == "current_phase"), None
+        )
+        assert phase_var is not None
+        assert phase_var.enum == ["preparation", "combat", "resolution"]
+        assert phase_var.default == "preparation"
+
+        status_var = next(
+            (var for var in flow.variables if var.id == "player_status"), None
+        )
+        assert status_var is not None
+        assert status_var.enum == ["healthy", "wounded", "critical"]
+        assert status_var.default == "healthy"
+
+    def test_enum_backward_compatibility(self, test_system):
+        """Test that existing flows without enums still work."""
+        # Test basic flow (no enums)
+        basic_flow = test_system.flows["basic-flow"]
+
+        # All definitions should have enum as None
+        for input_def in basic_flow.inputs:
+            assert input_def.enum is None
+
+        for output_def in basic_flow.outputs:
+            assert output_def.enum is None
+
+        for var_def in basic_flow.variables:
+            assert var_def.enum is None

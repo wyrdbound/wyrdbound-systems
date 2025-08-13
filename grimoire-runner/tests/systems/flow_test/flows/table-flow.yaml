@@ -19,4 +19,4 @@ steps:
           - type: "set_value"
             data:
               path: "outputs.character.name"
-              value: "{{ result }}"
+              value: "{{ result.entry }}"

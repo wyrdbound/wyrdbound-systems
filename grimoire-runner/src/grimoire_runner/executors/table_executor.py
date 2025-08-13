@@ -4,6 +4,7 @@ import logging
 from typing import TYPE_CHECKING, Any
 
 from ..integrations.dice_integration import DiceIntegration
+from ..models.roll_result import RollResult, TableRollResult
 from .base import BaseStepExecutor
 
 if TYPE_CHECKING:
@@ -19,6 +20,17 @@ class TableExecutor(BaseStepExecutor):
 
     def __init__(self):
         self.dice_integration = DiceIntegration()
+
+    def _dice_result_to_roll_result(self, dice_result) -> RollResult:
+        """Convert a DiceResult from DiceIntegration to a RollResult."""
+        return RollResult(
+            total=dice_result.total,
+            detail=dice_result.detailed_result
+            or f"{dice_result.total} ({dice_result.expression})",
+            expression=dice_result.expression,
+            breakdown=dice_result.breakdown,
+            individual_rolls=dice_result.rolls,
+        )
 
     def execute(
         self, step: "StepDefinition", context: "ExecutionContext", system: "System"
@@ -87,6 +99,9 @@ class TableExecutor(BaseStepExecutor):
                 dice_result = self.dice_integration.roll_expression("1d100")
                 roll_value = dice_result.total
 
+            # Convert dice result to RollResult
+            roll_result = self._dice_result_to_roll_result(dice_result)
+
             # Get the result from the table
             table_result = table.get_entry_by_range(roll_value)
             if table_result is None:
@@ -102,14 +117,12 @@ class TableExecutor(BaseStepExecutor):
                 f"table_result={table_result}, typed_result type={type(typed_result).__name__}"
             )
 
-            result_data = {
-                "table": table_name,
-                "roll": roll_value,
-                "result": typed_result,
-                "dice_expression": table.roll or "1d100",
-            }
+            # Create the TableRollResult object
+            table_roll_result = TableRollResult(
+                entry=typed_result, roll_result=roll_result
+            )
 
-            results.append(result_data)
+            results.append(table_roll_result)
 
             # Log the individual table roll result
             logger.debug(
@@ -119,10 +132,10 @@ class TableExecutor(BaseStepExecutor):
             # Execute table actions with result context
             if table_roll.actions:
                 logger.debug(
-                    f"Executing table actions with typed_result: {type(typed_result).__name__}"
+                    f"Executing table actions with table_roll_result: {type(table_roll_result).__name__}"
                 )
                 self._execute_table_actions(
-                    table_roll.actions, context, system, typed_result, results
+                    table_roll.actions, context, system, table_roll_result, results
                 )
 
         # If only one result, return it directly, otherwise return list

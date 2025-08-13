@@ -123,14 +123,14 @@ steps:
               flow: add_item_to_character
               inputs:
                 character: "outputs.knave"
-                item: "{{ result }}"
+                item: "{{ result.entry }}"
       - table: helmets_and_shields
         actions:
           - flow_call:
               flow: add_item_to_character
               inputs:
                 character: "outputs.knave"
-                item: "{{ result }}"
+                item: "{{ result.entry }}"
       - table: dungeoneering_gear
         count: 2
         actions:
@@ -138,21 +138,21 @@ steps:
               flow: add_items_to_character
               inputs:
                 character: "outputs.knave"
-                items: "{{ results }}"
+                items: "{{ results | map(attribute='entry') | list }}"
       - table: general_gear_1
         actions:
           - flow_call:
               flow: add_item_to_character
               inputs:
                 character: "outputs.knave"
-                item: "{{ result }}"
+                item: "{{ result.entry }}"
       - table: general_gear_2
         actions:
           - flow_call:
               flow: add_item_to_character
               inputs:
                 character: "outputs.knave"
-                item: "{{ result }}"
+                item: "{{ result.entry }}"
     additional_actions:
       - flow_call:
           flow: add_item_to_character
@@ -171,57 +171,57 @@ steps:
         actions:
           - set_value:
               path: "outputs.knave.traits.physique"
-              value: "{{ result }}"
+              value: "{{ result.entry }}"
       - table: face
         actions:
           - set_value:
               path: "outputs.knave.traits.face"
-              value: "{{ result }}"
+              value: "{{ result.entry }}"
       - table: skin
         actions:
           - set_value:
               path: "outputs.knave.traits.skin"
-              value: "{{ result }}"
+              value: "{{ result.entry }}"
       - table: hair
         actions:
           - set_value:
               path: "outputs.knave.traits.hair"
-              value: "{{ result }}"
+              value: "{{ result.entry }}"
       - table: clothing
         actions:
           - set_value:
               path: "outputs.knave.traits.clothing"
-              value: "{{ result }}"
+              value: "{{ result.entry }}"
       - table: virtue
         actions:
           - set_value:
               path: "outputs.knave.traits.virtue"
-              value: "{{ result }}"
+              value: "{{ result.entry }}"
       - table: vice
         actions:
           - set_value:
               path: "outputs.knave.traits.vice"
-              value: "{{ result }}"
+              value: "{{ result.entry }}"
       - table: speech
         actions:
           - set_value:
               path: "outputs.knave.traits.speech"
-              value: "{{ result }}"
+              value: "{{ result.entry }}"
       - table: background
         actions:
           - set_value:
               path: "outputs.knave.traits.background"
-              value: "{{ result }}"
+              value: "{{ result.entry }}"
       - table: misfortunes
         actions:
           - set_value:
               path: "outputs.knave.traits.misfortunes"
-              value: "{{ result }}"
+              value: "{{ result.entry }}"
       - table: alignment
         actions:
           - set_value:
               path: "outputs.knave.traits.alignment"
-              value: "{{ result }}"
+              value: "{{ result.entry }}"
 
   - id: choose_gender_choice
     name: "Gender Determination Choice"
@@ -269,7 +269,7 @@ steps:
         actions:
           - set_value:
               path: "outputs.knave.gender"
-              value: "{{ result }}"
+              value: "{{ result.entry }}"
     next_step: choose_name
 
   - id: choose_name

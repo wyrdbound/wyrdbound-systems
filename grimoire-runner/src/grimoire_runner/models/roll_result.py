@@ -80,3 +80,23 @@ class RollResult:
     def __ne__(self, other) -> bool:
         """Inequality comparison based on total."""
         return not self.__eq__(other)
+
+
+@dataclass
+class TableRollResult:
+    """Result of a table roll operation containing both the entry and roll information."""
+
+    entry: Any
+    """The entry selected from the table (type depends on table's entry_type)."""
+
+    roll_result: RollResult
+    """The RollResult object for the dice roll that was performed."""
+
+    def __str__(self) -> str:
+        """String representation shows the entry and roll details."""
+        return f"{self.entry} (rolled {self.roll_result.total})"
+
+    @property
+    def result(self) -> Any:
+        """Alias for entry to support legacy template usage."""
+        return self.entry

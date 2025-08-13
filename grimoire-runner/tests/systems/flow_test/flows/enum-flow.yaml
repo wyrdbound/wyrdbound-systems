@@ -1,0 +1,77 @@
+# Test flow demonstrating enum support for inputs, outputs, and variables
+id: "enum-flow"
+type: "flow"
+name: "Enum Test Flow"
+description: "Flow demonstrating enum parameter support"
+version: "1.0"
+
+inputs:
+  - id: "difficulty"
+    type: "str"
+    enum: ["easy", "medium", "hard"]
+    required: true
+    description: "Game difficulty level"
+  - id: "character_class"
+    type: "str"
+    enum: ["warrior", "mage", "rogue"]
+    required: true
+    description: "Character class selection"
+
+outputs:
+  - id: "battle_result"
+    type: "str"
+    enum: ["victory", "defeat", "draw"]
+    description: "The outcome of the battle"
+  - id: "initiative_side"
+    type: "str"
+    enum: ["players", "enemies"]
+    description: "Which side has initiative"
+
+variables:
+  - id: "current_phase"
+    type: "str"
+    enum: ["preparation", "combat", "resolution"]
+    default: "preparation"
+    description: "Current phase of the encounter"
+  - id: "player_status"
+    type: "str"
+    enum: ["healthy", "wounded", "critical"]
+    default: "healthy"
+    description: "Player's current health status"
+
+steps:
+  - id: "start"
+    name: "Initialize Battle"
+    type: "completion"
+    prompt: "Starting battle with difficulty: {{ inputs.difficulty }}, class: {{ inputs.character_class }}"
+    actions:
+      - type: "set_value"
+        data:
+          path: "variables.current_phase"
+          value: "combat"
+    next_step: "determine_initiative"
+
+  - id: "determine_initiative"
+    name: "Roll Initiative"
+    type: "dice_roll"
+    roll: "1d6"
+    actions:
+      - type: "set_value"
+        data:
+          path: "outputs.initiative_side"
+          value: "{% if result.total > 3 %}players{% else %}enemies{% endif %}"
+    next_step: "battle_resolution"
+
+  - id: "battle_resolution"
+    name: "Resolve Battle"
+    type: "completion"
+    prompt: "Battle resolving with {{ outputs.initiative_side }} having initiative"
+    actions:
+      - type: "set_value"
+        data:
+          path: "outputs.battle_result"
+          value: "{% if inputs.difficulty == 'easy' %}victory{% elif inputs.difficulty == 'hard' %}defeat{% else %}draw{% endif %}"
+      - type: "set_value"
+        data:
+          path: "variables.current_phase"
+          value: "resolution"

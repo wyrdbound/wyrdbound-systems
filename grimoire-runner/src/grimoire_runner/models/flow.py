@@ -38,9 +38,9 @@ class OutputDefinition:
     id: str
     validate: bool = False
     description: str | None = None
+    enum: list[str] | None = None
 
 
-@dataclass
 @dataclass
 class VariableDefinition:
     """Flow variable definition."""
@@ -49,6 +49,7 @@ class VariableDefinition:
     type: str = "unknown"
     description: str | None = None
     default: Any = None  # Default value for the variable
+    enum: list[str] | None = None
 
 
 @dataclass
