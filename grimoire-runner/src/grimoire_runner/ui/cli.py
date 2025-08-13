@@ -136,6 +136,15 @@ def execute(
         logging.basicConfig(
             level=logging.DEBUG, format="%(levelname)s:%(name)s:%(message)s"
         )
+        # Suppress noisy HTTP logs that provide little value for GRIMOIRE debugging
+        logging.getLogger("httpcore.http11").setLevel(logging.WARNING)
+        logging.getLogger("httpcore.connection").setLevel(logging.WARNING)
+        logging.getLogger("httpcore._backends.sync").setLevel(logging.WARNING)
+        logging.getLogger("httpx").setLevel(logging.WARNING)
+        logging.getLogger("urllib3").setLevel(logging.WARNING)
+        logging.getLogger("requests").setLevel(logging.WARNING)
+        # Also suppress httpcore logs in general
+        logging.getLogger("httpcore").setLevel(logging.WARNING)
     elif verbose:
         logging.basicConfig(
             level=logging.INFO, format="%(levelname)s:%(name)s:%(message)s"

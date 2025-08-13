@@ -20,14 +20,17 @@ outputs:
     description: "Whether the saving throw was successful"
 
 variables:
-  base_dice_roll: ""
-  roll_result: ""
+  - type: str
+    id: base_dice_roll
+    description: "The base dice roll to use for the saving throw"
+  - type: roll_result
+    id: saving_throw_result
+    description: "The result of the saving throw roll"
 
 steps:
   - id: "determine_dice_roll"
     name: "Determine Saving Throw Type"
     type: "conditional"
-    result_message: "Selected {{ inputs.saving_throw_type }} dice ({{ variables.base_dice_roll }})"
     if: "{{ inputs.saving_throw_type == 'basic' }}"
     then:
       # Basic
@@ -46,19 +49,18 @@ steps:
         - set_value:
             path: "variables.base_dice_roll"
             value: 2d20kl1
-    next_step: "execute_saving_throw_roll"
+    result_message: "Selected {{ inputs.saving_throw_type }} dice ({{ variables.base_dice_roll }})"
 
-  - id: "execute_saving_throw_roll"
-    name: "Roll Saving Throw"
-    type: "dice_roll"
-    result_message: "Rolled {{ variables.roll_result }} vs DC {{ inputs.saving_throw_dc }}"
-    prompt: "Rolling {{ variables.base_dice_roll }} + {{ inputs.saving_throw_modifier }} for saving throw..."
+  - id: execute_saving_throw_roll
+    type: dice_roll
     roll: "{{ variables.base_dice_roll }} + {{ inputs.saving_throw_modifier }}"
     actions:
       - set_value:
-          path: "variables.roll_result"
+          path: "variables.saving_throw_result"
           value: "{{ result }}"
-    next_step: "evaluate_saving_throw_result"
+      - log_message:
+          message: "Rolled {{ result.description }} for saving throw"
+    result_message: "Rolled {{ result.total }} vs DC {{ inputs.saving_throw_dc }}"
 
   - id: evaluate_saving_throw_result
     name: "Evaluate Saving Throw Result"
@@ -67,4 +69,4 @@ steps:
     actions:
       - set_value:
           path: "outputs.saving_throw_result"
-          value: "{{ variables.roll_result > inputs.saving_throw_dc }}"
+          value: "{{ variables.saving_throw_result.total > inputs.saving_throw_dc }}"

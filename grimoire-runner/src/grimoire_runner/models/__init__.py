@@ -11,4 +11,5 @@ __all__ = [
     "SourceDefinition",
     "ModelDefinition",
     "ExecutionContext",
+    "RollResult",
 ]

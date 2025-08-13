@@ -19,7 +19,7 @@ outputs:
     id: "character"
     description: "The updated character with the new item"
 
-variables: {}
+variables: []
 
 steps:
   - id: "add_item"

@@ -101,6 +101,18 @@ class LLMSettingsDefinition:
 
 
 @dataclass
+class LLMValidationDefinition:
+    """LLM response validation configuration."""
+
+    type: str  # "json" or "json_schema"
+    schema: dict[str, Any] | None = None  # JSON Schema for validation
+    max_attempts: int = 3  # Total attempts (original + retries)
+    cleanup_enabled: bool = True  # Enable automatic cleanup
+    on_failure: str = "continue"  # "continue", "fail", or "fallback"
+    fallback_value: Any = None  # Value to use when validation fails
+
+
+@dataclass
 class StepDefinition:
     """Base flow step definition."""
 
@@ -137,6 +149,7 @@ class StepDefinition:
     prompt_id: str | None = None
     prompt_data: dict[str, Any] = field(default_factory=dict)
     llm_settings: LLMSettingsDefinition | None = None
+    validation: LLMValidationDefinition | None = None
 
     # For conditional
     if_condition: str | None = None  # Condition to evaluate (alias for condition)

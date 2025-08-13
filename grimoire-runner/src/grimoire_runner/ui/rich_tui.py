@@ -555,6 +555,11 @@ class RichTUI:
 
         # Show step result with custom or generic messages
         if step_result.success:
+            # Display any action messages that were generated during step execution
+            action_messages = self.context.get_and_clear_action_messages()
+            for action_message in action_messages:
+                self._print_indented(f"[yellow]{action_message}[/yellow]")
+
             # Check if step has a custom result message
             if step.result_message:
                 # Resolve any templates in the custom message
@@ -568,10 +573,21 @@ class RichTUI:
                         f"Template resolution context - outputs.saving_throw_result: {self.context.outputs.get('saving_throw_result', 'NOT_FOUND')}"
                     )
 
-                    resolved_message = (
-                        template_service.resolve_template_with_execution_context(
-                            step.result_message, self.context, self.system
-                        )
+                    # Create a temporary context that includes step result data for template resolution
+                    # This makes the 'result' variable available in result_message templates
+                    temp_context_data = {
+                        "inputs": self.context.inputs,
+                        "variables": self.context.variables,
+                        "outputs": self.context.outputs,
+                        "system": self.system,
+                    }
+
+                    # Add step result data if available
+                    if step_result.data:
+                        temp_context_data.update(step_result.data)
+
+                    resolved_message = template_service.resolve_template(
+                        step.result_message, temp_context_data
                     )
 
                     logger.debug(
@@ -724,18 +740,18 @@ class RichTUI:
                 # Store the result in the main context for template resolution
                 self.context.outputs["result"] = sub_flow_outputs
 
-                self._print_indented(
+                self.console.print(
                     f"[green]🔗 Sub-flow '{sub_flow_name}' completed successfully[/green]"
                 )
                 if sub_flow_outputs:
                     self._print_indented(
-                        f"[dim]  📤 Outputs: {list(sub_flow_outputs.keys())}[/dim]"
+                        f"[dim]📤 Outputs: {list(sub_flow_outputs.keys())}[/dim]"
                     )
 
                 # Execute any flow_call step actions with result context
                 if hasattr(step, "actions") and step.actions:
                     self._print_indented(
-                        "[cyan]  ⚙️ Executing flow_call step actions...[/cyan]"
+                        "[cyan]⚙️ Executing flow_call step actions...[/cyan]"
                     )
 
                     # Create result object for template resolution
@@ -755,11 +771,9 @@ class RichTUI:
                         self.engine.action_executor.execute_actions(
                             step.actions, self.context, {}, self.system
                         )
-                        self._print_indented(
-                            "[green]  ✅ Step actions completed[/green]"
-                        )
+                        self._print_indented("[green]✅ Step actions completed[/green]")
                     except Exception as e:
-                        self._print_indented(f"[red]  ❌ Step action failed: {e}[/red]")
+                        self._print_indented(f"[red]❌ Step action failed: {e}[/red]")
                         return False, None
 
                 # Create step result

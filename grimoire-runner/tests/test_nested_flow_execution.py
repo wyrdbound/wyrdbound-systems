@@ -75,8 +75,10 @@ class TestNestedFlowExecution:
         # Should also have the dice result in variables
         assert "level_2_dice" in result.variables
         dice_result = result.variables["level_2_dice"]
-        assert isinstance(dice_result, int)
-        assert 1 <= dice_result <= 6  # 1d6 range
+        from grimoire_runner.models.roll_result import RollResult
+
+        assert isinstance(dice_result, RollResult)
+        assert 1 <= dice_result.total <= 6  # 1d6 range
 
     def test_level_3_flow_executes_independently(self, engine, test_system):
         """Test that level 3 flow can execute independently."""
@@ -98,8 +100,10 @@ class TestNestedFlowExecution:
         # Should have dice roll result in variables
         assert "deep_dice_result" in result.variables
         dice_result = result.variables["deep_dice_result"]
-        assert isinstance(dice_result, int)
-        assert 1 <= dice_result <= 4  # 1d4 range
+        from grimoire_runner.models.roll_result import RollResult
+
+        assert isinstance(dice_result, RollResult)
+        assert 1 <= dice_result.total <= 4  # 1d4 range
 
         # Should also have the output
         assert "level_3_result" in result.outputs
@@ -245,8 +249,10 @@ class TestFlowCallResultHandling:
         # Should have the dice result in variables
         assert "deep_dice_result" in result.variables
         dice_result = result.variables["deep_dice_result"]
-        assert isinstance(dice_result, int)
-        assert 1 <= dice_result <= 4  # 1d4 range
+        from grimoire_runner.models.roll_result import RollResult
+
+        assert isinstance(dice_result, RollResult)
+        assert 1 <= dice_result.total <= 4  # 1d4 range
 
         # The output should contain the dice roll result (templated from {{ variables.deep_dice_result }})
         # This tests that the result variable mechanism is working

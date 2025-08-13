@@ -1,0 +1,40 @@
+id: test_json_validation
+type: flow
+name: "Test JSON Validation"
+description: "Test flow for LLM JSON validation"
+version: "1.0"
+
+inputs:
+  - type: str
+    id: action_description
+    description: "Description of an action requiring a saving throw"
+
+outputs:
+  - type: str
+    id: saving_throw_ability
+    description: "The ability required for the saving throw"
+  - type: str
+    id: reason
+    description: "Reason for the saving throw"
+
+steps:
+  - id: determine_save_ability_json
+    name: "Determine Save Ability (JSON validation)"
+    type: llm_generation
+    prompt: |
+      Based on the following action, determine which D&D ability score should be used for a saving throw.
+
+      Action: {{ action_description }}
+
+      Respond with a JSON object containing the ability and reason.
+    prompt_data:
+      action_description: "{{ inputs.action_description }}"
+    validation:
+      type: "json"
+    actions:
+      - set_value:
+          path: "outputs.saving_throw_ability"
+          value: "{{ llm_result.ability if llm_result.ability is defined else 'unknown' }}"
+      - set_value:
+          path: "outputs.reason"
+          value: "{{ llm_result.reason if llm_result.reason is defined else 'No reason provided' }}"

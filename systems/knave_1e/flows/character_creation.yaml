@@ -1,22 +1,24 @@
-id: "character_creation"
-type: "flow"
+id: character_creation
+type: flow
 name: "Character Creation"
 description: "Character creation process for {{ system.name }}"
 version: "1.0"
 
 inputs: []
 outputs:
-  - type: "character"
-    id: "knave"
+  - type: character
+    id: knave
     validate: true
 
 variables:
-  hp_dice_roll: ""
+  - type: str
+    id: hp_dice_roll
+    description: "The dice roll used to determine hit points."
 
 steps:
-  - id: "roll_abilities"
+  - id: roll_abilities
     name: "Roll Abilities"
-    type: "dice_sequence"
+    type: dice_sequence
     prompt: "Roll 3d6 for each ability. The lowest die becomes your bonus."
     sequence:
       items:
@@ -35,21 +37,21 @@ steps:
             value: "{{ result }}"
       display_as: "{{ item|title }}: {{ result }} (bonus +{{ result }}, defense {{ result + 10 }})"
 
-  - id: "ability_swap_choice"
+  - id: ability_swap_choice
     name: "Optional Ability Swap"
-    type: "player_choice"
+    type: player_choice
     prompt: "You may optionally swap the scores of two abilities."
     choices:
-      - id: "no_swap"
+      - id: no_swap
         label: "Keep abilities as rolled"
         next_step: "hit_points_choice"
-      - id: "swap_abilities"
+      - id: swap_abilities
         label: "Swap two ability scores"
-        next_step: "swap_values_step"
+        next_step: swap_values_step
 
-  - id: "swap_values_step"
+  - id: swap_values_step
     name: "Choose Abilities to Swap"
-    type: "player_choice"
+    type: player_choice
     prompt: "Choose two abilities to swap:"
     choice_source:
       table_from_values: "outputs.knave.abilities"
@@ -59,21 +61,21 @@ steps:
       - swap_values:
           path1: "outputs.knave.abilities.{{ selected_items[0] }}.bonus"
           path2: "outputs.knave.abilities.{{ selected_items[1] }}.bonus"
-    next_step: "hit_points_choice"
+    next_step: hit_points_choice
 
-  - id: "hit_points_choice"
+  - id: hit_points_choice
     name: "Hit Points Rolling Method"
-    type: "player_choice"
+    type: player_choice
     prompt: "Choose how to roll your starting hit points:"
     choices:
-      - id: "standard_roll"
+      - id: standard_roll
         label: "Standard roll (1d8)"
         actions:
           - set_value:
               path: "variables.hp_dice_roll"
               value: "1d8"
         next_step: "roll_hit_points"
-      - id: "house_rule"
+      - id: house_rule
         label: "House rule: reroll results below 5"
         actions:
           - set_value:
@@ -81,186 +83,186 @@ steps:
               value: "1d8r<5"
         next_step: "roll_hit_points"
 
-  - id: "roll_hit_points"
+  - id: roll_hit_points
     name: "Roll Hit Points"
-    type: "dice_roll"
+    type: dice_roll
     prompt: "Rolling for hit points..."
     roll: "{{ variables.hp_dice_roll }}"
     actions:
       - set_value:
           path: "outputs.knave.hit_points.max"
-          value: "{{ result }}"
+          value: "{{ result.total }}"
       - set_value:
           path: "outputs.knave.hit_points.current"
-          value: "{{ result }}"
-    next_step: "choose_weapon"
+          value: "{{ result.total }}"
+    next_step: choose_weapon
 
-  - id: "choose_weapon"
+  - id: choose_weapon
     name: "Choose Starting Weapon"
-    type: "player_choice"
+    type: player_choice
     prompt: "Choose one weapon to start with:"
     choice_source:
-      table: "weapons"
+      table: weapons
     actions:
       - flow_call:
-          flow: "add_item_to_character"
+          flow: add_item_to_character
           inputs:
             character: "outputs.knave"
             item: "{{ result }}"
-    next_step: "roll_starting_gear"
+    next_step: roll_starting_gear
 
-  - id: "roll_starting_gear"
+  - id: roll_starting_gear
     name: "Determine Starting Equipment"
-    type: "table_roll"
+    type: table_roll
     prompt: "Rolling for your starting equipment..."
     parallel: true
     tables:
-      - table: "armor"
+      - table: armor
         actions:
           - flow_call:
-              flow: "add_item_to_character"
+              flow: add_item_to_character
               inputs:
                 character: "outputs.knave"
                 item: "{{ result }}"
-      - table: "helmets_and_shields"
+      - table: helmets_and_shields
         actions:
           - flow_call:
-              flow: "add_item_to_character"
+              flow: add_item_to_character
               inputs:
                 character: "outputs.knave"
                 item: "{{ result }}"
-      - table: "dungeoneering_gear"
+      - table: dungeoneering_gear
         count: 2
         actions:
           - flow_call:
-              flow: "add_items_to_character"
+              flow: add_items_to_character
               inputs:
                 character: "outputs.knave"
                 items: "{{ results }}"
-      - table: "general_gear_1"
+      - table: general_gear_1
         actions:
           - flow_call:
-              flow: "add_item_to_character"
+              flow: add_item_to_character
               inputs:
                 character: "outputs.knave"
                 item: "{{ result }}"
-      - table: "general_gear_2"
+      - table: general_gear_2
         actions:
           - flow_call:
-              flow: "add_item_to_character"
+              flow: add_item_to_character
               inputs:
                 character: "outputs.knave"
                 item: "{{ result }}"
     additional_actions:
       - flow_call:
-          flow: "add_item_to_character"
+          flow: add_item_to_character
           inputs:
             character: "outputs.knave"
-            item: "rations"
+            item: rations
             quantity: 2
 
-  - id: "generate_traits"
+  - id: generate_traits
     name: "Determine Character Traits"
-    type: "table_roll"
+    type: table_roll
     prompt: "Rolling for your character's physical and personality traits..."
     parallel: true
     tables:
-      - table: "physique"
+      - table: physique
         actions:
           - set_value:
               path: "outputs.knave.traits.physique"
               value: "{{ result }}"
-      - table: "face"
+      - table: face
         actions:
           - set_value:
               path: "outputs.knave.traits.face"
               value: "{{ result }}"
-      - table: "skin"
+      - table: skin
         actions:
           - set_value:
               path: "outputs.knave.traits.skin"
               value: "{{ result }}"
-      - table: "hair"
+      - table: hair
         actions:
           - set_value:
               path: "outputs.knave.traits.hair"
               value: "{{ result }}"
-      - table: "clothing"
+      - table: clothing
         actions:
           - set_value:
               path: "outputs.knave.traits.clothing"
               value: "{{ result }}"
-      - table: "virtue"
+      - table: virtue
         actions:
           - set_value:
               path: "outputs.knave.traits.virtue"
               value: "{{ result }}"
-      - table: "vice"
+      - table: vice
         actions:
           - set_value:
               path: "outputs.knave.traits.vice"
               value: "{{ result }}"
-      - table: "speech"
+      - table: speech
         actions:
           - set_value:
               path: "outputs.knave.traits.speech"
               value: "{{ result }}"
-      - table: "background"
+      - table: background
         actions:
           - set_value:
               path: "outputs.knave.traits.background"
               value: "{{ result }}"
-      - table: "misfortunes"
+      - table: misfortunes
         actions:
           - set_value:
               path: "outputs.knave.traits.misfortunes"
               value: "{{ result }}"
-      - table: "alignment"
+      - table: alignment
         actions:
           - set_value:
               path: "outputs.knave.traits.alignment"
               value: "{{ result }}"
 
-  - id: "choose_gender_choice"
+  - id: choose_gender_choice
     name: "Gender Determination Choice"
-    type: "player_choice"
+    type: player_choice
     prompt: "How would you like to determine your character's gender?"
     choices:
-      - id: "player_choice"
+      - id: player_choice
         label: "Player Choice"
         next_step: "choose_gender"
-      - id: "random_roll"
+      - id: random_roll
         label: "Randomly Choose"
         next_step: "roll_gender"
 
-  - id: "choose_gender"
+  - id: choose_gender
     name: "Choose Character Gender"
-    type: "player_choice"
+    type: player_choice
     prompt: "Select your gender"
     choices:
-      - id: "female"
+      - id: female
         label: "Female"
         actions:
           - set_value:
               path: "outputs.knave.gender"
               value: "Female"
-      - id: "male"
+      - id: male
         label: "Male"
         actions:
           - set_value:
               path: "outputs.knave.gender"
               value: "Male"
-      - id: "non_binary"
+      - id: non_binary
         label: "Non-binary"
         actions:
           - set_value:
               path: "outputs.knave.gender"
               value: "Non-binary"
-    next_step: "choose_name"
+    next_step: choose_name
 
-  - id: "roll_gender"
+  - id: roll_gender
     name: "Determine Character Gender"
-    type: "table_roll"
+    type: table_roll
     prompt: "Rolling for your character's gender..."
     tables:
       - table: gender
@@ -268,53 +270,53 @@ steps:
           - set_value:
               path: "outputs.knave.gender"
               value: "{{ result }}"
-    next_step: "choose_name"
+    next_step: choose_name
 
-  - id: "choose_name"
+  - id: choose_name
     name: "Choose Character Name"
-    type: "player_input"
+    type: player_input
     prompt: "What is your character's name?"
     actions:
       - set_value:
           path: "outputs.knave.name"
           value: "{{ result }}"
 
-  - id: "character_description"
+  - id: character_description
     name: "Generate Character Description"
-    type: "llm_generation"
+    type: llm_generation
     condition: "llm_enabled"
-    prompt_id: "character_description"
+    prompt_id: character_description
     prompt_data:
       name: "{{ outputs.knave.name }}"
       gender: "{{ outputs.knave.gender }}"
       traits: "{{ outputs.knave.traits }}"
     llm_settings:
-      provider: "ollama"
-      model: "gemma3"
+      provider: ollama
+      model: gemma3
       max_tokens: 200
     actions:
       - set_value:
           path: "outputs.knave.description"
           value: "{{ result }}"
 
-  - id: "review_character"
+  - id: review_character
     name: "Review and Confirm Character"
-    type: "player_choice"
+    type: player_choice
     prompt: "Here is your completed character:"
     pre_actions:
       - display_value: "outputs.knave"
     choices:
-      - id: "accept"
+      - id: accept
         label: "Accept this character"
         next_step: "finalize_character"
-      - id: "reroll"
+      - id: reroll
         label: "Start over with a new character"
         next_step: "roll_abilities"
         reset_outputs: true
 
-  - id: "finalize_character"
+  - id: finalize_character
     name: "Character Creation Complete"
-    type: "completion"
+    type: completion
     prompt: "Your Knave is ready for adventure!"
     actions:
       - validate_value: "outputs.knave"
