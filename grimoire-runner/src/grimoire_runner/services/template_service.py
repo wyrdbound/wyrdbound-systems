@@ -225,10 +225,21 @@ class RuntimeTemplateStrategy(TemplateResolutionStrategy):
                 pass
 
         # Special handling for single-line YAML that might be intentional structured data
-        # but not simple display text like "Strength: +2"
+        # but not simple display text like "Strength: +2" or log messages
         if ":" in result and (
             result.count("\n") > 0
-            or not any(char in result for char in ["+", "-", "Strength", "Dexterity"])
+            and not any(
+                phrase in result.lower()
+                for phrase in [
+                    "saving throw",
+                    "justification",
+                    "ability",
+                    "type",
+                    "roll",
+                    "dice",
+                    "damage",
+                ]
+            )
         ):
             try:
                 parsed = yaml.safe_load(result)

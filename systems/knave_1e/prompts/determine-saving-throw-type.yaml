@@ -11,9 +11,14 @@ llm:
   model: "gemma2"
 
 prompt_template: |
-  We are playing Knave 1st edition. Please help me determine which Type should be used for an Saving Throw (basic, advantage, disadvantage) based on the following context:
+  We are playing Knave 1st edition. Please help me determine which 
+  Type should be used for an Saving Throw (basic, advantage, disadvantage) 
+  based on the following context:
 
   "{{ context_summary }} The ability being tested is {{ saving_throw_ability }}."
+
+  Be sure to consider any situational factors that may make the saving 
+  throw easier or harder. When in doubt, err on the side of a basic roll.
 
   The possible Types are:
   - basic
@@ -71,15 +76,12 @@ prompt_template: |
   }
 
   INPUT 3:
-  The player is trapped within a crumbling, subterranean temple 
-  dedicated to a forgotten deity. As he cautiously proceeds through a 
-  narrow corridor, a sudden, violent tremor shakes the temple. Dust 
-  and debris rain down from the ceiling. They should roll a save for 
-  whether they are able to avoid the falling debris. The ability being
-  tested is dexterity.
+  The player is battling a wyrm while standing on the edge of a rocky
+  cliffside. The wyrm has used its wings to blow a gust of wind at the
+  player causing him to possibly lose his footing and fall from the cliff.
 
   GOOD RESPONSE 3:
   {
     "type": "basic",
-    "reason": "There are no specific conditions that would grant advantage or disadvantage on this saving throw."
+    "reason": "Although the wyrm's gust of wind is a significant threat, it is the cause for the check. There are no additional conditions that would grant advantage or disadvantage."
   }

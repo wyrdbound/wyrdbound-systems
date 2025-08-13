@@ -5,8 +5,8 @@ description: "Determines the appropriate ability score for a saving throw based 
 version: "1.0"
 
 llm:
-  provider: "ollama"
-  model: "gemma2"
+  provider: ollama
+  model: gemma2
 
 prompt_template: |
   We are playing Knave 1st edition. Please help me determine which Ability should be used for an Saving Throw based on the following context:

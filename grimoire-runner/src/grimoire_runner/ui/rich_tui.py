@@ -740,18 +740,18 @@ class RichTUI:
                 # Store the result in the main context for template resolution
                 self.context.outputs["result"] = sub_flow_outputs
 
-                self._print_indented(
+                self.console.print(
                     f"[green]🔗 Sub-flow '{sub_flow_name}' completed successfully[/green]"
                 )
                 if sub_flow_outputs:
                     self._print_indented(
-                        f"[dim]  📤 Outputs: {list(sub_flow_outputs.keys())}[/dim]"
+                        f"[dim]📤 Outputs: {list(sub_flow_outputs.keys())}[/dim]"
                     )
 
                 # Execute any flow_call step actions with result context
                 if hasattr(step, "actions") and step.actions:
                     self._print_indented(
-                        "[cyan]  ⚙️ Executing flow_call step actions...[/cyan]"
+                        "[cyan]⚙️ Executing flow_call step actions...[/cyan]"
                     )
 
                     # Create result object for template resolution
@@ -771,11 +771,9 @@ class RichTUI:
                         self.engine.action_executor.execute_actions(
                             step.actions, self.context, {}, self.system
                         )
-                        self._print_indented(
-                            "[green]  ✅ Step actions completed[/green]"
-                        )
+                        self._print_indented("[green]✅ Step actions completed[/green]")
                     except Exception as e:
-                        self._print_indented(f"[red]  ❌ Step action failed: {e}[/red]")
+                        self._print_indented(f"[red]❌ Step action failed: {e}[/red]")
                         return False, None
 
                 # Create step result
