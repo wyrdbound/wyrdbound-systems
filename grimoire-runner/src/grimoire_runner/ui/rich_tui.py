@@ -1,7 +1,6 @@
 """Rich-based TUI for step-by-step flow execution with accessibility in mind."""
 
 import logging
-import time
 from pathlib import Path
 
 from rich.console import Console
@@ -265,36 +264,10 @@ class RichTUI:
 
             step_num += 1
 
-            # Show step header with progress info
-            progress_text = f"[bold cyan]Step {step_num}/{total_steps}[/bold cyan]"
-            step_description = getattr(step, "description", None) or ""
-            description_text = (
-                f"\n[dim]Description: {step_description}[/dim]"
-                if step_description
-                else ""
-            )
-
-            panel_content = (
-                f"{progress_text}: [bold]{step.name or step.id}[/bold]\n"
-                f"[dim]Type: {step.type}[/dim]" + description_text
-            )
-
-            if self.indent_level == 0:
-                # Top level - use full panel
-                self.console.print(
-                    Panel(
-                        panel_content,
-                        border_style="blue",
-                        title="Current Step",
-                    )
-                )
-            else:
-                # Nested level - use indented panel
-                self.console.print(
-                    self._create_indented_panel(
-                        panel_content, title="Current Step", border_style="blue"
-                    )
-                )
+            # Show compact step header
+            step_name = step.name or step.id
+            step_type = step.type.name if hasattr(step.type, 'name') else str(step.type)
+            self.console.print(f"[bold cyan]Step {step_num}/{total_steps}:[/bold cyan] [bold]{step_name}[/bold] [dim]({step_type})[/dim]")
 
             # Update context
             self.context.current_step = current_step_id
@@ -322,17 +295,9 @@ class RichTUI:
                 )
                 break
 
-            # Small delay for readability
-            time.sleep(0.5)
-
         # Final completion message
         self.console.print()
-        self.console.print(
-            Panel(
-                "[bold green]✅ Flow execution completed![/bold green]",
-                border_style="green",
-            )
-        )
+        self.console.print("[bold green]✅ Flow execution completed![/bold green]")
         self._show_results_summary()
 
     def execute_flow(self, flow_obj, context, system) -> bool:
@@ -355,23 +320,10 @@ class RichTUI:
 
             step_num += 1
 
-            # Show step header - detailed for sub-flows
-            step_description = getattr(step, "description", None) or ""
-            step_info = (
-                f"Step {step_num}/{len(self.flow_obj.steps)}: {step.name or step.id}"
-            )
-            step_type_info = f"Type: {step.type}"
-
-            if step_description:
-                panel_content = f"[bold]{step_info}[/bold]\n[dim]{step_type_info}[/dim]\n[dim]Description: {step_description}[/dim]"
-            else:
-                panel_content = f"[bold]{step_info}[/bold]\n[dim]{step_type_info}[/dim]"
-
-            # Use indented panel for nested flows
-            panel = self._create_indented_panel(
-                panel_content, title="Sub-Flow Step", border_style="cyan"
-            )
-            self.console.print(panel)
+            # Show compact sub-flow step header with proper indentation
+            step_name = step.name or step.id
+            step_type = step.type.name if hasattr(step.type, 'name') else str(step.type)
+            self._print_indented(f"[cyan]Step {step_num}/{len(self.flow_obj.steps)}:[/cyan] [bold]{step_name}[/bold] [dim]({step_type})[/dim]")
 
             # Update context
             self.context.current_step = current_step_id
@@ -405,13 +357,13 @@ class RichTUI:
 
     def _execute_single_step(self, step, step_num: int) -> tuple[bool, str | None]:
         """Execute a single step."""
-        # Show generic start message for step type
-        start_message = get_step_start_message(step.type, step.prompt)
-        self._print_indented(f"[cyan]{start_message}[/cyan]")
-
         # Special handling for flow_call steps to show sub-flow execution
         if step.type == StepType.FLOW_CALL:
             return self._execute_flow_call_step(step, step_num)
+
+        # Show generic start message for step type (more compact)
+        start_message = get_step_start_message(step.type, step.prompt)
+        self._print_indented(f"{start_message}")
 
         # Execute the step through the engine
         step_result = self.engine._execute_step(step, self.context, self.system)
@@ -692,7 +644,7 @@ class RichTUI:
                         )
                         resolved_inputs[key] = resolved_value
                         self._print_indented(
-                            f"[dim]  📥 Input {key}: {resolved_value}[/dim]"
+                            f"[dim]📥 Input {key}: {resolved_value}[/dim]"
                         )
                     except Exception as e:
                         raise ValueError(
@@ -727,10 +679,6 @@ class RichTUI:
                 parent_tui=self,
             )
 
-            self._print_indented(
-                f"[blue]  📋 Sub-flow has {len(target_flow.steps)} steps[/blue]"
-            )
-
             # Execute the sub-flow using the nested TUI - this will show all steps
             result = nested_tui.execute_flow(target_flow, sub_context, self.system)
 
@@ -741,7 +689,7 @@ class RichTUI:
                 # Store the result in the main context for template resolution
                 self.context.outputs["result"] = sub_flow_outputs
 
-                self.console.print(
+                self._print_indented(
                     f"[green]🔗 Sub-flow '{sub_flow_name}' completed successfully[/green]"
                 )
                 if sub_flow_outputs:
@@ -1052,22 +1000,23 @@ class RichTUI:
             return None
 
     def _show_results_summary(self) -> None:
-        """Show a summary of the execution results."""
+        """Show a compact summary of the execution results."""
         if not self.step_results:
             return
 
-        summary_table = Table(title="Execution Summary", show_header=True)
-        summary_table.add_column("Step", style="cyan")
-        summary_table.add_column("Status", style="green")
-        summary_table.add_column("Details", style="dim")
-
-        for i, result in enumerate(self.step_results, 1):
-            status = "✅ Success" if result.success else "❌ Failed"
-            details = result.error if not result.success else ""
-            summary_table.add_row(str(i), status, details)
-
-        self.console.print()
-        self.console.print(summary_table)
+        success_count = sum(1 for result in self.step_results if result.success)
+        total_count = len(self.step_results)
+        
+        if success_count == total_count:
+            self.console.print(f"[green]✅ All {total_count} steps completed successfully[/green]")
+        else:
+            failed_count = total_count - success_count
+            self.console.print(f"[yellow]⚠️  {success_count}/{total_count} steps successful, {failed_count} failed[/yellow]")
+            
+            # Show which steps failed
+            for i, result in enumerate(self.step_results, 1):
+                if not result.success:
+                    self.console.print(f"  [red]Step {i}: {result.error}[/red]")
 
 
 def run_rich_tui_executor(

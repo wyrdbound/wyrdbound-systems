@@ -126,7 +126,8 @@ Performs multiple dice rolls in sequence.
       - set_value:
           path: "outputs.character.abilities.{{ item }}.bonus"
           value: "{{ result }}"
-    display_as: "{{ item|title }}: {{ result }}"
+      - log_message:
+          message: "{{ item|title }}: {{ result }}"
 ```
 
 #### `player_choice`
@@ -435,7 +436,8 @@ steps:
         - set_ref:
             ref: "outputs.new_character.abilities.{{ item }}.bonus"
             value: "{{ result }}"
-      display_as: "{{ item|title }}: {{ result }} (bonus +{{ result }}, defense {{ result + 10 }})"
+        - log_message:
+            message: "{{ item|title }}: {{ result }} (bonus +{{ result }}, defense {{ result + 10 }})"
 
   - id: "ability_swap_choice"
     name: "Optional Ability Swap"

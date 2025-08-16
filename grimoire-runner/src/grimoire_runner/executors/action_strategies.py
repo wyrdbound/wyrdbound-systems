@@ -45,45 +45,49 @@ class SetValueActionStrategy(ActionStrategy):
         path = action_data["path"]
         value = action_data["value"]
 
+        # Resolve templates in the path (e.g., "outputs.knave.abilities.{{ item }}.bonus" -> "outputs.knave.abilities.strength.bonus")
+        resolved_path = context.resolve_template(path)
+        logger.debug(f"Action set_value: Resolved path from '{path}' to '{resolved_path}'")
+
         # Handle dictionary values specially to avoid string conversion
         if isinstance(value, dict):
             # Use dictionary directly without template resolution
             resolved_value = value
-            logger.debug(f"Action set_value: Using dict directly for {path}")
+            logger.debug(f"Action set_value: Using dict directly for {resolved_path}")
         elif isinstance(value, bool):
             # Preserve boolean values without template resolution
             resolved_value = value
-            logger.debug(f"Action set_value: Using boolean directly for {path}")
+            logger.debug(f"Action set_value: Using boolean directly for {resolved_path}")
         else:
             # Check if this is a variable assignment and if we can preserve object types
             resolved_value = self._resolve_value_with_type_preservation(
-                value, path, context, system
+                value, resolved_path, context, system
             )
-            logger.debug(f"Action set_value: Resolved value for {path}")
+            logger.debug(f"Action set_value: Resolved value for {resolved_path}")
 
         # Use namespaced paths to avoid collision during flow execution
         current_namespace = context.get_current_flow_namespace()
 
         if current_namespace:
             # Use namespaced path to avoid collision
-            if path.startswith("outputs."):
-                namespaced_path = f"{current_namespace}.outputs.{path[8:]}"
-            elif path.startswith("variables."):
-                namespaced_path = f"{current_namespace}.variables.{path[10:]}"
+            if resolved_path.startswith("outputs."):
+                namespaced_path = f"{current_namespace}.outputs.{resolved_path[8:]}"
+            elif resolved_path.startswith("variables."):
+                namespaced_path = f"{current_namespace}.variables.{resolved_path[10:]}"
             else:
                 # Default to outputs if no prefix specified
-                namespaced_path = f"{current_namespace}.outputs.{path}"
+                namespaced_path = f"{current_namespace}.outputs.{resolved_path}"
 
             context.set_namespaced_value(namespaced_path, resolved_value)
         else:
             # Fallback to original behavior for backward compatibility
-            if path.startswith("outputs."):
-                context.set_output(path[8:], resolved_value)
-            elif path.startswith("variables."):
-                context.set_variable(path[10:], resolved_value)
+            if resolved_path.startswith("outputs."):
+                context.set_output(resolved_path[8:], resolved_value)
+            elif resolved_path.startswith("variables."):
+                context.set_variable(resolved_path[10:], resolved_value)
             else:
                 # Default to outputs
-                context.set_output(path, resolved_value)
+                context.set_output(resolved_path, resolved_value)
 
     def _resolve_value_with_type_preservation(
         self,

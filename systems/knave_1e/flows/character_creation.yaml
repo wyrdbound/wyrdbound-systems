@@ -34,8 +34,9 @@ steps:
       actions:
         - set_value:
             path: "outputs.knave.abilities.{{ item }}.bonus"
-            value: "{{ result }}"
-      display_as: "{{ item|title }}: {{ result }} (bonus +{{ result }}, defense {{ result + 10 }})"
+            value: "{{ result.total }}"
+        - log_message:
+            message: "{{ item|title }}: +{{ result.total }} (defense {{ result.total + 10 }})"
 
   - id: ability_swap_choice
     name: "Optional Ability Swap"

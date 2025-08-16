@@ -132,7 +132,10 @@ class TestStepDefinitions:
             "CHA",
         ]
         assert sequence_step.sequence.roll == "3d6"
-        assert sequence_step.sequence.display_as == "{{ item }}: {{ result }}"
+        # Check that log_message action exists in the sequence actions
+        log_actions = [action for action in sequence_step.sequence.actions if action["type"] == "log_message"]
+        assert len(log_actions) == 1
+        assert log_actions[0]["data"]["message"] == "{{ item }}: {{ result.total }}"
 
     def test_player_choice_step(self, test_system):
         """Test player choice step definition."""
