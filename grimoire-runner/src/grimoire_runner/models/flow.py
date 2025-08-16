@@ -84,7 +84,7 @@ class TableRollDefinition:
 @dataclass
 class DiceSequenceDefinition:
     """Dice sequence configuration."""
-    
+
     items: list[str]
     roll: str
     actions: list[dict[str, Any]] | None = None

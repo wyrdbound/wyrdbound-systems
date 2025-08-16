@@ -65,12 +65,18 @@ class ActionExecutor:
             logger.debug(f"[ACTION_EXECUTOR] Setting step_data variables: {step_data}")
             for key, value in step_data.items():
                 original_values[key] = context.get_variable(key)
-                logger.debug(f"[ACTION_EXECUTOR] Setting {key} = {value} (type: {type(value)})")
+                logger.debug(
+                    f"[ACTION_EXECUTOR] Setting {key} = {value} (type: {type(value)})"
+                )
                 context.set_variable(key, value)
-            
+
             # Verify variables are set
-            logger.debug(f"[ACTION_EXECUTOR] Context variables after setting: {list(context.variables.keys())}")
-            logger.debug(f"[ACTION_EXECUTOR] Checking result variable: {context.get_variable('result')}")
+            logger.debug(
+                f"[ACTION_EXECUTOR] Context variables after setting: {list(context.variables.keys())}"
+            )
+            logger.debug(
+                f"[ACTION_EXECUTOR] Checking result variable: {context.get_variable('result')}"
+            )
 
         try:
             # Get the appropriate strategy for this action type

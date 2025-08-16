@@ -13,7 +13,7 @@ if TYPE_CHECKING:
     from ..models.system import System
 
 # Import StepType and StepResult for runtime use
-from ..models.flow import StepType, StepResult
+from ..models.flow import StepResult, StepType
 
 logger = logging.getLogger(__name__)
 
@@ -25,8 +25,6 @@ class DiceExecutor(BaseStepExecutor):
         """Initialize the DiceExecutor."""
         super().__init__()
         self.action_executor = None  # Will be lazily initialized
-
-    def __init__(self):
         self.dice_integration = DiceIntegration()
 
     def execute(self, step, context, system) -> StepResult:
@@ -42,19 +40,21 @@ class DiceExecutor(BaseStepExecutor):
                 error=f"Unsupported step type: {step.type}",
             )
 
-    def _roll_dice_and_create_result(self, expression: str, modifier: int = 0, context=None, system=None) -> RollResult:
+    def _roll_dice_and_create_result(
+        self, expression: str, modifier: int = 0, context=None, system=None
+    ) -> RollResult:
         """Shared method to roll dice and create a consistent RollResult object."""
         dice_integration = DiceIntegration()
-        
+
         # Apply modifiers if needed (for now, we'll handle them in the expression)
         if modifier != 0:
             if modifier > 0:
                 expression = f"{expression}+{modifier}"
             else:
                 expression = f"{expression}{modifier}"  # modifier is already negative
-        
+
         result = dice_integration.roll_expression(expression)
-        
+
         return RollResult(
             total=result.total,
             detail=result.detailed_result or f"{result.total}",
@@ -86,7 +86,9 @@ class DiceExecutor(BaseStepExecutor):
                 pass  # Modifiers are handled by the dice integration
 
             # Use shared dice rolling method
-            roll_result = self._roll_dice_and_create_result(str(roll_expression), modifier, context)
+            roll_result = self._roll_dice_and_create_result(
+                str(roll_expression), modifier, context
+            )
 
             # Log with detailed information
             if roll_result.detail:
@@ -133,8 +135,10 @@ class DiceExecutor(BaseStepExecutor):
                 roll_expression = context.resolve_template(sequence.roll)
 
                 # Use shared dice rolling method to get consistent RollResult
-                roll_result = self._roll_dice_and_create_result(str(roll_expression), 0, context)
-                
+                roll_result = self._roll_dice_and_create_result(
+                    str(roll_expression), 0, context
+                )
+
                 # Store both the total (for backwards compatibility) and the full RollResult
                 results[item] = roll_result.total
 
@@ -185,26 +189,26 @@ class DiceExecutor(BaseStepExecutor):
     ) -> None:
         """Execute a single action within a dice sequence with proper action executor support."""
         # Initialize action executor if needed
-        if not hasattr(self, 'action_executor') or self.action_executor is None:
+        if not hasattr(self, "action_executor") or self.action_executor is None:
             from .action_executor import ActionExecutor
+
             self.action_executor = ActionExecutor()
 
         # Prepare step data for the action executor with item and result
-        step_data = {
-            "item": item,
-            "result": dice_result
-        }
-        
-        logger.debug(f"Executing dice sequence action with step_data: item={item}, result={type(dice_result)}")
+        step_data = {"item": item, "result": dice_result}
+
+        logger.debug(
+            f"Executing dice sequence action with step_data: item={item}, result={type(dice_result)}"
+        )
 
         try:
             # Execute the action with step_data containing item and result
             logger.debug(f"Executing dice sequence action: {action}")
             logger.debug(f"Step data being passed: {step_data}")
-            logger.debug(f"Context variables before action: {list(context.variables.keys())}")
-            self.action_executor.execute_actions(
-                [action], context, step_data, system
+            logger.debug(
+                f"Context variables before action: {list(context.variables.keys())}"
             )
+            self.action_executor.execute_actions([action], context, step_data, system)
         except Exception as e:
             logger.error(f"Error executing dice sequence action: {e}")
             logger.error(f"Action was: {action}")

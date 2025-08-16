@@ -47,7 +47,9 @@ class SetValueActionStrategy(ActionStrategy):
 
         # Resolve templates in the path (e.g., "outputs.knave.abilities.{{ item }}.bonus" -> "outputs.knave.abilities.strength.bonus")
         resolved_path = context.resolve_template(path)
-        logger.debug(f"Action set_value: Resolved path from '{path}' to '{resolved_path}'")
+        logger.debug(
+            f"Action set_value: Resolved path from '{path}' to '{resolved_path}'"
+        )
 
         # Handle dictionary values specially to avoid string conversion
         if isinstance(value, dict):
@@ -57,7 +59,9 @@ class SetValueActionStrategy(ActionStrategy):
         elif isinstance(value, bool):
             # Preserve boolean values without template resolution
             resolved_value = value
-            logger.debug(f"Action set_value: Using boolean directly for {resolved_path}")
+            logger.debug(
+                f"Action set_value: Using boolean directly for {resolved_path}"
+            )
         else:
             # Check if this is a variable assignment and if we can preserve object types
             resolved_value = self._resolve_value_with_type_preservation(

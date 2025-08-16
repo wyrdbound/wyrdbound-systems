@@ -266,8 +266,10 @@ class RichTUI:
 
             # Show compact step header
             step_name = step.name or step.id
-            step_type = step.type.name if hasattr(step.type, 'name') else str(step.type)
-            self.console.print(f"[bold cyan]Step {step_num}/{total_steps}:[/bold cyan] [bold]{step_name}[/bold] [dim]({step_type})[/dim]")
+            step_type = step.type.name if hasattr(step.type, "name") else str(step.type)
+            self.console.print(
+                f"[bold cyan]Step {step_num}/{total_steps}:[/bold cyan] [bold]{step_name}[/bold] [dim]({step_type})[/dim]"
+            )
 
             # Update context
             self.context.current_step = current_step_id
@@ -322,8 +324,10 @@ class RichTUI:
 
             # Show compact sub-flow step header with proper indentation
             step_name = step.name or step.id
-            step_type = step.type.name if hasattr(step.type, 'name') else str(step.type)
-            self._print_indented(f"[cyan]Step {step_num}/{len(self.flow_obj.steps)}:[/cyan] [bold]{step_name}[/bold] [dim]({step_type})[/dim]")
+            step_type = step.type.name if hasattr(step.type, "name") else str(step.type)
+            self._print_indented(
+                f"[cyan]Step {step_num}/{len(self.flow_obj.steps)}:[/cyan] [bold]{step_name}[/bold] [dim]({step_type})[/dim]"
+            )
 
             # Update context
             self.context.current_step = current_step_id
@@ -1006,13 +1010,17 @@ class RichTUI:
 
         success_count = sum(1 for result in self.step_results if result.success)
         total_count = len(self.step_results)
-        
+
         if success_count == total_count:
-            self.console.print(f"[green]✅ All {total_count} steps completed successfully[/green]")
+            self.console.print(
+                f"[green]✅ All {total_count} steps completed successfully[/green]"
+            )
         else:
             failed_count = total_count - success_count
-            self.console.print(f"[yellow]⚠️  {success_count}/{total_count} steps successful, {failed_count} failed[/yellow]")
-            
+            self.console.print(
+                f"[yellow]⚠️  {success_count}/{total_count} steps successful, {failed_count} failed[/yellow]"
+            )
+
             # Show which steps failed
             for i, result in enumerate(self.step_results, 1):
                 if not result.success:
