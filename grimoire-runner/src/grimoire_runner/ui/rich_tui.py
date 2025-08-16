@@ -104,7 +104,6 @@ class RichTUI:
         system_path: Path = None,
         flow_id: str = None,
         input_values: dict = None,
-        debug: bool = False,
         interactive: bool = True,
         indent_level: int = 0,  # Add indentation for nested flows
         parent_tui: "RichTUI" = None,  # Reference to parent TUI for nested flows
@@ -127,7 +126,6 @@ class RichTUI:
             self.console = Console() if parent_tui is None else parent_tui.console
             self.engine = GrimoireEngine()
 
-        self.debug = debug
         self.interactive = interactive
         self.indent_level = indent_level
         self.parent_tui = parent_tui
@@ -1076,9 +1074,8 @@ def run_rich_tui_executor(
     system_path: Path,
     flow_id: str,
     input_values: dict = None,
-    debug: bool = False,
     interactive: bool = True,
 ) -> None:
     """Run the Rich TUI executor."""
-    tui = RichTUI(system_path, flow_id, input_values, debug=debug)
+    tui = RichTUI(system_path, flow_id, input_values)
     tui.run()

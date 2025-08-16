@@ -22,8 +22,6 @@ class GrimoireEngine:
         self.executor_registry = executor_registry or ExecutorRegistry()
         self.executors: dict[str, StepExecutorInterface] = {}
         self.action_executor = self.executor_registry.create_action_executor()
-        self.breakpoints: dict[str, list[str]] = {}  # flow_id -> step_ids
-        self._debug_mode = False
 
         # Initialize default executors
         self._initialize_executors()
@@ -146,11 +144,6 @@ class GrimoireEngine:
 
                 context.current_step = current_step_id
                 context.step_history.append(current_step_id)
-
-                # Check for breakpoints
-                if self._debug_mode and self._has_breakpoint(flow_id, current_step_id):
-                    logger.debug(f"Breakpoint hit at step: {current_step_id}")
-                    break
 
                 # Execute the step
                 try:
@@ -359,69 +352,6 @@ class GrimoireEngine:
         except Exception as e:
             logger.error(f"Error executing step {step.id}: {e}")
             return StepResult(step_id=step.id, success=False, error=str(e))
-
-    def set_breakpoint(self, flow_id: str, step_id: str) -> None:
-        """Set a breakpoint on a specific step."""
-        if flow_id not in self.breakpoints:
-            self.breakpoints[flow_id] = []
-
-        if step_id not in self.breakpoints[flow_id]:
-            self.breakpoints[flow_id].append(step_id)
-            logger.debug(f"Breakpoint set: {flow_id}.{step_id}")
-
-    def remove_breakpoint(self, flow_id: str, step_id: str) -> None:
-        """Remove a breakpoint from a specific step."""
-        if flow_id in self.breakpoints:
-            if step_id in self.breakpoints[flow_id]:
-                self.breakpoints[flow_id].remove(step_id)
-                logger.debug(f"Breakpoint removed: {flow_id}.{step_id}")
-
-    def clear_breakpoints(self, flow_id: str | None = None) -> None:
-        """Clear breakpoints for a flow or all flows."""
-        if flow_id:
-            if flow_id in self.breakpoints:
-                del self.breakpoints[flow_id]
-        else:
-            self.breakpoints.clear()
-        logger.debug(f"Breakpoints cleared for {flow_id or 'all flows'}")
-
-    def _has_breakpoint(self, flow_id: str, step_id: str) -> bool:
-        """Check if there's a breakpoint on a specific step."""
-        return flow_id in self.breakpoints and step_id in self.breakpoints[flow_id]
-
-    def has_breakpoint(self, flow_id: str, step_id: str) -> bool:
-        """Public method to check if there's a breakpoint set for a specific step."""
-        return self._has_breakpoint(flow_id, step_id)
-
-    def execute_flow_steps(
-        self, flow_id: str, context: ExecutionContext, system: System | None = None
-    ) -> Iterator[StepResult]:
-        """Execute flow steps one by one, yielding each step result. Alias for step_through_flow."""
-        return self.step_through_flow(flow_id, context, system)
-
-    def enable_debug_mode(self) -> None:
-        """Enable debug mode with breakpoint support."""
-        self._debug_mode = True
-        logger.debug("Debug mode enabled")
-
-    def disable_debug_mode(self) -> None:
-        """Disable debug mode."""
-        self._debug_mode = False
-        logger.debug("Debug mode disabled")
-
-    def set_debug_mode(self, enabled: bool) -> None:
-        """Set debug mode on or off."""
-        if enabled:
-            self.enable_debug_mode()
-        else:
-            self.disable_debug_mode()
-
-    def set_breakpoints(self, flow_id: str, step_ids: list[str]) -> None:
-        """Set multiple breakpoints for a flow."""
-        if flow_id not in self.breakpoints:
-            self.breakpoints[flow_id] = []
-        self.breakpoints[flow_id] = step_ids.copy()
-        logger.debug(f"Set breakpoints for flow {flow_id}: {step_ids}")
 
     def get_available_flows(self, system: System | None = None) -> list[FlowDefinition]:
         """Get all available flows from a system."""
