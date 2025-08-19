@@ -12,6 +12,9 @@ if TYPE_CHECKING:
     from ..models.flow import StepDefinition, StepResult
     from ..models.system import System
 
+# Import StepType and StepResult for runtime use
+from ..models.flow import StepResult, StepType
+
 logger = logging.getLogger(__name__)
 
 
@@ -19,33 +22,51 @@ class DiceExecutor(BaseStepExecutor):
     """Executor for dice rolling steps."""
 
     def __init__(self):
+        """Initialize the DiceExecutor."""
+        super().__init__()
+        self.action_executor = None  # Will be lazily initialized
         self.dice_integration = DiceIntegration()
 
-    def execute(
-        self, step: "StepDefinition", context: "ExecutionContext", system: "System"
-    ) -> "StepResult":
-        """Execute a dice rolling step."""
-        from ..models.flow import StepResult
-
-        step_type = step.type.value if hasattr(step.type, "value") else str(step.type)
-
-        if step_type == "dice_roll":
-            return self._execute_dice_roll(step, context)
-        elif step_type == "dice_sequence":
-            return self._execute_dice_sequence(step, context)
+    def execute(self, step, context, system) -> StepResult:
+        """Execute a dice-related step."""
+        if step.type == StepType.DICE_ROLL:
+            return self._execute_dice_roll(step, context, system)
+        elif step.type == StepType.DICE_SEQUENCE:
+            return self._execute_dice_sequence(step, context, system)
         else:
             return StepResult(
                 step_id=step.id,
                 success=False,
-                error=f"DiceExecutor cannot handle step type: {step_type}",
+                error=f"Unsupported step type: {step.type}",
             )
 
+    def _roll_dice_and_create_result(
+        self, expression: str, modifier: int = 0, context=None, system=None
+    ) -> RollResult:
+        """Shared method to roll dice and create a consistent RollResult object."""
+        dice_integration = DiceIntegration()
+
+        # Apply modifiers if needed (for now, we'll handle them in the expression)
+        if modifier != 0:
+            if modifier > 0:
+                expression = f"{expression}+{modifier}"
+            else:
+                expression = f"{expression}{modifier}"  # modifier is already negative
+
+        result = dice_integration.roll_expression(expression)
+
+        return RollResult(
+            total=result.total,
+            detail=result.detailed_result or f"{result.total}",
+            expression=result.expression,
+            breakdown=result.breakdown,
+            individual_rolls=result.rolls,
+        )
+
     def _execute_dice_roll(
-        self, step: "StepDefinition", context: "ExecutionContext"
+        self, step: "StepDefinition", context: "ExecutionContext", system: "System"
     ) -> "StepResult":
         """Execute a single dice roll."""
-        from ..models.flow import StepResult
-
         if not step.roll:
             return StepResult(
                 step_id=step.id,
@@ -58,37 +79,29 @@ class DiceExecutor(BaseStepExecutor):
             roll_expression = context.resolve_template(step.roll)
 
             # Apply modifiers if present
-            modifiers = {}
+            modifier = 0
             if step.modifiers:
-                for key, value in step.modifiers.items():
-                    modifiers[key] = context.resolve_template(str(value))
+                # For simplicity, we'll handle modifiers by applying them to the roll expression
+                # The dice integration should handle this, but we can prepare it here if needed
+                pass  # Modifiers are handled by the dice integration
 
-            # Roll the dice
-            result = self.dice_integration.roll_expression(
-                str(roll_expression), modifiers
+            # Use shared dice rolling method
+            roll_result = self._roll_dice_and_create_result(
+                str(roll_expression), modifier, context
             )
 
-            # Log with detailed information if available, otherwise fall back to simple format
-            if result.detailed_result:
-                logger.debug(f"Dice roll: {result.detailed_result}")
+            # Log with detailed information
+            if roll_result.detail:
+                logger.debug(f"Dice roll: {roll_result.detail}")
             else:
-                logger.debug(f"Dice roll: {roll_expression} = {result.total}")
-
-            # Create structured RollResult object
-            roll_result = RollResult(
-                total=result.total,
-                detail=result.detailed_result or f"{result.total}",
-                expression=result.expression,
-                breakdown=result.breakdown,
-                individual_rolls=result.rolls,
-            )
+                logger.debug(f"Dice roll: {roll_expression} = {roll_result.total}")
 
             # Prepare result data with both the structured object and legacy fields
             result_data = {
                 "result": roll_result,  # New structured result
-                "expression": result.expression,
-                "breakdown": result.breakdown,
-                "individual_rolls": result.rolls,
+                "expression": roll_result.expression,
+                "breakdown": roll_result.breakdown,
+                "individual_rolls": roll_result.individual_rolls,
             }
 
             return StepResult(
@@ -102,11 +115,9 @@ class DiceExecutor(BaseStepExecutor):
             )
 
     def _execute_dice_sequence(
-        self, step: "StepDefinition", context: "ExecutionContext"
+        self, step: "StepDefinition", context: "ExecutionContext", system: "System"
     ) -> "StepResult":
         """Execute a sequence of dice rolls."""
-        from ..models.flow import StepResult
-
         if not step.sequence:
             return StepResult(
                 step_id=step.id,
@@ -123,18 +134,22 @@ class DiceExecutor(BaseStepExecutor):
                 # Resolve the roll expression
                 roll_expression = context.resolve_template(sequence.roll)
 
-                # Roll the dice
-                result = self.dice_integration.roll_expression(str(roll_expression))
-                results[item] = result.total
+                # Use shared dice rolling method to get consistent RollResult
+                roll_result = self._roll_dice_and_create_result(
+                    str(roll_expression), 0, context
+                )
+
+                # Store both the total (for backwards compatibility) and the full RollResult
+                results[item] = roll_result.total
 
                 # Prepare individual result data
                 item_data = {
                     "item": item,
-                    "result": result.total,
-                    "expression": roll_expression,
-                    "breakdown": result.breakdown
-                    if hasattr(result, "breakdown")
-                    else None,
+                    "result": roll_result,  # Full RollResult object
+                    "total": roll_result.total,  # For backwards compatibility
+                    "expression": roll_result.expression,
+                    "breakdown": roll_result.breakdown,
+                    "individual_rolls": roll_result.individual_rolls,
                 }
                 all_results.append(item_data)
 
@@ -142,31 +157,8 @@ class DiceExecutor(BaseStepExecutor):
                 if sequence.actions:
                     for action in sequence.actions:
                         self._execute_sequence_action(
-                            action, context, item, result.total
+                            action, item, roll_result, context, system
                         )
-
-                # Display result if format specified (with item context)
-                if sequence.display_as:
-                    # Temporarily set item and result for display template
-                    original_item = context.get_variable("item")
-                    original_result = context.get_variable("result")
-
-                    context.set_variable("item", item)
-                    context.set_variable("result", result.total)
-
-                    try:
-                        display_text = context.resolve_template(sequence.display_as)
-                        logger.debug(f"Dice sequence result: {display_text}")
-                    finally:
-                        # Restore original values
-                        if original_item is not None:
-                            context.set_variable("item", original_item)
-                        else:
-                            context.variables.pop("item", None)
-                        if original_result is not None:
-                            context.set_variable("result", original_result)
-                        else:
-                            context.variables.pop("result", None)
 
             logger.debug(f"Dice sequence completed: {len(results)} rolls")
 
@@ -190,79 +182,40 @@ class DiceExecutor(BaseStepExecutor):
     def _execute_sequence_action(
         self,
         action: dict[str, Any],
-        context: "ExecutionContext",
         item: str,
-        result: int,
+        dice_result: RollResult,
+        context: "ExecutionContext",
+        system: "System",
     ) -> None:
-        """Execute an action within a dice sequence with item context."""
-        # Add item and result to template context temporarily
-        original_item = context.get_variable("item")
-        original_result = context.get_variable("result")
+        """Execute a single action within a dice sequence with proper action executor support."""
+        # Initialize action executor if needed
+        if not hasattr(self, "action_executor") or self.action_executor is None:
+            from .action_executor import ActionExecutor
 
-        context.set_variable("item", item)
-        context.set_variable("result", result)
+            self.action_executor = ActionExecutor()
+
+        # Prepare step data for the action executor with item and result
+        step_data = {"item": item, "result": dice_result}
+
+        logger.debug(
+            f"Executing dice sequence action with step_data: item={item}, result={type(dice_result)}"
+        )
 
         try:
-            # Execute the action (simplified version)
-            # Handle both old format (key as action type) and new format (type field)
-            if "type" in action and "data" in action:
-                action_type = action["type"]
-                action_data = action["data"]
-            else:
-                # Fallback to old format
-                action_type = list(action.keys())[0]
-                action_data = action[action_type]
-
-            if action_type == "set_value":
-                path = action_data["path"]
-                value = action_data["value"]
-
-                # Resolve template in path and value
-                resolved_path = context.resolve_template(str(path))
-                resolved_value = context.resolve_template(str(value))
-
-                # Get current flow namespace for proper isolation
-                current_namespace = context.get_current_flow_namespace()
-
-                if current_namespace:
-                    # Use namespaced path to avoid collision
-                    if str(resolved_path).startswith("outputs."):
-                        namespaced_path = (
-                            f"{current_namespace}.outputs.{str(resolved_path)[8:]}"
-                        )
-                    elif str(resolved_path).startswith("variables."):
-                        namespaced_path = (
-                            f"{current_namespace}.variables.{str(resolved_path)[10:]}"
-                        )
-                    else:
-                        # Default to variables for dice results
-                        namespaced_path = (
-                            f"{current_namespace}.variables.{resolved_path}"
-                        )
-
-                    context.set_namespaced_value(namespaced_path, resolved_value)
-                    logger.debug(
-                        f"Set namespaced dice value: {namespaced_path} = {resolved_value}"
-                    )
-                else:
-                    # Fallback to original behavior for backward compatibility
-                    if str(resolved_path).startswith("outputs."):
-                        context.set_output(str(resolved_path)[8:], resolved_value)
-                    elif str(resolved_path).startswith("variables."):
-                        context.set_variable(str(resolved_path)[10:], resolved_value)
-                    else:
-                        context.set_output(str(resolved_path), resolved_value)
-
-        finally:
-            # Restore original values
-            if original_item is not None:
-                context.set_variable("item", original_item)
-            else:
-                context.variables.pop("item", None)
-            if original_result is not None:
-                context.set_variable("result", original_result)
-            else:
-                context.variables.pop("result", None)
+            # Execute the action with step_data containing item and result
+            logger.debug(f"Executing dice sequence action: {action}")
+            logger.debug(f"Step data being passed: {step_data}")
+            logger.debug(
+                f"Context variables before action: {list(context.variables.keys())}"
+            )
+            self.action_executor.execute_actions([action], context, step_data, system)
+        except Exception as e:
+            logger.error(f"Error executing dice sequence action: {e}")
+            logger.error(f"Action was: {action}")
+            logger.error(f"Step data: {step_data}")
+            logger.error(f"Context type: {type(context)}")
+            logger.error(f"Result type: {type(dice_result)}")
+            raise
 
     def can_execute(self, step: "StepDefinition") -> bool:
         """Check if this executor can handle the step."""

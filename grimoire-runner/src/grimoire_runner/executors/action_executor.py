@@ -62,14 +62,27 @@ class ActionExecutor:
         # Temporarily add step_data to context for template resolution
         original_values = {}
         if step_data:
+            logger.debug(f"[ACTION_EXECUTOR] Setting step_data variables: {step_data}")
             for key, value in step_data.items():
                 original_values[key] = context.get_variable(key)
+                logger.debug(
+                    f"[ACTION_EXECUTOR] Setting {key} = {value} (type: {type(value)})"
+                )
                 context.set_variable(key, value)
+
+            # Verify variables are set
+            logger.debug(
+                f"[ACTION_EXECUTOR] Context variables after setting: {list(context.variables.keys())}"
+            )
+            logger.debug(
+                f"[ACTION_EXECUTOR] Checking result variable: {context.get_variable('result')}"
+            )
 
         try:
             # Get the appropriate strategy for this action type
             strategy = self.strategy_registry.get_strategy(action_type)
             if strategy:
+                logger.debug(f"[ACTION_EXECUTOR] Executing strategy for {action_type}")
                 strategy.execute(action_data, context, system)
             else:
                 logger.warning(f"No strategy found for action type: {action_type}")

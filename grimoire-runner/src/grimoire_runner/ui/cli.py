@@ -118,9 +118,6 @@ def execute(
     verbose: bool = typer.Option(
         False, "--verbose", "-v", help="Enable verbose output"
     ),
-    debug: bool = typer.Option(
-        False, "--debug", "-d", help="Enable debug logging output"
-    ),
     interactive: bool = typer.Option(
         True,
         "--interactive/--no-interactive",
@@ -131,21 +128,8 @@ def execute(
     # TODO: Implement interactive mode functionality
     _ = interactive  # Currently unused - planned for future implementation
 
-    # Configure logging based on debug flag
-    if debug:
-        logging.basicConfig(
-            level=logging.DEBUG, format="%(levelname)s:%(name)s:%(message)s"
-        )
-        # Suppress noisy HTTP logs that provide little value for GRIMOIRE debugging
-        logging.getLogger("httpcore.http11").setLevel(logging.WARNING)
-        logging.getLogger("httpcore.connection").setLevel(logging.WARNING)
-        logging.getLogger("httpcore._backends.sync").setLevel(logging.WARNING)
-        logging.getLogger("httpx").setLevel(logging.WARNING)
-        logging.getLogger("urllib3").setLevel(logging.WARNING)
-        logging.getLogger("requests").setLevel(logging.WARNING)
-        # Also suppress httpcore logs in general
-        logging.getLogger("httpcore").setLevel(logging.WARNING)
-    elif verbose:
+    # Configure logging based on verbose flag
+    if verbose:
         logging.basicConfig(
             level=logging.INFO, format="%(levelname)s:%(name)s:%(message)s"
         )
@@ -169,7 +153,7 @@ def execute(
                 raise typer.Exit(1) from None
 
         # Use Rich TUI interface - no fallback, just fix issues in Rich TUI
-        run_rich_tui_executor(system_path, flow, input_values, debug=debug)
+        run_rich_tui_executor(system_path, flow, input_values)
     except Exception as e:
         console.print(f"[bold red]Textual interface error:[/bold red] {e}")
         raise typer.Exit(1) from None
@@ -206,39 +190,6 @@ def interactive(
         else:
             # If no flow specified, use Rich browser for system exploration
             run_rich_browser(system_path)
-
-    except Exception as e:
-        console.print(f"[bold red]Error:[/bold red] {e}")
-        raise typer.Exit(1) from None
-
-
-@app.command()
-def debug(
-    system_path: Path = typer.Argument(..., help="Path to GRIMOIRE system directory"),
-    flow: str = typer.Option(..., "--flow", "-f", help="Flow ID to debug"),
-    breakpoint: list[str] | None = typer.Option(
-        None, "--breakpoint", "-b", help="Step IDs to break at"
-    ),
-):
-    """Debug a flow with breakpoints."""
-    try:
-        # Load system
-        engine.load_system(system_path)
-
-        # Enable debug mode
-        engine.enable_debug_mode()
-
-        # Set breakpoints
-        if breakpoint:
-            for bp in breakpoint:
-                engine.set_breakpoint(flow, bp)
-                console.print(f"[yellow]Breakpoint set:[/yellow] {flow}.{bp}")
-
-        # Start interactive debugging via Rich browser
-        console.print(
-            "[yellow]Debug mode enabled. Use Rich browser to explore system state.[/yellow]"
-        )
-        run_rich_browser(system_path)
 
     except Exception as e:
         console.print(f"[bold red]Error:[/bold red] {e}")

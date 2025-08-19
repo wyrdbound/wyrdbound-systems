@@ -87,8 +87,16 @@ class DiceSequenceDefinition:
 
     items: list[str]
     roll: str
-    actions: list[dict[str, Any]] = field(default_factory=list)
-    display_as: str | None = None
+    actions: list[dict[str, Any]] | None = None
+
+
+@dataclass
+class DiceSequence:
+    """Definition for a dice sequence."""
+
+    items: list[str]
+    roll: str
+    actions: list[dict[str, Any]] | None = None
 
 
 @dataclass
