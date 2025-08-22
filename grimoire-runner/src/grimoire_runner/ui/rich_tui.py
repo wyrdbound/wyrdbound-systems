@@ -216,6 +216,24 @@ class RichTUI:
                 self.console.print(
                     f"  [cyan]{input_name}[/cyan] = [yellow]{input_value}[/yellow]"
                 )
+                
+                # Initialize reactive system for input models by copying them to outputs
+                for input_def in self.flow_obj.inputs:
+                    if input_def.id == input_name and input_def.type in self.system.models:
+                        model = self.system.models[input_def.type]
+                        logger.debug(f"Setting up reactive output for input {input_name} of type {input_def.type}")
+                        # Copy input to output for reactive processing
+                        self.context.set_output(input_name, input_value)
+                        # Initialize reactive system on the output copy
+                        model_resolver = lambda model_type: self.system.models.get(model_type)
+                        self.context.initialize_model_observables(model, input_name, model_resolver)
+                        # Trigger computation of derived fields
+                        self.context.compute_derived_fields()
+                        # Now copy the computed results back to inputs
+                        computed_output = self.context.get_output(input_name)
+                        logger.debug(f"Copying computed results back to input {input_name}")
+                        self.context.set_input(input_name, computed_output)
+                        break
 
         # Initialize observable derived fields from output models
         for output_def in self.flow_obj.outputs:
