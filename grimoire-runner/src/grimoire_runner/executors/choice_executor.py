@@ -117,7 +117,7 @@ class ChoiceExecutor(BaseStepExecutor):
         try:
             if isinstance(choice_source, dict):
                 if "table_from_values" in choice_source:
-                    # Generate choices from a values table like abilities
+                    # Generate choices from a values table like attributes
                     path = choice_source["table_from_values"]
                     choice_source.get("selection_count", 1)
                     display_format = choice_source.get(
@@ -183,7 +183,7 @@ class ChoiceExecutor(BaseStepExecutor):
                                 actions=[
                                     {
                                         "set_value": {
-                                            "path": "variables.selected_item",
+                                            "path": "variables.result",
                                             "value": entry_id,
                                         }
                                     }
@@ -248,7 +248,7 @@ class ChoiceExecutor(BaseStepExecutor):
                                 actions=[
                                     {
                                         "set_value": {
-                                            "path": "variables.selected_item",
+                                            "path": "variables.result",
                                             "value": selected_item_value,
                                         }
                                     }
@@ -328,7 +328,7 @@ class ChoiceExecutor(BaseStepExecutor):
                     f"Executing {len(step.actions)} step actions after choice..."
                 )
                 step_result_data = {
-                    "selected_item": context.get_variable("selected_item")
+                    "result": context.get_variable("result")
                 }
                 self.engine.action_executor.execute_actions(
                     step.actions, context, step_result_data, system

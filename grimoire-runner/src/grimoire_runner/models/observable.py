@@ -94,7 +94,7 @@ class DerivedFieldManager:
         matches = re.findall(pattern, expression)
         dependencies.update(matches)
 
-        # Find $ syntax variables like $abilities.str.bonus
+        # Find $ syntax variables like $attributes.str.bonus
         pattern = r"\$([a-zA-Z_][a-zA-Z0-9_.]*)"
         matches = re.findall(pattern, expression)
         dependencies.update(matches)
@@ -224,7 +224,7 @@ class DerivedFieldManager:
         """Recompute a single derived field."""
         logger.debug(f"_recompute_field called for: {field}")
 
-        # The field is already qualified (e.g., "knave.abilities.strength.defense")
+        # The field is already qualified (e.g., "character.abilities.strength.defense")
         # Look for it directly in the fields registry
         logger.debug(f"_recompute_field: looking for qualified field = {field}")
         logger.debug(
@@ -280,29 +280,28 @@ class DerivedFieldManager:
             self._computing.discard(field)
 
     def _convert_to_jinja_syntax(self, expression: str) -> str:
-        """Convert $variable syntax to {{ variable }} Jinja2 syntax."""
-        import re
-
-        # For mathematical expressions like "10 + $.abilities.strength.bonus",
-        # we want to create "{{ 10 + knave.abilities.strength.bonus }}" so it evaluates the math
-
-        # First handle $. references (current model instance)
-        if self.current_instance_id and "$." in expression:
-            # Replace $. with the current instance ID
-            expression = expression.replace("$.", f"${self.current_instance_id}.")
-
-        # Check if this is a simple variable reference or a mathematical expression
-        if expression.startswith("$") and not any(
-            op in expression for op in ["+", "-", "*", "/", "(", ")"]
-        ):
-            # Simple variable reference: $variable -> {{ variable }}
-            return re.sub(r"\$([a-zA-Z_][a-zA-Z0-9_.]*)", r"{{ \1 }}", expression)
-        else:
-            # Mathematical expression: wrap the whole thing after converting variables
-            # First convert $variable to variable
-            converted = re.sub(r"\$([a-zA-Z_][a-zA-Z0-9_.]*)", r"\1", expression)
-            # Then wrap in {{ }} for evaluation
-            return f"{{{{ {converted} }}}}"
+        """Convert expressions with $ syntax to Jinja2 template syntax."""
+        if not expression:
+            return expression
+            
+        # If the expression already has {{ }}, check if it needs self/this conversion
+        if expression.startswith('{{') and expression.endswith('}}'):
+            # Replace 'this.' with the current instance ID for proper template resolution
+            if hasattr(self, 'current_instance_id') and self.current_instance_id:
+                # Only replace 'this.' at the start of identifiers to avoid replacing it in strings
+                import re
+                pattern = r'\bthis\.'
+                replacement = f'{self.current_instance_id}.'
+                expression = re.sub(pattern, replacement, expression)
+            return expression
+        
+        # For expressions without {{ }}, wrap them and handle $ syntax
+        if hasattr(self, 'current_instance_id') and self.current_instance_id:
+            # Replace $ with the current instance ID
+            expression = expression.replace('$.', f'{self.current_instance_id}.')
+            expression = expression.replace('$', self.current_instance_id)
+        
+        return f"{{{{ {expression} }}}}"
 
     def _topological_sort(self, fields: set[str]) -> list[str]:
         """Sort fields in dependency order."""

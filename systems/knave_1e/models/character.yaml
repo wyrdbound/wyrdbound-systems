@@ -8,36 +8,18 @@ attributes:
   gender: { type: str, enum: ["female", "male", "non-binary"] }
 
   # --- abilities ---
-  abilities:
-    strength:
-      bonus: { type: int, range: 1..10 }
-      defense: { type: int, derived: "10 + $.abilities.strength.bonus" }
-    dexterity:
-      bonus: { type: int, range: 1..10 }
-      defense: { type: int, derived: "10 + $.abilities.dexterity.bonus" }
-    constitution:
-      bonus: { type: int, range: 1..10 }
-      defense: { type: int, derived: "10 + $.abilities.constitution.bonus" }
-    intelligence:
-      bonus: { type: int, range: 1..10 }
-      defense: { type: int, derived: "10 + $.abilities.intelligence.bonus" }
-    wisdom:
-      bonus: { type: int, range: 1..10 }
-      defense: { type: int, derived: "10 + $.abilities.wisdom.bonus" }
-    charisma:
-      bonus: { type: int, range: 1..10 }
-      defense: { type: int, derived: "10 + $.abilities.charisma.bonus" }
+  abilities: { type: character_abilities }
 
   xp: { type: int, default: 0, range: "0..1000" }
   level: { type: int, default: 1, range: "1..10" }
 
   hit_points:
     max: { type: int }
-    current: { type: int, range: "0..$hit_points.max" } # track current
+    current: { type: int, range: "0..{{ this.hit_points.max }}" } # track current
 
   armor:
     bonus: { type: int, range: "0..10" }
-    defense: { type: int, derived: "10 + $.armor.bonus" }
+    defense: { type: int, derived: "{{ 10 + this.armor.bonus }}" }
 
   exploration_speed: { type: int, default: 120, range: "0..240" } # in feet
   combat_speed: { type: int, default: 40, range: "0..160" } # in feet
@@ -59,13 +41,17 @@ attributes:
     alignment: { type: str }
 
   # --- inventory system ---
-  inventory_capacity: { type: int, derived: "$.abilities.constitution.defense" }
-  inventory: { type: list, of: item }
+  inventory_capacity:
+    { type: int, derived: "{{ this.abilities.constitution.defense }}" }
+  inventory: { type: list, of: item, default: [] }
   slots_used:
-    { type: int, derived: "$.inventory | map(attribute='slot_cost') | sum" }
+    {
+      type: int,
+      derived: "{{ this.inventory | map(attribute='slot_cost') | sum }}",
+    }
 
 validations:
-  - expression: "$.hit_points.current <= $.hit_points.max"
+  - expression: "{{ this.hit_points.current <= this.hit_points.max }}"
     message: "Current HP cannot exceed maximum HP"
-  - expression: "$.slots_used <= $.inventory_capacity"
+  - expression: "{{ this.slots_used <= this.inventory_capacity }}"
     message: "Item slots used cannot exceed inventory capacity"

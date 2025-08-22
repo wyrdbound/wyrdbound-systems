@@ -59,42 +59,32 @@ class ActionExecutor:
             action_type = list(action.keys())[0]
             action_data = action[action_type]
 
-        # Temporarily add step_data to context for template resolution
-        original_values = {}
+        # Temporarily add step_data to current step context for template resolution
         if step_data:
-            logger.debug(f"[ACTION_EXECUTOR] Setting step_data variables: {step_data}")
+            logger.debug(f"[ACTION_EXECUTOR] Setting step_data for current step: {step_data}")
             for key, value in step_data.items():
-                original_values[key] = context.get_variable(key)
                 logger.debug(
-                    f"[ACTION_EXECUTOR] Setting {key} = {value} (type: {type(value)})"
+                    f"[ACTION_EXECUTOR] Setting step data {key} = {value} (type: {type(value)})"
                 )
-                context.set_variable(key, value)
+                context.set_current_step_data(key, value)
 
-            # Verify variables are set
+            # Verify step data is set
             logger.debug(
-                f"[ACTION_EXECUTOR] Context variables after setting: {list(context.variables.keys())}"
+                f"[ACTION_EXECUTOR] Current step: {context.current_step}"
             )
             logger.debug(
-                f"[ACTION_EXECUTOR] Checking result variable: {context.get_variable('result')}"
+                f"[ACTION_EXECUTOR] Checking result in step data: {context.get_current_step_data('result')}"
             )
 
-        try:
-            # Get the appropriate strategy for this action type
-            strategy = self.strategy_registry.get_strategy(action_type)
-            if strategy:
-                logger.debug(f"[ACTION_EXECUTOR] Executing strategy for {action_type}")
-                strategy.execute(action_data, context, system)
-            else:
-                logger.warning(f"No strategy found for action type: {action_type}")
+        # Get the appropriate strategy for this action type
+        strategy = self.strategy_registry.get_strategy(action_type)
+        if strategy:
+            logger.debug(f"[ACTION_EXECUTOR] Executing strategy for {action_type}")
+            strategy.execute(action_data, context, system)
+        else:
+            logger.warning(f"No strategy found for action type: {action_type}")
 
-        finally:
-            # Restore original values
-            if step_data:
-                for key in step_data.keys():
-                    if original_values[key] is not None:
-                        context.set_variable(key, original_values[key])
-                    else:
-                        context.variables.pop(key, None)
+        # Note: Step data is automatically scoped to the current step and doesn't need cleanup
 
     def get_supported_action_types(self) -> list[str]:
         """Get all supported action types."""

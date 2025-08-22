@@ -125,15 +125,15 @@ class CompendiumBrowser:
             for attr in entry_data.keys():
                 attr_counts[attr] = attr_counts.get(attr, 0) + 1
 
-        # Sort by frequency, prefer certain common attributes
-        priority_attrs = [
-            "name",
-            "display_name",
-            "description",
-            "type",
-            "cost",
-            "weight",
-            "damage",
+        # Sort by frequency, prioritizing GRIMOIRE standard root-level fields
+        # These are part of the GRIMOIRE specification and should be supported by UI
+        grimoire_standard_fields = [
+            # Universal GRIMOIRE root-level fields (from spec)
+            "kind", "id", "name", "description", "version",
+            # Content-type specific GRIMOIRE root-level fields
+            "model", "roll", "entry_type", "entries", "attributes", "extends", "validations",
+            # Common display fields that systems may choose to use
+            "display_name", "title", "label", "type"
         ]
 
         # Sort attributes by frequency and priority
@@ -141,7 +141,7 @@ class CompendiumBrowser:
             attr_counts.keys(),
             key=lambda x: (
                 -attr_counts[x],  # Higher frequency first
-                0 if x in priority_attrs else 1,  # Priority attributes first
+                0 if x in grimoire_standard_fields else 1,  # GRIMOIRE standard fields first
                 x,  # Alphabetical as tiebreaker
             ),
         )
@@ -215,9 +215,7 @@ class CompendiumBrowser:
 
                 # Show first few matches
                 for entry_id, entry_data in list(matches.items())[:3]:
-                    display_name = entry_data.get(
-                        "display_name", entry_data.get("name", entry_id)
-                    )
+                    display_name = self._get_entry_display_name(entry_data, entry_id)
                     console.print(f"  • {display_name}")
 
                 if len(matches) > 3:
@@ -267,10 +265,10 @@ class CompendiumBrowser:
 
         console.print(f"\n[cyan]Unique attributes:[/cyan] {len(all_attrs)}")
 
-        # Value analysis for common attributes
-        self._analyze_attribute_values(
-            compendium.entries, ["cost", "weight", "damage", "type"]
-        )
+        # Value analysis for numeric attributes
+        numeric_attrs = self._find_numeric_attributes(compendium.entries)
+        if numeric_attrs:
+            self._analyze_attribute_values(compendium.entries, numeric_attrs)
 
     def _analyze_attribute_values(
         self, entries: dict[str, Any], attributes: list[str]
@@ -294,3 +292,52 @@ class CompendiumBrowser:
                 console.print(f"    Count: {len(values)}")
             else:
                 console.print(f"  {attr}: No numeric values found")
+
+    def _get_entry_display_name(self, entry_data: dict[str, Any], entry_id: str) -> str:
+        """Get a display name for an entry in a system-agnostic way."""
+        # Try common identifying fields in order of preference
+        identifier_fields = ['name', 'title', 'label', 'display_name', 'id']
+        
+        for field in identifier_fields:
+            if field in entry_data and entry_data[field]:
+                return str(entry_data[field])
+        
+        # Fallback to the entry ID if no identifying field is found
+        return entry_id
+
+    def _find_numeric_attributes(self, entries: dict[str, Any]) -> list[str]:
+        """Find attributes that contain numeric values in a system-agnostic way."""
+        numeric_attrs = []
+        
+        # Sample a few entries to check for numeric attributes
+        sample_entries = list(entries.values())[:10]  # Check first 10 entries
+        
+        if not sample_entries:
+            return numeric_attrs
+            
+        # Find attributes that have numeric values in most sampled entries
+        potential_attrs = set()
+        for entry in sample_entries:
+            potential_attrs.update(entry.keys())
+        
+        for attr in potential_attrs:
+            numeric_count = 0
+            for entry in sample_entries:
+                if attr in entry:
+                    value = entry[attr]
+                    # Check if the value is numeric or can be converted to numeric
+                    if isinstance(value, (int, float)):
+                        numeric_count += 1
+                    elif isinstance(value, str):
+                        try:
+                            float(value)
+                            numeric_count += 1
+                        except (ValueError, TypeError):
+                            pass
+            
+            # If more than 50% of samples have numeric values for this attribute, include it
+            if numeric_count > len(sample_entries) * 0.5:
+                numeric_attrs.append(attr)
+        
+        # Limit to most common numeric attributes to keep output manageable
+        return numeric_attrs[:5]

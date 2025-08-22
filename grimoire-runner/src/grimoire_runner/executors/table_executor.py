@@ -514,7 +514,7 @@ class TableExecutor(BaseStepExecutor):
         new_data: dict,
         instance_id: str = None,
     ) -> None:
-        """Update observable values from a nested dictionary (like updated character data)."""
+        """Update observable values from a nested dictionary (like updated character or entity data)."""
 
         def update_recursive(data: dict, path_prefix: str = ""):
             for key, value in data.items():
@@ -522,7 +522,7 @@ class TableExecutor(BaseStepExecutor):
 
                 # Build qualified path for observable system
                 if instance_id:
-                    # Use the specific instance ID for character data
+                    # Use the specific instance ID for the main entity data
                     qualified_path = f"{instance_id}.{full_path}"
                 elif base_key:
                     qualified_path = f"{base_key}.{full_path}"
@@ -812,40 +812,21 @@ class TableExecutor(BaseStepExecutor):
         self, base_object: dict, entry_type: str, entry_name: str
     ) -> None:
         """Add fallback defaults when model inheritance is not available."""
-        # Add type-specific defaults based on common patterns
-        if entry_type == "item":
-            base_object.update(
-                {
-                    "slot_cost": 0,  # Default to no inventory slots for unknown items
-                    "cost": 0,
-                    "description": f"Unknown item: {entry_name}",
-                }
-            )
-        elif entry_type == "armor":
-            base_object.update(
-                {
-                    "armor_bonus": 0,  # Default to no armor bonus for unknown armor
-                    "slot_cost": 0,
-                    "cost": 0,
-                    "description": f"Unknown armor: {entry_name}",
-                }
-            )
-        elif entry_type == "weapon":
-            base_object.update(
-                {
-                    "damage": "1d4",  # Default minimal damage
-                    "slot_cost": 1,
-                    "cost": 0,
-                    "description": f"Unknown weapon: {entry_name}",
-                }
-            )
-        else:
-            # Generic object for unknown types
-            base_object.update(
-                {
-                    "description": f"Unknown {entry_type}: {entry_name}",
-                }
-            )
+        # Add minimal generic defaults that work across systems
+        # Rather than hardcoding system-specific attributes, use minimal common patterns
+        
+        base_object.update({
+            "description": f"Unknown {entry_type}: {entry_name}",
+        })
+        
+        # Only add truly universal attributes that most systems would recognize
+        # System-specific attributes should come from model definitions, not hardcoded here
+        if entry_type in ["item", "armor", "weapon"]:
+            # These are common enough across RPG systems to be reasonable defaults
+            base_object.setdefault("cost", 0)
+            
+        # Let model inheritance and system definitions handle specific attributes
+        # rather than hardcoding system-specific values like slot_cost, armor_bonus, damage
 
     def can_execute(self, step: "StepDefinition") -> bool:
         """Check if this executor can handle the step."""

@@ -51,6 +51,7 @@ class ExecutionContext:
     # Execution tracking
     current_step: str | None = None
     step_history: list[str] = field(default_factory=list)
+    step_data: dict[str, dict[str, Any]] = field(default_factory=dict)  # step_id -> {key: value}
     checkpoints: dict[str, Checkpoint] = field(default_factory=dict)
 
     # Action messages for UI display
@@ -117,7 +118,7 @@ class ExecutionContext:
             if self._derived_field_manager and isinstance(base_value, dict):
                 logger.debug(f"get_output({path}): checking for computed values")
                 # Check if this path corresponds to a model instance
-                # For paths like "knave", check if we have derived fields for that instance
+                # For paths like "character", check if we have derived fields for that instance
                 computed_values = (
                     self._derived_field_manager.get_computed_values_for_instance(path)
                 )
@@ -215,7 +216,12 @@ class ExecutionContext:
 
     def resolve_template(self, template_str: str) -> Any:
         """Resolve a Jinja2 template string with current context."""
-        return self.template_resolver.resolve_template(
+        # Prepare current step data for template resolution
+        current_step_data = None
+        if self.current_step:
+            current_step_data = self.step_data.get(self.current_step, {})
+                
+        return self.template_resolver.resolve_template_with_step_data(
             template_str,
             self.variables,
             self.outputs,
@@ -223,6 +229,7 @@ class ExecutionContext:
             self.system_metadata,
             self.namespace_manager,
             self._derived_field_manager,
+            current_step_data,
         )
 
     def resolve_template_with_context(
@@ -333,6 +340,27 @@ class ExecutionContext:
 
         if self._flow_execution_manager:
             self._flow_execution_manager.update_execution_step(step_id)
+
+    def set_step_data(self, step_id: str, key: str, value: Any) -> None:
+        """Set step-scoped data for a specific step."""
+        if step_id not in self.step_data:
+            self.step_data[step_id] = {}
+        self.step_data[step_id][key] = value
+
+    def get_step_data(self, step_id: str, key: str, default: Any = None) -> Any:
+        """Get step-scoped data for a specific step."""
+        return self.step_data.get(step_id, {}).get(key, default)
+
+    def get_current_step_data(self, key: str, default: Any = None) -> Any:
+        """Get step-scoped data for the current step."""
+        if self.current_step:
+            return self.get_step_data(self.current_step, key, default)
+        return default
+
+    def set_current_step_data(self, key: str, value: Any) -> None:
+        """Set step-scoped data for the current step."""
+        if self.current_step:
+            self.set_step_data(self.current_step, key, value)
 
     def get_current_execution(self):
         """Get the current flow execution state."""

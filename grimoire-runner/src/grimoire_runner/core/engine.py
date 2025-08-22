@@ -114,6 +114,7 @@ class GrimoireEngine:
                 "version": system.version,
                 "currency": getattr(system, "currency", {}),
                 "credits": getattr(system, "credits", {}),
+                "models": system.models,  # Add models for template resolution
             }
 
             # Initialize flow variables in the namespace
@@ -243,6 +244,7 @@ class GrimoireEngine:
             "version": system.version,
             "currency": getattr(system, "currency", {}),
             "credits": getattr(system, "credits", {}),
+            "models": system.models,  # Add models for template resolution
         }
 
         # Initialize flow variables

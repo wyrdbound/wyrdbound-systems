@@ -217,28 +217,24 @@ class LLMIntegration:
             logger.error(f"Error generating LLM content: {e}")
             raise RuntimeError(f"LLM content generation failed: {e}") from e
 
-    def create_character_description(self, traits: dict[str, Any]) -> str:
-        """Specialized character description generation."""
-        template = """
-        Create a brief character description based on these traits:
-
-        Physical traits:
-        - Physique: {physique}
-        - Face: {face}
-        - Skin: {skin}
-        - Hair: {hair}
-        - Clothing: {clothing}
-
-        Personality traits:
-        - Background: {background}
-        - Virtue: {virtue}
-        - Vice: {vice}
-        - Speech: {speech}
-
-        Write 2-3 sentences describing this character in a way that brings them to life.
+    def create_entity_description(self, traits: dict[str, Any]) -> str:
+        """Specialized entity description generation."""
+        prompt = f"""
+        Create a brief entity description based on these traits:
+        {self._format_traits_for_prompt(traits)}
+        
+        Instructions:
+        - Write in third person
+        - Focus on vivid, visual details that bring the entity to life
+        - Keep it under 100 words
+        - Make it engaging and atmospheric
+        - Don't just list traits, weave them into a flowing description
+        - Include personality hints based on virtue/vice if present
+        - Mention clothing, appearance, and mannerisms
+        - Avoid game mechanics terms
+        
+        Write 2-3 sentences describing this entity in a way that brings them to life.
         """
-
-        return self.generate_content(template, traits)
 
     def set_provider(self, provider: str) -> None:
         """Change the LLM provider."""

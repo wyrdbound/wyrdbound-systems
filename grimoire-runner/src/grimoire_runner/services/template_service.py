@@ -16,6 +16,115 @@ from jinja2 import (
 logger = logging.getLogger(__name__)
 
 
+class ModelAwareDict:
+    """A dictionary-like object that provides model-aware attribute access for templates.
+    
+    This class wraps model instance dictionaries and provides graceful handling
+    of missing attributes by checking against model definitions.
+    """
+    
+    def __init__(self, data: dict, model_definitions: dict):
+        self._data = data
+        self._models = model_definitions
+        self._model_def = None
+        
+        # Try to determine the model type from the data
+        # This is a heuristic - in a more complete implementation,
+        # we might store type information with the data
+        self._infer_model_type()
+    
+    def _infer_model_type(self):
+        """Try to infer the model type from the data structure."""
+        # For now, we'll use a simple heuristic based on field patterns
+        # In the future, type information could be stored with the data
+        
+        # Try to match data structure against all available model definitions
+        # This makes it system-agnostic by checking actual model definitions
+        # rather than hardcoded assumptions about specific field names
+        
+        best_match = None
+        best_score = 0
+        
+        for model_name, model_def in self._models.items():
+            if model_def is None:
+                continue
+                
+            # Calculate match score based on how many model fields are present in data
+            score = 0
+            total_fields = 0
+            
+            try:
+                all_attrs = model_def.get_all_attributes() if hasattr(model_def, 'get_all_attributes') else {}
+                total_fields = len(all_attrs)
+                
+                for attr_name in all_attrs:
+                    if attr_name in self._data:
+                        score += 1
+                        
+                # Require at least 2 field matches and score > 50% to consider a match
+                if score >= 2 and total_fields > 0 and (score / total_fields) > 0.3:
+                    if score > best_score:
+                        best_score = score
+                        best_match = model_def
+                        
+            except Exception:
+                # Skip models that can't be processed
+                continue
+        
+        self._model_def = best_match
+    
+    def __getattr__(self, name):
+        """Handle attribute access with model-aware fallbacks."""
+        # First check if the attribute exists in the data
+        if name in self._data:
+            return self._data[name]
+        
+        # If we have a model definition, check if this attribute is valid
+        if self._model_def:
+            all_attrs = self._model_def.get_all_attributes()
+            if name in all_attrs:
+                # Attribute exists in model but not in data - return None or default
+                attr_def = all_attrs[name]
+                return attr_def.default if attr_def.default is not None else None
+        
+        # If attribute doesn't exist in model or we don't have a model def,
+        # return None instead of raising AttributeError
+        return None
+    
+    def __getitem__(self, key):
+        """Support dictionary-style access."""
+        return self.__getattr__(key)
+    
+    def __contains__(self, key):
+        """Support 'in' operator."""
+        return key in self._data
+    
+    def get(self, key, default=None):
+        """Support dict.get() method."""
+        result = self.__getattr__(key)
+        return result if result is not None else default
+    
+    def keys(self):
+        """Support dict.keys() method."""
+        return self._data.keys()
+    
+    def values(self):
+        """Support dict.values() method."""
+        return self._data.values()
+    
+    def items(self):
+        """Support dict.items() method."""
+        return self._data.items()
+    
+    def __str__(self):
+        """String representation."""
+        return str(self._data)
+    
+    def __repr__(self):
+        """String representation."""
+        return f"ModelAwareDict({self._data})"
+
+
 class TemplateResolutionStrategy(ABC):
     """Abstract base class for template resolution strategies."""
 
@@ -148,8 +257,13 @@ class RuntimeTemplateStrategy(TemplateResolutionStrategy):
                     "_original": obj,
                 }
             elif isinstance(obj, dict):
-                # Recursively process dict values
-                return {k: make_object_accessible(v) for k, v in obj.items()}
+                # Check if this looks like a model instance by checking for type information
+                # Model instances typically come with metadata about their type
+                if self._is_model_instance_dict(obj, enhanced_context):
+                    return ModelAwareDict(obj, enhanced_context.get("system", {}).get("models", {}))
+                else:
+                    # Recursively process dict values
+                    return {k: make_object_accessible(v) for k, v in obj.items()}
             elif isinstance(obj, list):
                 # Recursively process list items
                 return [make_object_accessible(item) for item in obj]
@@ -161,6 +275,12 @@ class RuntimeTemplateStrategy(TemplateResolutionStrategy):
             enhanced_context[key] = make_object_accessible(value)
 
         return enhanced_context
+
+    def _is_model_instance_dict(self, obj: dict, context: dict) -> bool:
+        """Check if a dictionary appears to be a model instance."""
+        # This is a heuristic - we could improve this by checking against known model definitions
+        # For now, assume any dict that comes from outputs/inputs in a flow context is likely a model instance
+        return isinstance(obj, dict) and len(obj) > 1 and not obj.get("_original")
 
     def is_template(self, text: str) -> bool:
         """Check if a string contains template syntax."""

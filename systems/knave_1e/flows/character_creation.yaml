@@ -4,7 +4,7 @@ name: "Character Creation"
 description: "Character creation process for {{ system.name }}"
 version: "1.0"
 
-inputs: []
+# inputs: []
 outputs:
   - type: character
     id: knave
@@ -16,86 +16,25 @@ variables:
     description: "The dice roll used to determine hit points."
 
 steps:
-  - id: roll_abilities
-    name: "Roll Abilities"
-    type: dice_sequence
-    prompt: "Roll 3d6 for each ability. The lowest die becomes your bonus."
-    sequence:
-      items:
-        [
-          "strength",
-          "dexterity",
-          "constitution",
-          "intelligence",
-          "wisdom",
-          "charisma",
-        ]
-      roll: "3d6kl1"
-      actions:
-        - set_value:
-            path: "outputs.knave.abilities.{{ item }}.bonus"
-            value: "{{ result.total }}"
-        - log_message:
-            message: "{{ item|title }}: +{{ result.total }} (defense {{ result.total + 10 }})"
-
-  - id: ability_swap_choice
-    name: "Optional Ability Swap"
-    type: player_choice
-    prompt: "You may optionally swap the scores of two abilities."
-    choices:
-      - id: no_swap
-        label: "Keep abilities as rolled"
-        next_step: "hit_points_choice"
-      - id: swap_abilities
-        label: "Swap two ability scores"
-        next_step: swap_values_step
-
-  - id: swap_values_step
-    name: "Choose Abilities to Swap"
-    type: player_choice
-    prompt: "Choose two abilities to swap:"
-    choice_source:
-      table_from_values: "outputs.knave.abilities"
-      selection_count: 2
-      display_format: "{{ key|title }}: +{{ value.bonus }}"
+  - id: invoke_roll_abilities
+    name: "Invoke Roll Abilities"
+    type: flow_call
+    flow: roll_abilities
     actions:
-      - swap_values:
-          path1: "outputs.knave.abilities.{{ selected_items[0] }}.bonus"
-          path2: "outputs.knave.abilities.{{ selected_items[1] }}.bonus"
-    next_step: hit_points_choice
+      # for this step, result is the "outputs" of the sub-flow
+      - set_value:
+          path: "outputs.knave.abilities"
+          value: "{{ result.abilities }}"
+    next_step: invoke_roll_hit_points
 
-  - id: hit_points_choice
-    name: "Hit Points Rolling Method"
-    type: player_choice
-    prompt: "Choose how to roll your starting hit points:"
-    choices:
-      - id: standard_roll
-        label: "Standard roll (1d8)"
-        actions:
-          - set_value:
-              path: "variables.hp_dice_roll"
-              value: "1d8"
-        next_step: "roll_hit_points"
-      - id: house_rule
-        label: "House rule: reroll results below 5"
-        actions:
-          - set_value:
-              path: "variables.hp_dice_roll"
-              value: "1d8r<5"
-        next_step: "roll_hit_points"
-
-  - id: roll_hit_points
-    name: "Roll Hit Points"
-    type: dice_roll
-    prompt: "Rolling for hit points..."
-    roll: "{{ variables.hp_dice_roll }}"
+  - id: invoke_roll_hit_points
+    name: "Invoke Roll Hit Points"
+    type: flow_call
+    flow: roll_hit_points
     actions:
       - set_value:
-          path: "outputs.knave.hit_points.max"
-          value: "{{ result.total }}"
-      - set_value:
-          path: "outputs.knave.hit_points.current"
-          value: "{{ result.total }}"
+          path: "outputs.knave.hit_points"
+          value: "{{ result.hit_points }}"
     next_step: choose_weapon
 
   - id: choose_weapon
@@ -108,8 +47,8 @@ steps:
       - flow_call:
           flow: add_item_to_character
           inputs:
-            character: "outputs.knave"
-            item: "{{ result }}"
+            character: "{{ outputs.knave }}"
+            item: "{{ selected_item }}"
     next_step: roll_starting_gear
 
   - id: roll_starting_gear
@@ -123,14 +62,14 @@ steps:
           - flow_call:
               flow: add_item_to_character
               inputs:
-                character: "outputs.knave"
+                character: "{{ outputs.knave }}"
                 item: "{{ result.entry }}"
       - table: helmets_and_shields
         actions:
           - flow_call:
               flow: add_item_to_character
               inputs:
-                character: "outputs.knave"
+                character: "{{ outputs.knave }}"
                 item: "{{ result.entry }}"
       - table: dungeoneering_gear
         count: 2
@@ -138,27 +77,27 @@ steps:
           - flow_call:
               flow: add_items_to_character
               inputs:
-                character: "outputs.knave"
+                character: "{{ outputs.knave }}"
                 items: "{{ results | map(attribute='entry') | list }}"
       - table: general_gear_1
         actions:
           - flow_call:
               flow: add_item_to_character
               inputs:
-                character: "outputs.knave"
+                character: "{{ outputs.knave }}"
                 item: "{{ result.entry }}"
       - table: general_gear_2
         actions:
           - flow_call:
               flow: add_item_to_character
               inputs:
-                character: "outputs.knave"
+                character: "{{ outputs.knave }}"
                 item: "{{ result.entry }}"
     additional_actions:
       - flow_call:
           flow: add_item_to_character
           inputs:
-            character: "outputs.knave"
+            character: "{{ outputs.knave }}"
             item: rations
             quantity: 2
 
