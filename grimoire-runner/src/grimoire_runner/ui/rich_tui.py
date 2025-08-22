@@ -224,7 +224,9 @@ class RichTUI:
                 logger.debug(
                     f"Rich TUI: Initializing model observables for {output_def.type} ({output_def.id})"
                 )
-                self.context.initialize_model_observables(model, output_def.id)
+                # Create a generic model resolver function
+                model_resolver = lambda model_type: self.system.models.get(model_type)
+                self.context.initialize_model_observables(model, output_def.id, model_resolver)
 
         # Show flow info
         self._show_flow_info()
@@ -686,7 +688,9 @@ class RichTUI:
             for output_def in target_flow.outputs:
                 if output_def.type in self.system.models:
                     model = self.system.models[output_def.type]
-                    sub_context.initialize_model_observables(model, output_def.id)
+                    # Create a generic model resolver function
+                    model_resolver = lambda model_type: self.system.models.get(model_type)
+                    sub_context.initialize_model_observables(model, output_def.id, model_resolver)
 
             # Create nested TUI for sub-flow execution
             nested_tui = RichTUI(

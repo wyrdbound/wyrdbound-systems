@@ -66,3 +66,5 @@ steps:
     name: "Complete Roll Abilities"
     type: completion
     prompt: "Abilities have been rolled for your character."
+    actions:
+      - display_value: "outputs.abilities"

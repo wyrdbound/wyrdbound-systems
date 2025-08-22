@@ -132,7 +132,9 @@ class GrimoireEngine:
                     logger.debug(
                         f"Initializing model observables for {output_def.type} ({output_def.id})"
                     )
-                    context.initialize_model_observables(model, output_def.id)
+                    # Create a generic model resolver function
+                    model_resolver = lambda model_type: system.models.get(model_type)
+                    context.initialize_model_observables(model, output_def.id, model_resolver)
 
             # Execute all steps
             step_results = []

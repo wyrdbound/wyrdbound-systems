@@ -32,6 +32,7 @@ dependencies = [
     "wyrdbound-dice>=0.0.1",
     "wyrdbound-rng>=0.0.1",
     "jsonschema>=4.0",
+    "blinker>=1.7",
 ]
 
 [project.optional-dependencies]

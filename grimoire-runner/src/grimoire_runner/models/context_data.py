@@ -2,6 +2,7 @@
 
 import copy
 import logging
+import uuid
 from dataclasses import dataclass, field
 from datetime import datetime
 from typing import TYPE_CHECKING, Any, Optional
@@ -34,6 +35,9 @@ class Checkpoint:
 @dataclass
 class ExecutionContext:
     """Runtime execution context for flows."""
+
+    # Unique identifier for this context
+    id: str = field(default_factory=lambda: str(uuid.uuid4()))
 
     # Core state
     variables: dict[str, Any] = field(default_factory=dict)
@@ -77,8 +81,12 @@ class ExecutionContext:
         """Initialize the derived field manager and flow execution manager."""
         # Initialize the derived field manager
         from .observable import DerivedFieldManager
+        from ..services.reactive_service import reactive_service
 
         self._derived_field_manager = DerivedFieldManager(self, self.resolve_template)
+
+        # Register with the reactive service using the context ID
+        reactive_service.register_field_manager(self.id, self._derived_field_manager)
 
         # Initialize the flow execution context manager
         namespace_data_access = DefaultNamespaceDataAccess(self)
@@ -442,12 +450,18 @@ class ExecutionContext:
         return messages
 
     def initialize_model_observables(
-        self, model_definition, instance_id: str = None
+        self, model_definition, instance_id: str = None, model_resolver=None
     ) -> None:
-        """Initialize observable derived fields from a model definition."""
+        """Initialize observable derived fields from a model definition.
+        
+        Args:
+            model_definition: The model definition to initialize
+            instance_id: Optional instance identifier
+            model_resolver: Optional function to resolve model type references
+        """
         if self._derived_field_manager:
             self._derived_field_manager.initialize_from_model(
-                model_definition, instance_id
+                model_definition, instance_id, model_resolver
             )
 
     def compute_derived_fields(self) -> None:
@@ -489,3 +503,8 @@ class ExecutionContext:
 
         # Set the final value
         current[parts[-1]] = value
+
+    def cleanup(self) -> None:
+        """Clean up resources and unregister from reactive service."""
+        from ..services.reactive_service import reactive_service
+        reactive_service.unregister_field_manager(self.id)
