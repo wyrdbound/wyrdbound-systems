@@ -785,7 +785,7 @@ class RichTUI:
         has_descriptions = any(getattr(choice, "description", "") for choice in choices)
 
         # Display choices in a table for better accessibility
-        choices_table = Table(title="Available Choices", show_header=True)
+        choices_table = Table(title="Available Choices", show_header=True, title_justify="left")
         choices_table.add_column("Option", style="cyan", justify="right")
         choices_table.add_column("Choice", style="green")
 

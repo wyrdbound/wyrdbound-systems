@@ -220,20 +220,33 @@ class DisplayValueActionStrategy(ActionStrategy):
             formatted_value = self._format_value_for_display(value, path)
             
             # For Rich-formatted content, we need to handle it specially
-            if isinstance(value, dict) and len(value) > 0:
-                # Use Rich console directly for proper color rendering
-                from rich.console import Console
+            # Check for dict-like objects (including ModelAwareDict and other custom dict subclasses)
+            if hasattr(value, 'keys') and hasattr(value, '__getitem__'):
+                # Check if it has content (safely handle objects that don't support len())
+                try:
+                    has_content = len(value) > 0
+                except (TypeError, AttributeError):
+                    # For objects that don't support len(), check if keys() returns anything
+                    has_content = bool(list(value.keys()) if hasattr(value, 'keys') else False)
                 
-                console = Console()
-                
-                # Print the header
-                console.print(f"📋 {self._format_path_for_display(path)}:", style="bold")
-                
-                # Print the table with proper Rich rendering
-                self._print_table_for_dict(value, path, console)
+                if has_content:
+                    # Use Rich console directly for proper color rendering
+                    from rich.console import Console
+                    
+                    console = Console()
+                    
+                    # Print the header with colored path
+                    console.print("📋 Display Value: ", style="bold", end="")
+                    console.print(path, style="bold cyan")
+                    
+                    # Print the table with proper Rich rendering
+                    self._print_table_for_dict(value, path, console)
+                else:
+                    # Empty dict-like object
+                    context.add_action_message(f"📋 Display Value: [bold cyan]{path}[/bold cyan]\n(empty)")
             else:
                 # For simple values, use the regular message system
-                context.add_action_message(f"📋 {self._format_path_for_display(path)}:\n{formatted_value}")
+                context.add_action_message(f"📋 Display Value: [bold cyan]{path}[/bold cyan]\n{formatted_value}")
             
             # Also log it for debugging
             logger.debug(f"Display: {path} = {value}")

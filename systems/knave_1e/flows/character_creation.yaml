@@ -35,20 +35,20 @@ steps:
       - set_value:
           path: "outputs.knave.hit_points"
           value: "{{ result.hit_points }}"
-    next_step: choose_weapon
+    next_step: invoke_choose_starting_weapon
 
-  - id: choose_weapon
-    name: "Choose Starting Weapon"
-    type: player_choice
-    prompt: "Choose one weapon to start with:"
-    choice_source:
-      table: weapons
+  - id: invoke_choose_starting_weapon
+    name: "Invoke Choose Starting Weapon"
+    type: flow_call
+    flow: choose_starting_weapon
+    inputs:
+      character: "{{ outputs.knave }}"
     actions:
-      - flow_call:
-          flow: add_item_to_character
-          inputs:
-            character: "{{ outputs.knave }}"
-            item: "{{ selected_item }}"
+      - display_value: "result"
+      - display_value: "result.inventory"
+      - set_value:
+          path: "outputs.knave"
+          value: "{{ result }}"
     next_step: roll_starting_gear
 
   - id: roll_starting_gear

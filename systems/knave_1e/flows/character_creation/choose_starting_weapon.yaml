@@ -25,6 +25,7 @@ steps:
     choice_source:
       table: weapons
     actions:
+      - display_value: "result"
       - display_value: "inputs.knave"
       - set_value:
           path: "variables.selected_weapon"

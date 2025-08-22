@@ -33,7 +33,7 @@ steps:
       # Then update the output character's inventory with the new item
       - set_value:
           path: "outputs.character.inventory"
-          value: "{{ (inputs.character.inventory | default([])) + [inputs.item] }}"
+          value: "{{ inputs.character.inventory + [inputs.item] }}"
       # Log informational message about the item addition
       - log_message:
           message: "Item added to {{ outputs.character.name or 'Unnamed Character' }}'s inventory"
