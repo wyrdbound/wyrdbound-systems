@@ -138,8 +138,8 @@ class ChoiceExecutor(BaseStepExecutor):
                                 "value": value,
                             }
 
-                            # Use unified template service with local context
-                            label = context.resolve_template_with_context(
+                            # Use step data template resolution to make key and value available at top level
+                            label = context.resolve_template_with_step_data(
                                 display_format, template_context
                             )
                             if not isinstance(label, str):
@@ -322,25 +322,25 @@ class ChoiceExecutor(BaseStepExecutor):
             context.set_variable("user_choice", choice_id)
             context.set_variable("choice_label", selected_choice.label)
 
-            # Execute step-level actions (including flow calls) if present
-            if step.actions and system and self.engine:
-                logger.debug(
-                    f"Executing {len(step.actions)} step actions after choice..."
-                )
-                step_result_data = {
-                    "result": context.get_variable("result")
-                }
-                self.engine.action_executor.execute_actions(
-                    step.actions, context, step_result_data, system
-                )
-                logger.debug("✅ Step actions executed successfully")
-
             logger.debug(f"User chose: {selected_choice.label} ({choice_id})")
+
+            # Prepare step result data  
+            step_result_data = {"choice_id": choice_id, "choice_label": selected_choice.label}
+            
+            # Add result for single selections (from compendium/table choices) 
+            result = context.get_variable("result")
+            if result is not None:
+                step_result_data["result"] = result
+            
+            # Add results if available (for multi-selection choices)
+            results = context.get_variable("results")
+            if results is not None:
+                step_result_data["results"] = results
 
             return StepResult(
                 step_id=step.id,
                 success=True,
-                data={"choice_id": choice_id, "choice_label": selected_choice.label},
+                data=step_result_data,
                 next_step_id=selected_choice.next_step,
             )
 

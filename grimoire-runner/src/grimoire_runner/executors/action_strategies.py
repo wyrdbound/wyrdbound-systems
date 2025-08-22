@@ -214,14 +214,39 @@ class DisplayValueActionStrategy(ActionStrategy):
             action_data if isinstance(action_data, str) else action_data.get("path", "")
         )
         try:
-            value = context.resolve_path_value(path)
+            # For simple variable names (no dots), check step data first
+            if "." not in path and context.current_step:
+                step_data = context.step_data.get(context.current_step, {})
+                if path in step_data:
+                    value = step_data[path]
+                else:
+                    # Fall back to path resolution
+                    value = context.resolve_path_value(path)
+            else:
+                # For complex paths, use path resolution
+                value = context.resolve_path_value(path)
             
             # Format the value for user-friendly display
             formatted_value = self._format_value_for_display(value, path)
             
+            # Handle RollResult objects specially with table display
+            from ..models.roll_result import RollResult
+            if isinstance(value, RollResult):
+                # Use Rich console directly for proper color rendering
+                from rich.console import Console
+                
+                console = Console()
+                
+                # Print the header with colored path
+                console.print("📋 Display Value: ", style="bold", end="")
+                console.print(path, style="bold cyan")
+                
+                # Print the roll result as a table
+                self._print_roll_result_table(value, console)
+            
             # For Rich-formatted content, we need to handle it specially
             # Check for dict-like objects (including ModelAwareDict and other custom dict subclasses)
-            if hasattr(value, 'keys') and hasattr(value, '__getitem__'):
+            elif hasattr(value, 'keys') and hasattr(value, '__getitem__'):
                 # Check if it has content (safely handle objects that don't support len())
                 try:
                     has_content = len(value) > 0
@@ -271,6 +296,11 @@ class DisplayValueActionStrategy(ActionStrategy):
         """Format a value for user-friendly display."""
         if value is None:
             return "None"
+        
+        # Handle RollResult objects specially
+        from ..models.roll_result import RollResult
+        if isinstance(value, RollResult):
+            return self._format_roll_result_for_display(value)
         
         # Handle dictionaries (like character objects)
         if isinstance(value, dict):
@@ -330,8 +360,8 @@ class DisplayValueActionStrategy(ActionStrategy):
         """Print a table representation of a dictionary directly to console."""
         from rich.table import Table
         
-        # Create table with styling
-        table = Table(show_header=True, header_style="bold blue", show_lines=True)
+        # Create table with styling and left-justified title for accessibility
+        table = Table(show_header=True, header_style="bold blue", show_lines=True, title_justify="left")
         table.add_column("Property", style="cyan", width=18, no_wrap=True)
         table.add_column("Value", style="white", width=60)
         
@@ -352,8 +382,8 @@ class DisplayValueActionStrategy(ActionStrategy):
         # Create a console that writes to a string with color support
         console = Console(file=StringIO(), width=100, legacy_windows=False, force_terminal=True)
         
-        # Create table with styling
-        table = Table(show_header=True, header_style="bold blue", show_lines=True)
+        # Create table with styling and left-justified title for accessibility
+        table = Table(show_header=True, header_style="bold blue", show_lines=True, title_justify="left")
         table.add_column("Property", style="cyan", width=18, no_wrap=True)
         table.add_column("Value", style="white", width=60)
         
@@ -517,6 +547,28 @@ class DisplayValueActionStrategy(ActionStrategy):
                         break
         
         return attrs
+
+    def _format_roll_result_for_display(self, roll_result) -> str:
+        """Format a RollResult object for display as a simple string."""
+        return f"🎲 {roll_result.total} ({roll_result.expression})"
+
+    def _print_roll_result_table(self, roll_result, console) -> None:
+        """Print a RollResult as a table directly to console."""
+        from rich.table import Table
+        
+        # Create table with styling and left-justified title for accessibility
+        table = Table(show_header=True, header_style="bold blue", show_lines=True, 
+                     title="🎲 Dice Roll Result", title_justify="left")
+        table.add_column("Property", style="cyan", width=12, no_wrap=True)
+        table.add_column("Value", style="white", width=50)
+        
+        # Add rows for roll result properties
+        table.add_row("Total", f"[bold magenta]{roll_result.total}[/bold magenta]")
+        table.add_row("Expression", f"[yellow]{roll_result.expression}[/yellow]")
+        table.add_row("Detail", f"[green]{roll_result.detail}[/green]")
+        
+        # Print table directly to console
+        console.print(table)
 
 
 class LogEventActionStrategy(ActionStrategy):

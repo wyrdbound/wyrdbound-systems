@@ -4,7 +4,6 @@ name: "Roll Abilities for a Character"
 description: "Rolling abilities during Character Creation for {{ system.name }}"
 version: "1.0"
 
-inputs: []
 outputs:
   - type: character_abilities
     id: abilities
@@ -35,7 +34,7 @@ steps:
             path: "outputs.abilities.{{ item }}.bonus"
             value: "{{ result.total }}"
         - log_message:
-            message: "{{ item[0:3]|upper }}: {{ result.total + 10 }} (bonus +{{ result.total }})"
+            message: "{{ item[0:3]|upper }}: bonus +{{ result.total }}, defense {{ result.total + 10 }} ({{ result.detail }})"
 
   - id: ability_swap_choice
     name: "Optional Ability Swap"
@@ -59,8 +58,8 @@ steps:
       display_format: "{{ key|title }}: +{{ value.bonus }}"
     actions:
       - swap_values:
-          path1: "outputs.abilities.{{ selected_items[0] }}.bonus"
-          path2: "outputs.abilities.{{ selected_items[1] }}.bonus"
+          path1: "outputs.abilities.{{ results[0] }}.bonus"
+          path2: "outputs.abilities.{{ results[1] }}.bonus"
     next_step: complete_roll_abilities
 
   - id: complete_roll_abilities

@@ -235,28 +235,43 @@ class ExecutionContext:
     def resolve_template_with_context(
         self, template_str: str, additional_context: dict[str, Any]
     ) -> Any:
-        """Resolve a template string with additional context variables."""
-        # Merge additional context with existing context
-        merged_variables = {**self.variables, **additional_context}
-        merged_outputs = {**self.outputs}
-        merged_inputs = {**self.inputs}
+        """Resolve a Jinja2 template string with additional context variables."""
+        # Store the additional context temporarily in merged variables
+        original_vars = self.variables.copy()
+        
+        # Merge additional context into variables for template resolution
+        merged_vars = {**self.variables, **additional_context}
+        
+        try:
+            # Temporarily update variables for template resolution
+            self.variables.update(additional_context)
+            return self.template_resolver.resolve_template(
+                template_str,
+                merged_vars,
+                self.outputs,
+                self.inputs,
+                self.system_metadata,
+                self.namespace_manager,
+                self._derived_field_manager,
+            )
+        finally:
+            # Restore original variables to avoid pollution
+            self.variables.clear()
+            self.variables.update(original_vars)
 
-        # If additional_context has variables/outputs/inputs, merge those too
-        if "variables" in additional_context:
-            merged_variables.update(additional_context["variables"])
-        if "outputs" in additional_context:
-            merged_outputs.update(additional_context["outputs"])
-        if "inputs" in additional_context:
-            merged_inputs.update(additional_context["inputs"])
-
-        return self.template_resolver.resolve_template(
+    def resolve_template_with_step_data(
+        self, template_str: str, step_data: dict[str, Any]
+    ) -> Any:
+        """Resolve a Jinja2 template string with step-specific data."""
+        return self.template_resolver.resolve_template_with_step_data(
             template_str,
-            merged_variables,
-            merged_outputs,
-            merged_inputs,
+            self.variables,
+            self.outputs,
+            self.inputs,
             self.system_metadata,
             self.namespace_manager,
             self._derived_field_manager,
+            step_data,
         )
 
     def resolve_path_value(self, path: str) -> Any:

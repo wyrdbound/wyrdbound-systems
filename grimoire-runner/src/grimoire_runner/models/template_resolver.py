@@ -161,12 +161,17 @@ class TemplateResolver:
             "system": system_metadata,
         }
         
-        # Add result as a special top-level context key if available
-        if current_step_data and 'result' in current_step_data:
-            context['result'] = current_step_data['result']
-        # Also check if result is available in variables
+        # Add all current step data as top-level context keys if available
+        if current_step_data:
+            logger.debug(f"[TEMPLATE_RESOLVER] Adding step_data to context: {current_step_data}")
+            for key, value in current_step_data.items():
+                logger.debug(f"[TEMPLATE_RESOLVER] Adding {key} = {value} to context")
+                context[key] = value
+        # Also check if result is available in variables for backward compatibility
         elif 'result' in variables:
             context['result'] = variables['result']
+        
+        logger.debug(f"[TEMPLATE_RESOLVER] Final context keys: {list(context.keys())}")
 
                 # NOTE: 'this' reference should only be available during derived field resolution,
         # not exposed in general template context to prevent namespace pollution

@@ -268,7 +268,7 @@ class RichTUI:
             step_name = step.name or step.id
             step_type = step.type.name if hasattr(step.type, "name") else str(step.type)
             self.console.print(
-                f"[bold cyan]Step {step_num}/{total_steps}:[/bold cyan] [bold]{step_name}[/bold] [dim]({step_type})[/dim]"
+                f"[bold cyan]Step {step_num}:[/bold cyan] [bold]{step_name}[/bold] [dim]({step_type})[/dim]"
             )
 
             # Update context
@@ -326,7 +326,7 @@ class RichTUI:
             step_name = step.name or step.id
             step_type = step.type.name if hasattr(step.type, "name") else str(step.type)
             self._print_indented(
-                f"[cyan]Step {step_num}/{len(self.flow_obj.steps)}:[/cyan] [bold]{step_name}[/bold] [dim]({step_type})[/dim]"
+                f"[cyan]Step {step_num}:[/cyan] [bold]{step_name}[/bold] [dim]({step_type})[/dim]"
             )
 
             # Update context
@@ -433,16 +433,29 @@ class RichTUI:
                                 "choice_label", selected_choice.label
                             )
 
+                            # Create choice result data
+                            choice_data = {
+                                "choice_id": selected_choice_id,
+                                "choice_label": selected_choice.label,
+                            }
+                            
+                            # Add result for single selections (from compendium/table choices)
+                            result = self.context.get_variable("result")
+                            if result is not None:
+                                choice_data["result"] = result
+                            
+                            # Add results if available (for multi-selection)
+                            results = self.context.get_variable("results")
+                            if results is not None:
+                                choice_data["results"] = results
+
                             choice_result = type(
                                 "StepResult",
                                 (),
                                 {
                                     "step_id": step.id,
                                     "success": True,
-                                    "data": {
-                                        "choice_id": selected_choice_id,
-                                        "choice_label": selected_choice.label,
-                                    },
+                                    "data": choice_data,
                                     "next_step_id": selected_choice.next_step,
                                 },
                             )()
@@ -958,7 +971,7 @@ class RichTUI:
                 self.console.print(f"  {i}. {choice_label}")
 
             # Store the multiple selections in context (like the original console interface)
-            self.context.set_variable("selected_items", selected_ids)
+            self.context.set_variable("results", selected_ids)
             self.context.set_variable("user_choices", selected_ids)  # Alternative name
 
             # Return the first selection ID and label (for compatibility)
@@ -971,7 +984,7 @@ class RichTUI:
             self.console.print(f"[red]Error during selection: {e}[/red]")
             self.console.print("[yellow]Continuing with default behavior...[/yellow]")
             # Fall back to empty selection
-            self.context.set_variable("selected_items", [])
+            self.context.set_variable("results", [])
             self.context.set_variable("user_choices", [])
             return None
 
