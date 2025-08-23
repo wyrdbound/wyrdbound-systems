@@ -219,10 +219,10 @@ class LLMIntegration:
 
     def create_entity_description(self, traits: dict[str, Any]) -> str:
         """Specialized entity description generation."""
-        prompt = f"""
+        f"""
         Create a brief entity description based on these traits:
         {self._format_traits_for_prompt(traits)}
-        
+
         Instructions:
         - Write in third person
         - Focus on vivid, visual details that bring the entity to life
@@ -232,7 +232,7 @@ class LLMIntegration:
         - Include personality hints based on virtue/vice if present
         - Mention clothing, appearance, and mannerisms
         - Avoid game mechanics terms
-        
+
         Write 2-3 sentences describing this entity in a way that brings them to life.
         """
 

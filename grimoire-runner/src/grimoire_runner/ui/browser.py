@@ -297,36 +297,36 @@ class CompendiumBrowser:
         """Get a display name for an entry in a system-agnostic way."""
         # Try common identifying fields in order of preference
         identifier_fields = ['name', 'title', 'label', 'display_name', 'id']
-        
+
         for field in identifier_fields:
             if field in entry_data and entry_data[field]:
                 return str(entry_data[field])
-        
+
         # Fallback to the entry ID if no identifying field is found
         return entry_id
 
     def _find_numeric_attributes(self, entries: dict[str, Any]) -> list[str]:
         """Find attributes that contain numeric values in a system-agnostic way."""
         numeric_attrs = []
-        
+
         # Sample a few entries to check for numeric attributes
         sample_entries = list(entries.values())[:10]  # Check first 10 entries
-        
+
         if not sample_entries:
             return numeric_attrs
-            
+
         # Find attributes that have numeric values in most sampled entries
         potential_attrs = set()
         for entry in sample_entries:
             potential_attrs.update(entry.keys())
-        
+
         for attr in potential_attrs:
             numeric_count = 0
             for entry in sample_entries:
                 if attr in entry:
                     value = entry[attr]
                     # Check if the value is numeric or can be converted to numeric
-                    if isinstance(value, (int, float)):
+                    if isinstance(value, int | float):
                         numeric_count += 1
                     elif isinstance(value, str):
                         try:
@@ -334,10 +334,10 @@ class CompendiumBrowser:
                             numeric_count += 1
                         except (ValueError, TypeError):
                             pass
-            
+
             # If more than 50% of samples have numeric values for this attribute, include it
             if numeric_count > len(sample_entries) * 0.5:
                 numeric_attrs.append(attr)
-        
+
         # Limit to most common numeric attributes to keep output manageable
         return numeric_attrs[:5]

@@ -7,6 +7,7 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from typing import TYPE_CHECKING, Any, Optional
 
+from .model import AttributeDefinition, ModelDefinition
 from ..services.flow_execution_context_manager import (
     DefaultNamespaceDataAccess,
     FlowExecutionContextManager,
@@ -80,8 +81,8 @@ class ExecutionContext:
     def __post_init__(self) -> None:
         """Initialize the derived field manager and flow execution manager."""
         # Initialize the derived field manager
-        from .observable import DerivedFieldManager
         from ..services.reactive_service import reactive_service
+        from .observable import DerivedFieldManager
 
         self._derived_field_manager = DerivedFieldManager(self, self.resolve_template)
 
@@ -228,7 +229,7 @@ class ExecutionContext:
         current_step_data = None
         if self.current_step:
             current_step_data = self.step_data.get(self.current_step, {})
-                
+
         return self.template_resolver.resolve_template_with_step_data(
             template_str,
             self.variables,
@@ -246,10 +247,10 @@ class ExecutionContext:
         """Resolve a Jinja2 template string with additional context variables."""
         # Store the additional context temporarily in merged variables
         original_vars = self.variables.copy()
-        
+
         # Merge additional context into variables for template resolution
         merged_vars = {**self.variables, **additional_context}
-        
+
         try:
             # Temporarily update variables for template resolution
             self.variables.update(additional_context)
@@ -453,7 +454,7 @@ class ExecutionContext:
         self, model_definition, instance_id: str = None, model_resolver=None
     ) -> None:
         """Initialize observable derived fields from a model definition.
-        
+
         Args:
             model_definition: The model definition to initialize
             instance_id: Optional instance identifier
@@ -503,6 +504,137 @@ class ExecutionContext:
 
         # Set the final value
         current[parts[-1]] = value
+
+    def initialize_output_models(self, outputs: list, system) -> None:
+        """Initialize outputs with complete model instances."""
+        for output_def in outputs:
+            if output_def.type in system.models:
+                model_def = system.models[output_def.type]
+                complete_instance = self._create_model_instance(model_def, system)
+                
+                # Merge with existing data if any
+                if output_def.id in self.outputs:
+                    existing_data = self.outputs[output_def.id]
+                    if isinstance(existing_data, dict):
+                        complete_instance.update(existing_data)
+                
+                self.outputs[output_def.id] = complete_instance
+
+    def _create_model_instance(self, model_def: ModelDefinition, system, visited_models=None) -> dict[str, Any]:
+        """Create a complete model instance with all attributes set to defaults."""
+        if visited_models is None:
+            visited_models = set()
+        
+        # Prevent infinite recursion
+        if model_def.id in visited_models:
+            return {}
+        
+        visited_models.add(model_def.id)
+        instance = {}
+        
+        for attr_name, attr_def in model_def.attributes.items():
+            if isinstance(attr_def, AttributeDefinition):
+                # It's an AttributeDefinition object
+                if attr_def.type in ('int', 'float', 'str', 'bool'):
+                    # Primitive type
+                    instance[attr_name] = attr_def.default if attr_def.default is not None else self._get_primitive_default(attr_def.type)
+                elif attr_def.type == 'list':
+                    instance[attr_name] = []
+                elif attr_def.type == 'map':
+                    instance[attr_name] = {}
+                else:
+                    # Complex type - try to find the model
+                    nested_model = system.models.get(attr_def.type)
+                    if nested_model:
+                        instance[attr_name] = self._create_model_instance(nested_model, system, visited_models.copy())
+                    else:
+                        instance[attr_name] = {}
+            elif isinstance(attr_def, dict):
+                # It's a nested structure - recursively process
+                instance[attr_name] = self._create_nested_structure(attr_def, system, visited_models)
+            else:
+                # Fallback for simple values
+                instance[attr_name] = attr_def
+        
+        visited_models.remove(model_def.id)
+        return instance
+        
+    def _create_nested_structure(self, attr_dict: dict[str, Any], system, visited_models=None) -> dict[str, Any]:
+        """Create a nested structure from a dictionary definition."""
+        if visited_models is None:
+            visited_models = set()
+            
+        instance = {}
+        
+        for key, value in attr_dict.items():
+            if isinstance(value, dict) and 'type' in value:
+                # This looks like an attribute definition
+                attr_type = value['type']
+                default_value = value.get('default')
+                
+                if attr_type in ('int', 'float', 'str', 'bool'):
+                    instance[key] = default_value if default_value is not None else self._get_primitive_default(attr_type)
+                elif attr_type == 'list':
+                    instance[key] = []
+                elif attr_type == 'map':
+                    instance[key] = {}
+                else:
+                    # Complex type - try to find the model
+                    nested_model = system.models.get(attr_type)
+                    if nested_model:
+                        instance[key] = self._create_model_instance(nested_model, system, visited_models)
+                    else:
+                        instance[key] = {}
+            elif isinstance(value, AttributeDefinition):
+                # Handle raw AttributeDefinition objects
+                if value.type in ('int', 'float', 'str', 'bool'):
+                    instance[key] = value.default if value.default is not None else self._get_primitive_default(value.type)
+                elif value.type == 'list':
+                    instance[key] = []
+                elif value.type == 'map':
+                    instance[key] = {}
+                else:
+                    # Complex type
+                    nested_model = system.models.get(value.type)
+                    if nested_model:
+                        instance[key] = self._create_model_instance(nested_model, system, visited_models)
+                    else:
+                        instance[key] = {}
+            elif isinstance(value, dict):
+                # Nested structure
+                instance[key] = self._create_nested_structure(value, system, visited_models)
+            else:
+                instance[key] = value
+        
+        return instance
+
+    def _get_primitive_default(self, type_name: str) -> Any:
+        """Get default value for primitive types."""
+        defaults = {
+            'int': 0,
+            'float': 0.0,
+            'str': '',
+            'bool': False
+        }
+        return defaults.get(type_name, None)
+
+    def _get_all_model_attributes(self, model_def, system) -> dict:
+        """Get all attributes from model definition including inherited ones."""
+        all_attributes = {}
+        
+        # Process inheritance chain (extends)
+        if hasattr(model_def, 'extends') and model_def.extends:
+            for parent_model_id in model_def.extends:
+                if parent_model_id in system.models:
+                    parent_model = system.models[parent_model_id]
+                    parent_attributes = self._get_all_model_attributes(parent_model, system)
+                    all_attributes.update(parent_attributes)
+        
+        # Add this model's own attributes (these override inherited ones)
+        if hasattr(model_def, 'attributes'):
+            all_attributes.update(model_def.attributes)
+            
+        return all_attributes
 
     def cleanup(self) -> None:
         """Clean up resources and unregister from reactive service."""

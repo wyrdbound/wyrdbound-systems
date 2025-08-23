@@ -11,7 +11,7 @@ if TYPE_CHECKING:
     from .model import ModelDefinition
 
 # Import events at module level to avoid circular imports
-from ..events import events, ValueSetEvent, FieldComputedEvent
+from ..events import FieldComputedEvent, ValueSetEvent, events
 
 logger = logging.getLogger(__name__)
 
@@ -181,7 +181,7 @@ class DerivedFieldManager:
 
         # Emit value set event
         events.emit(
-            'value_set', 
+            'value_set',
             sender=self,
             event_data=ValueSetEvent(
                 path=field_name,
@@ -274,7 +274,7 @@ class DerivedFieldManager:
         try:
             template_expr = self.fields[field]["derived"]
             dependencies = list(self.fields[field]["dependencies"])
-            
+
             # Convert $variable syntax to {{ variable }} syntax for Jinja2
             # For a field like "abilities.strength.defense", the parent context is "abilities.strength"
             parent_context = ".".join(field.split(".")[:-1]) if "." in field else ""
@@ -336,7 +336,7 @@ class DerivedFieldManager:
         """Convert expressions with $ syntax to Jinja2 template syntax."""
         if not expression:
             return expression
-            
+
         # If the expression already has {{ }}, check if it needs self/this conversion
         if expression.startswith('{{') and expression.endswith('}}'):
             # Replace 'this.' with the current instance ID for proper template resolution
@@ -347,20 +347,20 @@ class DerivedFieldManager:
                 replacement = f'{self.current_instance_id}.'
                 expression = re.sub(pattern, replacement, expression)
             return expression
-        
+
         # For expressions without {{ }}, wrap them and handle $ syntax
         if hasattr(self, 'current_instance_id') and self.current_instance_id:
             # Replace $ with the current instance ID
             expression = expression.replace('$.', f'{self.current_instance_id}.')
             expression = expression.replace('$', self.current_instance_id)
-        
+
         return f"{{{{ {expression} }}}}"
 
     def _convert_to_jinja_syntax_with_context(self, expression: str, context_path: str) -> str:
         """Convert expressions with $ syntax to Jinja2 template syntax with specific context."""
         if not expression:
             return expression
-            
+
         # If the expression already has {{ }}, check if it needs self/this conversion
         if expression.startswith('{{') and expression.endswith('}}'):
             # Replace 'this.' with the context path for proper template resolution
@@ -371,13 +371,13 @@ class DerivedFieldManager:
                 replacement = f'{context_path}.'
                 expression = re.sub(pattern, replacement, expression)
             return expression
-        
+
         # For expressions without {{ }}, wrap them and handle $ syntax
         if context_path:
             # Replace $ with the context path
             expression = expression.replace('$.', f'{context_path}.')
             expression = expression.replace('$', context_path)
-        
+
         return f"{{{{ {expression} }}}}"
 
     def _topological_sort(self, fields: set[str]) -> list[str]:
@@ -428,7 +428,7 @@ class DerivedFieldManager:
         self, model_def: "ModelDefinition", instance_id: str = None, model_resolver=None
     ) -> None:
         """Initialize observable system from a model definition.
-        
+
         Args:
             model_def: The model definition to process
             instance_id: Optional instance identifier for scoping

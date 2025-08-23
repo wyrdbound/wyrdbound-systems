@@ -18,67 +18,69 @@ logger = logging.getLogger(__name__)
 
 class ModelAwareDict:
     """A dictionary-like object that provides model-aware attribute access for templates.
-    
+
     This class wraps model instance dictionaries and provides graceful handling
     of missing attributes by checking against model definitions.
     """
-    
+
     def __init__(self, data: dict, model_definitions: dict):
         self._data = data
         self._models = model_definitions
         self._model_def = None
-        
+        logger.info(f"[ModelAwareDict] model_definitions type: {type(model_definitions)}")
+        logger.info(f"[ModelAwareDict] model_definitions: {model_definitions}")
+
         # Try to determine the model type from the data
         # This is a heuristic - in a more complete implementation,
         # we might store type information with the data
         self._infer_model_type()
-    
+
     def _infer_model_type(self):
         """Try to infer the model type from the data structure."""
         # For now, we'll use a simple heuristic based on field patterns
         # In the future, type information could be stored with the data
-        
+
         # Try to match data structure against all available model definitions
         # This makes it system-agnostic by checking actual model definitions
         # rather than hardcoded assumptions about specific field names
-        
+
         best_match = None
         best_score = 0
-        
-        for model_name, model_def in self._models.items():
+
+        for _model_name, model_def in self._models.items():
             if model_def is None:
                 continue
-                
+
             # Calculate match score based on how many model fields are present in data
             score = 0
             total_fields = 0
-            
+
             try:
                 all_attrs = model_def.get_all_attributes() if hasattr(model_def, 'get_all_attributes') else {}
                 total_fields = len(all_attrs)
-                
+
                 for attr_name in all_attrs:
                     if attr_name in self._data:
                         score += 1
-                        
+
                 # Require at least 2 field matches and score > 50% to consider a match
                 if score >= 2 and total_fields > 0 and (score / total_fields) > 0.3:
                     if score > best_score:
                         best_score = score
                         best_match = model_def
-                        
+
             except Exception:
                 # Skip models that can't be processed
                 continue
-        
+
         self._model_def = best_match
-    
+
     def __getattr__(self, name):
         """Handle attribute access with model-aware fallbacks."""
         # First check if the attribute exists in the data
         if name in self._data:
             return self._data[name]
-        
+
         # If we have a model definition, check if this attribute is valid
         if self._model_def:
             all_attrs = self._model_def.get_all_attributes()
@@ -86,40 +88,40 @@ class ModelAwareDict:
                 # Attribute exists in model but not in data - return None or default
                 attr_def = all_attrs[name]
                 return attr_def.default if attr_def.default is not None else None
-        
+
         # If attribute doesn't exist in model or we don't have a model def,
         # return None instead of raising AttributeError
         return None
-    
+
     def __getitem__(self, key):
         """Support dictionary-style access."""
         return self.__getattr__(key)
-    
+
     def __contains__(self, key):
         """Support 'in' operator."""
         return key in self._data
-    
+
     def get(self, key, default=None):
         """Support dict.get() method."""
         result = self.__getattr__(key)
         return result if result is not None else default
-    
+
     def keys(self):
         """Support dict.keys() method."""
         return self._data.keys()
-    
+
     def values(self):
         """Support dict.values() method."""
         return self._data.values()
-    
+
     def items(self):
         """Support dict.items() method."""
         return self._data.items()
-    
+
     def __str__(self):
         """String representation."""
         return str(self._data)
-    
+
     def __repr__(self):
         """String representation."""
         return f"ModelAwareDict({self._data})"
@@ -186,6 +188,8 @@ class RuntimeTemplateStrategy(TemplateResolutionStrategy):
                 )
 
             # Enhance context with roll_result attribute access
+            logger.debug(f"[RuntimeTemplateStrategy] About to enhance context. Original context keys: {list(context_data.keys()) if isinstance(context_data, dict) else 'Not a dict'}")
+            logger.debug(f"[RuntimeTemplateStrategy] Context values types: {[(k, type(v)) for k, v in context_data.items()] if isinstance(context_data, dict) else 'Not a dict'}")
             enhanced_context = self._enhance_context_for_objects(context_data)
 
             # Check for simple variable reference that should preserve object type
@@ -260,7 +264,12 @@ class RuntimeTemplateStrategy(TemplateResolutionStrategy):
                 # Check if this looks like a model instance by checking for type information
                 # Model instances typically come with metadata about their type
                 if self._is_model_instance_dict(obj, enhanced_context):
-                    return ModelAwareDict(obj, enhanced_context.get("system", {}).get("models", {}))
+                    # Get models from system context (always a dictionary in template context)
+                    system_dict = enhanced_context.get("system", {})
+                    logger.info(f"[TEMPLATE_SERVICE] system_dict type: {type(system_dict)}, value: {system_dict}")
+                    models = system_dict.get("models", {})
+                    logger.info(f"[TEMPLATE_SERVICE] models type: {type(models)}, value: {models}")
+                    return ModelAwareDict(obj, models)
                 else:
                     # Recursively process dict values
                     return {k: make_object_accessible(v) for k, v in obj.items()}
@@ -278,9 +287,17 @@ class RuntimeTemplateStrategy(TemplateResolutionStrategy):
 
     def _is_model_instance_dict(self, obj: dict, context: dict) -> bool:
         """Check if a dictionary appears to be a model instance."""
+        # Don't treat top-level context containers as model instances
+        if obj is context.get("variables") or obj is context.get("inputs") or obj is context.get("outputs") or obj is context.get("system"):
+            return False
+        
+        # Don't treat converted RollResult objects as model instances
+        if obj.get("_original") or "total" in obj or "expression" in obj or "breakdown" in obj:
+            return False
+        
         # This is a heuristic - we could improve this by checking against known model definitions
         # For now, assume any dict that comes from outputs/inputs in a flow context is likely a model instance
-        return isinstance(obj, dict) and len(obj) > 1 and not obj.get("_original")
+        return isinstance(obj, dict) and len(obj) > 1
 
     def is_template(self, text: str) -> bool:
         """Check if a string contains template syntax."""
@@ -588,11 +605,18 @@ class TemplateService:
 
         # Add system metadata if available
         if system:
+            logger.debug(f"System object type: {type(system)}")
+            logger.debug(f"System object: {system}")
             context_dict["system"] = {
                 "id": system.id,
                 "name": system.name,
                 "description": system.description,
+                "version": system.version,
+                "currency": getattr(system, "currency", {}),
+                "credits": getattr(system, "credits", {}),
+                "models": system.models,  # Add models for template resolution
             }
+            logger.debug(f"Context dict system: {context_dict['system']}")
 
         result = self.resolve_template(template_str, context_dict, mode)
         logger.debug(f"Template resolution result: '{result}'")

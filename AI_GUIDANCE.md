@@ -1,6 +1,6 @@
 # Guidelines
 
-Things to always remember as you are working on the code in this code base:
+Always remember the following points as you are working on this code base:
 
 1. Use the virtual env in the project root (`source .venv/bin/activate && <your_command>`)
 
@@ -13,3 +13,5 @@ Things to always remember as you are working on the code in this code base:
 5. Simpler is better.
 
 6. Write tests for every next feature.
+
+7. Use prints liberally to capture the flow of data and decisions within the code. Do not use logging, since Rich redirects stdout/stderr.

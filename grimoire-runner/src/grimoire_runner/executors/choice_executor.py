@@ -222,7 +222,7 @@ class ChoiceExecutor(BaseStepExecutor):
                                     comp = system.get_compendium(comp_id)
                                     if comp and entry_value in comp.entries:
                                         entry_data = comp.entries[entry_value]
-                                        
+
                                         # Apply model inheritance to ensure defaults are included
                                         if table.entry_type in system.models:
                                             model_def = system.models[table.entry_type]
@@ -336,14 +336,14 @@ class ChoiceExecutor(BaseStepExecutor):
 
             logger.debug(f"User chose: {selected_choice.label} ({choice_id})")
 
-            # Prepare step result data  
+            # Prepare step result data
             step_result_data = {"choice_id": choice_id, "choice_label": selected_choice.label}
-            
-            # Add result for single selections (from compendium/table choices) 
+
+            # Add result for single selections (from compendium/table choices)
             result = context.get_variable("result")
             if result is not None:
                 step_result_data["result"] = result
-            
+
             # Add results if available (for multi-selection choices)
             results = context.get_variable("results")
             if results is not None:
@@ -451,22 +451,22 @@ class ChoiceExecutor(BaseStepExecutor):
         """Apply model defaults to entry data."""
         # Create a copy to avoid modifying the original
         result = dict(entry_data)
-        
+
         # Get all attributes from the model hierarchy (including inherited ones)
         all_attributes = self._get_all_model_attributes(model_def, system)
-        
+
         # Apply defaults for missing attributes
         for attr_name, attr_def in all_attributes.items():
             if attr_name not in result:
                 if hasattr(attr_def, 'default') and attr_def.default is not None:
                     result[attr_name] = attr_def.default
-        
+
         return result
-    
+
     def _get_all_model_attributes(self, model_def, system) -> dict:
         """Get all attributes from model definition including inherited ones."""
         all_attributes = {}
-        
+
         # Process inheritance chain (extends)
         if hasattr(model_def, 'extends') and model_def.extends:
             for parent_model_id in model_def.extends:
@@ -474,9 +474,9 @@ class ChoiceExecutor(BaseStepExecutor):
                     parent_model = system.models[parent_model_id]
                     parent_attributes = self._get_all_model_attributes(parent_model, system)
                     all_attributes.update(parent_attributes)
-        
+
         # Add this model's own attributes (these override inherited ones)
         if hasattr(model_def, 'attributes'):
             all_attributes.update(model_def.attributes)
-        
+
         return all_attributes

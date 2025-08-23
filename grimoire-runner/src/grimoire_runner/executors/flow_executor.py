@@ -74,7 +74,7 @@ class FlowExecutor(BaseStepExecutor):
                 data={"completion": True, "message": step.prompt},
                 prompt=step.prompt,
             )
-            
+
             # Mark that actions were already executed to prevent double execution
             step_result.actions_already_executed = True
             return step_result

@@ -1,8 +1,9 @@
-"""Main GRIMOIRE engine for orchestrating system loading and flow execution."""
+"""Core engine for executing GRIMOIRE flows."""
 
 import logging
-from collections.abc import Iterator
+import uuid
 from pathlib import Path
+from typing import Iterator
 
 from ..executors.executor_factories import ExecutorRegistry
 from ..executors.executor_factory import ExecutorFactory, StepExecutorInterface
@@ -106,14 +107,11 @@ class GrimoireEngine:
         context.set_current_flow_namespace(namespace_id)
 
         try:
-            # Set system metadata in context for templating
             context.system_metadata = {
                 "id": system.id,
                 "name": system.name,
                 "description": system.description,
                 "version": system.version,
-                "currency": getattr(system, "currency", {}),
-                "credits": getattr(system, "credits", {}),
                 "models": system.models,  # Add models for template resolution
             }
 
@@ -125,6 +123,9 @@ class GrimoireEngine:
             )
             context.initialize_flow_namespace_variables(namespace_id, variables_dict)
 
+            # Initialize complete model instances for declared outputs
+            context.initialize_output_models(flow.outputs, system)
+
             # Initialize observable derived fields from output models
             for output_def in flow.outputs:
                 if output_def.type in system.models:
@@ -133,7 +134,8 @@ class GrimoireEngine:
                         f"Initializing model observables for {output_def.type} ({output_def.id})"
                     )
                     # Create a generic model resolver function
-                    model_resolver = lambda model_type: system.models.get(model_type)
+                    def model_resolver(model_type):
+                        return system.models.get(model_type)
                     context.initialize_model_observables(model, output_def.id, model_resolver)
 
             # Execute all steps
@@ -244,8 +246,6 @@ class GrimoireEngine:
             "name": system.name,
             "description": system.description,
             "version": system.version,
-            "currency": getattr(system, "currency", {}),
-            "credits": getattr(system, "credits", {}),
             "models": system.models,  # Add models for template resolution
         }
 
@@ -320,6 +320,22 @@ class GrimoireEngine:
         # Execute the step
         try:
             result = executor.execute(step, context, system)
+
+            # Resolve result message template if present
+            if step.result_message and result.success:
+                try:
+                    # Use ExecutionContext's template resolution with step data
+                    step_data = result.data if result.data else {}
+                    resolved_message = context.resolve_template_with_step_data(
+                        step.result_message, step_data
+                    )
+                    # Add resolved message to result data
+                    if result.data:
+                        result.data["resolved_message"] = resolved_message
+                    else:
+                        result.data = {"resolved_message": resolved_message}
+                except Exception as e:
+                    logger.error(f"Failed to resolve result message template: {e}")
 
             # Handle output variable setting
             if result.success and step.output and result.data:

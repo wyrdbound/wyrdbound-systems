@@ -225,25 +225,25 @@ class DisplayValueActionStrategy(ActionStrategy):
             else:
                 # For complex paths, use path resolution
                 value = context.resolve_path_value(path)
-            
+
             # Format the value for user-friendly display
             formatted_value = self._format_value_for_display(value, path)
-            
+
             # Handle RollResult objects specially with table display
             from ..models.roll_result import RollResult
             if isinstance(value, RollResult):
                 # Use Rich console directly for proper color rendering
                 from rich.console import Console
-                
+
                 console = Console()
-                
+
                 # Print the header with colored path
                 console.print("📋 Display Value: ", style="bold", end="")
                 console.print(path, style="bold cyan")
-                
+
                 # Print the roll result as a table
                 self._print_roll_result_table(value, console)
-            
+
             # For Rich-formatted content, we need to handle it specially
             # Check for dict-like objects (including ModelAwareDict and other custom dict subclasses)
             elif hasattr(value, 'keys') and hasattr(value, '__getitem__'):
@@ -253,17 +253,17 @@ class DisplayValueActionStrategy(ActionStrategy):
                 except (TypeError, AttributeError):
                     # For objects that don't support len(), check if keys() returns anything
                     has_content = bool(list(value.keys()) if hasattr(value, 'keys') else False)
-                
+
                 if has_content:
                     # Use Rich console directly for proper color rendering
                     from rich.console import Console
-                    
+
                     console = Console()
-                    
+
                     # Print the header with colored path
                     console.print("📋 Display Value: ", style="bold", end="")
                     console.print(path, style="bold cyan")
-                    
+
                     # Print the table with proper Rich rendering
                     self._print_table_for_dict(value, path, console)
                 else:
@@ -272,7 +272,7 @@ class DisplayValueActionStrategy(ActionStrategy):
             else:
                 # For simple values, use the regular message system
                 context.add_action_message(f"📋 Display Value: [bold cyan]{path}[/bold cyan]\n{formatted_value}")
-            
+
             # Also log it for debugging
             logger.debug(f"Display: {path} = {value}")
         except Exception as e:
@@ -296,16 +296,16 @@ class DisplayValueActionStrategy(ActionStrategy):
         """Format a value for user-friendly display."""
         if value is None:
             return "None"
-        
+
         # Handle RollResult objects specially
         from ..models.roll_result import RollResult
         if isinstance(value, RollResult):
             return self._format_roll_result_for_display(value)
-        
+
         # Handle dictionaries (like character objects)
         if isinstance(value, dict):
             return self._format_dict_for_display(value, path)
-        
+
         # Handle lists
         if isinstance(value, list):
             if not value:
@@ -316,7 +316,7 @@ class DisplayValueActionStrategy(ActionStrategy):
             else:
                 # Show summary for multiple items
                 sample_items = []
-                for i, item in enumerate(value[:2]):
+                for _i, item in enumerate(value[:2]):
                     if isinstance(item, dict):
                         # Try to find an identifying field in a system-agnostic way
                         item_name = self._get_display_identifier(item)
@@ -326,25 +326,25 @@ class DisplayValueActionStrategy(ActionStrategy):
                             sample_items.append(f"dict({len(item)} keys)")
                     else:
                         sample_items.append(str(item))
-                
+
                 sample_str = ", ".join(sample_items)
                 if len(value) > 2:
                     return f"[{len(value)} items: {sample_str}, ...]"
                 else:
                     return f"[{len(value)} items: {sample_str}]"
-        
+
         # Handle strings
         if isinstance(value, str):
             return f'"{value}"' if len(value) < 50 else f'"{value[:47]}..."'
-        
+
         # Handle numbers and booleans
-        if isinstance(value, (int, float, bool)):
+        if isinstance(value, int | float | bool):
             return str(value)
-        
+
         # Handle objects with a display-friendly representation
         if hasattr(value, '__dict__'):
             return self._format_object_for_display(value)
-        
+
         # Fallback to string representation
         return str(value)
 
@@ -352,58 +352,59 @@ class DisplayValueActionStrategy(ActionStrategy):
         """Format a dictionary for user-friendly display using tables."""
         if not data:
             return "  (empty)"
-        
+
         # Use table format for dictionaries
         return self._create_table_for_dict(data, path)
-    
+
     def _print_table_for_dict(self, data: dict, path: str, console) -> None:
         """Print a table representation of a dictionary directly to console."""
         from rich.table import Table
-        
+
         # Create table with styling and left-justified title for accessibility
         table = Table(show_header=True, header_style="bold blue", show_lines=True, title_justify="left")
         table.add_column("Property", style="cyan", width=18, no_wrap=True)
         table.add_column("Value", style="white", width=60)
-        
+
         # Add rows for each key-value pair
         for key, value in data.items():
             formatted_value = self._format_value_for_table(value, f"{path}.{key}")
             table.add_row(str(key), formatted_value)
-        
+
         # Print table directly to console
         console.print(table)
 
     def _create_table_for_dict(self, data: dict, path: str) -> str:
         """Create a table representation of a dictionary."""
+        from io import StringIO
+
         from rich.console import Console
         from rich.table import Table
-        from io import StringIO
-        
+
         # Create a console that writes to a string with color support
         console = Console(file=StringIO(), width=100, legacy_windows=False, force_terminal=True)
-        
+
         # Create table with styling and left-justified title for accessibility
         table = Table(show_header=True, header_style="bold blue", show_lines=True, title_justify="left")
         table.add_column("Property", style="cyan", width=18, no_wrap=True)
         table.add_column("Value", style="white", width=60)
-        
+
         # Add rows for each key-value pair
         for key, value in data.items():
             formatted_value = self._format_value_for_table(value, f"{path}.{key}")
             table.add_row(str(key), formatted_value)
-        
+
         # Render table to string
         console.print(table)
         output = console.file.getvalue()
         console.file.close()
-        
+
         return output.strip()
-    
+
     def _format_value_for_table(self, value: Any, path: str) -> str:
         """Format a value specifically for table display with Rich markup."""
         if value is None:
             return "[dim]None[/dim]"
-        
+
         # Handle nested dictionaries
         if isinstance(value, dict):
             if not value:
@@ -412,7 +413,7 @@ class DisplayValueActionStrategy(ActionStrategy):
                 # Small dict - show content details with styling
                 pairs = []
                 for k, v in value.items():
-                    if isinstance(v, (int, float)):
+                    if isinstance(v, int | float):
                         pairs.append(f"[cyan]{k}[/cyan]: [magenta]{v}[/magenta]")
                     elif isinstance(v, str) and len(v) < 20:
                         pairs.append(f"[cyan]{k}[/cyan]: [green]'{v}'[/green]")
@@ -421,7 +422,7 @@ class DisplayValueActionStrategy(ActionStrategy):
                 return "{" + ", ".join(pairs) + "}"
             else:
                 return f"[yellow]Dict with [bold]{len(value)}[/bold] properties[/yellow]"
-        
+
         # Handle lists
         if isinstance(value, list):
             if not value:
@@ -441,12 +442,12 @@ class DisplayValueActionStrategy(ActionStrategy):
                         item_descriptions.append(f"[green]{name}[/green]")
                     else:
                         item_descriptions.append(f"[yellow]{str(item)}[/yellow]")
-                
+
                 result = ", ".join(item_descriptions)
                 if len(value) > 3:
                     result += f", [dim]... ([bold]{len(value)}[/bold] total)[/dim]"
                 return f"[{result}]"
-        
+
         # Handle strings
         if isinstance(value, str):
             if len(value) == 0:
@@ -455,33 +456,33 @@ class DisplayValueActionStrategy(ActionStrategy):
                 return f'[green]"{value}"[/green]'
             else:
                 return f'[green]"{value[:37]}..."[/green]'
-        
+
         # Handle numbers and booleans
         if isinstance(value, bool):
             return f"[{'green' if value else 'red'}]{value}[/{'green' if value else 'red'}]"
-        elif isinstance(value, (int, float)):
+        elif isinstance(value, int | float):
             return f"[magenta]{value}[/magenta]"
-        
+
         # Handle objects with a display-friendly representation
         if hasattr(value, '__dict__'):
             return self._format_object_for_table(value)
-        
+
         # Fallback to string representation
         str_value = str(value)
         if len(str_value) > 50:
             str_value = str_value[:47] + "..."
         return f"[white]{str_value}[/white]"
-    
+
     def _format_object_for_table(self, obj: Any) -> str:
         """Format an object for table display with Rich styling."""
         class_name = obj.__class__.__name__
-        
+
         # Try to find meaningful attributes to display in a system-agnostic way
         attrs = []
         identifying_attrs = self._get_identifying_attributes(obj)
         for attr_name, attr_value in identifying_attrs.items():
             attrs.append(f"[cyan]{attr_name}[/cyan]: [yellow]{attr_value}[/yellow]")
-        
+
         if attrs:
             return f"[bold blue]{class_name}[/bold blue]({', '.join(attrs)})"
         else:
@@ -490,13 +491,13 @@ class DisplayValueActionStrategy(ActionStrategy):
     def _format_object_for_display(self, obj: Any) -> str:
         """Format an object for display."""
         class_name = obj.__class__.__name__
-        
+
         # Try to find meaningful attributes to display in a system-agnostic way
         attrs = []
         identifying_attrs = self._get_identifying_attributes_from_object(obj)
         for attr_name, attr_value in identifying_attrs.items():
             attrs.append(f"{attr_name}: {attr_value}")
-        
+
         if attrs:
             return f"{class_name}({', '.join(attrs)})"
         else:
@@ -507,11 +508,11 @@ class DisplayValueActionStrategy(ActionStrategy):
         # Try GRIMOIRE standard identifying fields in order of preference
         # This follows the GRIMOIRE specification for standard field names
         grimoire_identifier_fields = ['name', 'id', 'title', 'label', 'display_name']
-        
+
         for field in grimoire_identifier_fields:
             if field in obj and obj[field]:
                 return str(obj[field])
-        
+
         return None
 
     def _get_identifying_attributes(self, obj: Any) -> dict[str, Any]:
@@ -519,7 +520,7 @@ class DisplayValueActionStrategy(ActionStrategy):
         attrs = {}
         # Try GRIMOIRE standard identifying attributes in order of preference
         grimoire_identifier_attrs = ['name', 'id', 'title', 'label', 'value', 'total']
-        
+
         for attr_name in grimoire_identifier_attrs:
             if hasattr(obj, attr_name):
                 attr_value = getattr(obj, attr_name)
@@ -528,15 +529,15 @@ class DisplayValueActionStrategy(ActionStrategy):
                     # Limit to first 3 meaningful attributes to keep display manageable
                     if len(attrs) >= 3:
                         break
-        
+
         return attrs
 
     def _get_identifying_attributes_from_object(self, obj: Any) -> dict[str, Any]:
         """Get identifying attributes from an object using GRIMOIRE field conventions."""
         attrs = {}
-        # Try GRIMOIRE standard identifying attributes in order of preference  
+        # Try GRIMOIRE standard identifying attributes in order of preference
         grimoire_identifier_attrs = ['name', 'id', 'title', 'label', 'value', 'total']
-        
+
         for attr_name in grimoire_identifier_attrs:
             if hasattr(obj, attr_name):
                 attr_value = getattr(obj, attr_name)
@@ -545,7 +546,7 @@ class DisplayValueActionStrategy(ActionStrategy):
                     # Limit to first 3 meaningful attributes to keep display manageable
                     if len(attrs) >= 3:
                         break
-        
+
         return attrs
 
     def _format_roll_result_for_display(self, roll_result) -> str:
@@ -555,18 +556,18 @@ class DisplayValueActionStrategy(ActionStrategy):
     def _print_roll_result_table(self, roll_result, console) -> None:
         """Print a RollResult as a table directly to console."""
         from rich.table import Table
-        
+
         # Create table with styling and left-justified title for accessibility
-        table = Table(show_header=True, header_style="bold blue", show_lines=True, 
+        table = Table(show_header=True, header_style="bold blue", show_lines=True,
                      title="🎲 Dice Roll Result", title_justify="left")
         table.add_column("Property", style="cyan", width=12, no_wrap=True)
         table.add_column("Value", style="white", width=50)
-        
+
         # Add rows for roll result properties
         table.add_row("Total", f"[bold magenta]{roll_result.total}[/bold magenta]")
         table.add_row("Expression", f"[yellow]{roll_result.expression}[/yellow]")
         table.add_row("Detail", f"[green]{roll_result.detail}[/green]")
-        
+
         # Print table directly to console
         console.print(table)
 

@@ -28,14 +28,14 @@ class TemplateResolver:
         system_metadata: dict[str, Any],
         namespace_manager: Optional["FlowNamespaceManager"] = None,
         derived_field_manager: Optional["DerivedFieldManager"] = None,
-        current_step_data: Optional[dict[str, Any]] = None,
+        current_step_data: dict[str, Any] | None = None,
     ) -> Any:
         """Resolve a template with access to current step data."""
         context = self._build_template_context(
             variables, outputs, inputs, system_metadata,
             namespace_manager, derived_field_manager, current_step_data
         )
-        
+
         # Store context resolver for template functions
         self._current_context_resolver = self._create_context_resolver(
             variables, outputs, inputs, namespace_manager, derived_field_manager
@@ -150,7 +150,7 @@ class TemplateResolver:
         system_metadata: dict[str, Any],
         namespace_manager: Optional["FlowNamespaceManager"] = None,
         derived_field_manager: Optional["DerivedFieldManager"] = None,
-        current_step_data: Optional[dict[str, Any]] = None,
+        current_step_data: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         """Build the complete template context from all available data sources."""
         # Start with basic context - only use proper namespacing
@@ -160,7 +160,7 @@ class TemplateResolver:
             "inputs": inputs,
             "system": system_metadata,
         }
-        
+
         # Add all current step data as top-level context keys if available
         if current_step_data:
             logger.debug(f"[TEMPLATE_RESOLVER] Adding step_data to context: {current_step_data}")
@@ -170,7 +170,7 @@ class TemplateResolver:
         # Also check if result is available in variables for backward compatibility
         elif 'result' in variables:
             context['result'] = variables['result']
-        
+
         logger.debug(f"[TEMPLATE_RESOLVER] Final context keys: {list(context.keys())}")
 
                 # NOTE: 'this' reference should only be available during derived field resolution,
@@ -178,11 +178,10 @@ class TemplateResolver:
 
         # Add input instances directly to the context for observable system
         # This ensures that model instances in inputs are available for derived field computation
-        flow_inputs = inputs
         if namespace_manager:
             namespace_context = namespace_manager.get_namespace_context_for_templates()
             if namespace_context:
-                flow_inputs = {**inputs, **namespace_context["inputs"]}
+                {**inputs, **namespace_context["inputs"]}
 
         # NOTE: Removed direct input exposure to top-level context to prevent naming conflicts
         # Inputs should only be accessible via inputs.* namespace for proper scoping
@@ -213,7 +212,7 @@ class TemplateResolver:
         self, context: dict[str, Any], derived_field_manager: "DerivedFieldManager"
     ) -> None:
         """Overlay observable values to ensure template resolution gets current values.
-        
+
         Observable values should not pollute the template context namespace. They are
         handled internally by the derived field manager during field resolution.
         """

@@ -193,20 +193,13 @@ class RichTUI:
         # Create execution context
         self.context = self.engine.create_execution_context()
 
-        # Set system metadata in context for templating
-        self.context.system_metadata = {
-            "id": self.system.id,
-            "name": self.system.name,
-            "description": self.system.description,
-            "version": self.system.version,
-            "currency": getattr(self.system, "currency", {}),
-            "credits": getattr(self.system, "credits", {}),
-        }
-
         # Initialize flow variables
         if self.flow_obj.variables:
             for variable in self.flow_obj.variables:
                 self.context.set_variable(variable.id, variable.default)
+
+        # Initialize complete model instances for declared outputs
+        self.context.initialize_output_models(self.flow_obj.outputs, self.system)
 
         # Initialize input values if provided
         if self.input_values:
@@ -216,16 +209,29 @@ class RichTUI:
                 self.console.print(
                     f"  [cyan]{input_name}[/cyan] = [yellow]{input_value}[/yellow]"
                 )
-                
+
                 # Initialize reactive system for input models by copying them to outputs
                 for input_def in self.flow_obj.inputs:
                     if input_def.id == input_name and input_def.type in self.system.models:
                         model = self.system.models[input_def.type]
                         logger.debug(f"Setting up reactive output for input {input_name} of type {input_def.type}")
-                        # Copy input to output for reactive processing
-                        self.context.set_output(input_name, input_value)
+                        
+                        # Check if we already have a complete output model instance
+                        existing_output = self.context.get_output(input_name)
+                        if existing_output and isinstance(existing_output, dict) and isinstance(input_value, dict):
+                            # Merge input data with existing complete model
+                            existing_output.update(input_value)
+                            merged_value = existing_output
+                        else:
+                            # No existing complete model, use input value
+                            merged_value = input_value
+                        
+                        # Set the merged value as output
+                        self.context.set_output(input_name, merged_value)
+                        
                         # Initialize reactive system on the output copy
-                        model_resolver = lambda model_type: self.system.models.get(model_type)
+                        def model_resolver(model_type):
+                            return self.system.models.get(model_type)
                         self.context.initialize_model_observables(model, input_name, model_resolver)
                         # Trigger computation of derived fields
                         self.context.compute_derived_fields()
@@ -243,7 +249,8 @@ class RichTUI:
                     f"Rich TUI: Initializing model observables for {output_def.type} ({output_def.id})"
                 )
                 # Create a generic model resolver function
-                model_resolver = lambda model_type: self.system.models.get(model_type)
+                def model_resolver(model_type):
+                    return self.system.models.get(model_type)
                 self.context.initialize_model_observables(model, output_def.id, model_resolver)
 
         # Show flow info
@@ -268,7 +275,7 @@ class RichTUI:
         """Execute the flow step by step."""
         current_step_id = self.flow_obj.steps[0].id if self.flow_obj.steps else None
         step_num = 0
-        total_steps = len(self.flow_obj.steps)
+        len(self.flow_obj.steps)
 
         # Simple progress tracking without Rich Progress widget to avoid line conflicts
         self.console.print("[bold cyan]Starting flow execution...[/bold cyan]")
@@ -458,12 +465,12 @@ class RichTUI:
                                 "choice_id": selected_choice_id,
                                 "choice_label": selected_choice.label,
                             }
-                            
+
                             # Add result for single selections (from compendium/table choices)
                             result = self.context.get_variable("result")
                             if result is not None:
                                 choice_data["result"] = result
-                            
+
                             # Add results if available (for multi-selection)
                             results = self.context.get_variable("results")
                             if results is not None:
@@ -624,22 +631,9 @@ class RichTUI:
         if step_result.success:
             # Check if step has a custom result message
             if step.result_message:
-                # Resolve any templates in the custom message
-                try:
-                    from ..services.template_service import TemplateService
-
-                    template_service = TemplateService()
-                    resolved_message = (
-                        template_service.resolve_template_with_execution_context(
-                            step.result_message, self.context, self.system
-                        )
-                    )
-                    success_message = get_step_success_message(
-                        step.type, resolved_message
-                    )
-                except Exception as e:
-                    logger.debug(f"Failed to resolve result_message template: {e}")
-                    success_message = get_step_success_message(step.type)
+                # Use resolved message if available, otherwise fall back to original
+                resolved_message = step_result.data.get("resolved_message", step.result_message)
+                success_message = get_step_success_message(step.type, resolved_message)
             else:
                 success_message = get_step_success_message(step.type)
 
@@ -707,7 +701,8 @@ class RichTUI:
                 if output_def.type in self.system.models:
                     model = self.system.models[output_def.type]
                     # Create a generic model resolver function
-                    model_resolver = lambda model_type: self.system.models.get(model_type)
+                    def model_resolver(model_type):
+                        return self.system.models.get(model_type)
                     sub_context.initialize_model_observables(model, output_def.id, model_resolver)
 
             # Create nested TUI for sub-flow execution

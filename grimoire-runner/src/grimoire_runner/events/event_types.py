@@ -1,7 +1,7 @@
 """Event data types for GRIMOIRE Engine events."""
 
 from dataclasses import dataclass
-from typing import Any, Optional, Dict
+from typing import Any
 
 
 @dataclass
@@ -15,8 +15,8 @@ class ValueSetEvent(EventData):
     """Event emitted when a value is set in the context."""
     path: str
     value: Any
-    old_value: Optional[Any] = None
-    context_id: Optional[str] = None
+    old_value: Any | None = None
+    context_id: str | None = None
 
 
 @dataclass
@@ -25,7 +25,7 @@ class FieldComputedEvent(EventData):
     path: str
     computed_value: Any
     source_fields: list[str]
-    context_id: Optional[str] = None
+    context_id: str | None = None
 
 
 @dataclass
@@ -34,7 +34,7 @@ class ModelUpdatedEvent(EventData):
     model_type: str
     instance_path: str
     fields_changed: list[str]
-    context_id: Optional[str] = None
+    context_id: str | None = None
 
 
 @dataclass
@@ -43,4 +43,4 @@ class StepExecutedEvent(EventData):
     step_type: str
     step_id: str
     result: Any
-    context_id: Optional[str] = None
+    context_id: str | None = None

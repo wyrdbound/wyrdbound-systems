@@ -814,17 +814,17 @@ class TableExecutor(BaseStepExecutor):
         """Add fallback defaults when model inheritance is not available."""
         # Add minimal generic defaults that work across systems
         # Rather than hardcoding system-specific attributes, use minimal common patterns
-        
+
         base_object.update({
             "description": f"Unknown {entry_type}: {entry_name}",
         })
-        
+
         # Only add truly universal attributes that most systems would recognize
         # System-specific attributes should come from model definitions, not hardcoded here
         if entry_type in ["item", "armor", "weapon"]:
             # These are common enough across RPG systems to be reasonable defaults
             base_object.setdefault("cost", 0)
-            
+
         # Let model inheritance and system definitions handle specific attributes
         # rather than hardcoding system-specific values like slot_cost, armor_bonus, damage
 
