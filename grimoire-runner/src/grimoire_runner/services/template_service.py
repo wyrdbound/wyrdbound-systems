@@ -93,9 +93,25 @@ class ModelAwareDict:
         # return None instead of raising AttributeError
         return None
 
+    def __getattribute__(self, name):
+        """Handle attribute access - required for Jinja2 compatibility."""
+        # Let Python handle special attributes normally
+        if name.startswith('_') or name in ('get', 'keys', 'values', 'items', 'to_dict'):
+            return object.__getattribute__(self, name)
+        
+        # For regular attributes, delegate to our custom __getattr__
+        try:
+            return object.__getattribute__(self, name)
+        except AttributeError:
+            return self.__getattr__(name)
+
     def __getitem__(self, key):
         """Support dictionary-style access."""
         return self.__getattr__(key)
+
+    def __setitem__(self, key, value):
+        """Support dictionary-style assignment."""
+        self._data[key] = value
 
     def __contains__(self, key):
         """Support 'in' operator."""
@@ -119,12 +135,44 @@ class ModelAwareDict:
         return self._data.items()
 
     def __str__(self):
-        """String representation."""
+        """String representation - return the underlying data as a string."""
         return str(self._data)
 
     def __repr__(self):
-        """String representation."""
+        """String representation for debugging."""
         return f"ModelAwareDict({self._data})"
+        
+    def _repr_html_(self):
+        """Jupyter/HTML representation - return the underlying data."""
+        return str(self._data)
+        
+    def __format__(self, format_spec):
+        """Format method for f-strings and other formatting."""
+        if format_spec:
+            return format(str(self._data), format_spec)
+        return str(self._data)
+
+    def to_dict(self):
+        """Convert to a plain dictionary."""
+        return dict(self._data)
+
+    def __getstate__(self):
+        """Support for pickling - return the underlying data."""
+        return self._data
+
+    def __setstate__(self, state):
+        """Support for unpickling - restore from underlying data."""
+        self._data = state
+        self._models = {}
+        self._model_def = None
+
+    def __iter__(self):
+        """Support iteration over keys."""
+        return iter(self._data)
+
+    def __len__(self):
+        """Support len() function."""
+        return len(self._data)
 
 
 class TemplateResolutionStrategy(ABC):
@@ -221,6 +269,24 @@ class RuntimeTemplateStrategy(TemplateResolutionStrategy):
 
             # NO FALLBACKS - template resolution must be explicit about missing variables
             # This will cause Jinja2 to raise UndefinedError for missing variables
+            
+            # For complex expressions, try to evaluate them to preserve object types
+            if self._is_complex_expression(template_str_stripped):
+                try:
+                    # Use Jinja2's native environment to get actual Python objects
+                    from jinja2.nativetypes import NativeEnvironment
+                    native_env = NativeEnvironment(
+                        undefined=StrictUndefined,
+                        trim_blocks=True,
+                        lstrip_blocks=True,
+                    )
+                    native_template = native_env.from_string(template_str)
+                    native_result = native_template.render(enhanced_context)
+                    logger.debug(f"Native template result: {type(native_result)} = {native_result}")
+                    return native_result
+                except Exception as native_e:
+                    logger.debug(f"Native template evaluation failed: {native_e}, falling back to regular rendering")
+            
             result = template.render(enhanced_context)
 
             # Try to parse as structured data if it looks like it
@@ -246,6 +312,15 @@ class RuntimeTemplateStrategy(TemplateResolutionStrategy):
             )
             logger.error(error_msg)
             raise RuntimeError(error_msg) from e
+
+    def _is_complex_expression(self, template_str: str) -> bool:
+        """Determine if a template string contains complex expressions that should preserve object types."""
+        # Strip {{ }} to get the inner expression
+        if template_str.startswith('{{') and template_str.endswith('}}'):
+            inner = template_str[2:-2].strip()
+            # Check for operations that create new data structures or access object properties
+            return any(op in inner for op in ['+', '-', '*', '/', '|', '[', ']', '(', ')', '.'])
+        return False
 
     def _enhance_context_for_objects(self, context_data: dict) -> dict:
         """Enhance context to provide better object attribute access."""
@@ -277,6 +352,11 @@ class RuntimeTemplateStrategy(TemplateResolutionStrategy):
                     "_original": obj,
                 }
             elif isinstance(obj, dict):
+                # Don't re-process ModelAwareDict objects
+                if isinstance(obj, ModelAwareDict):
+                    logger.debug(f"[TEMPLATE_SERVICE] Skipping ModelAwareDict re-processing")
+                    return obj
+                    
                 # Check if this looks like a model instance by checking for type information
                 # Model instances typically come with metadata about their type
                 try:
@@ -306,7 +386,7 @@ class RuntimeTemplateStrategy(TemplateResolutionStrategy):
                         logger.debug(f"[TEMPLATE_SERVICE] Error in fallback dict processing: {e2}")
                         return obj
             elif isinstance(obj, list):
-                # Recursively process list items
+                # Recursively process list items, but be careful about ModelAwareDict objects
                 return [make_object_accessible(item) for item in obj]
             else:
                 return obj

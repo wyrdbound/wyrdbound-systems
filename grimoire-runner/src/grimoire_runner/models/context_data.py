@@ -284,14 +284,12 @@ class ExecutionContext:
         )
 
     def resolve_path_value(self, path: str) -> Any:
-        """Resolve a path that might reference variables, outputs, inputs, or system metadata."""
-        logger.debug(f"resolve_path_value({path})")
-
-        # Use the centralized path resolver
-        try:
-            return self.path_resolver.get_value(self, path)
-        except Exception as e:
-            raise KeyError(f"Path '{path}' not found: {e}") from e
+        """Resolve a value at the given path."""
+        print(f"[DEBUG] resolve_path_value called with path: {path}")
+        result = self.path_resolver.get_value(self, path)
+        print(f"[DEBUG] resolve_path_value result type: {type(result)}")
+        print(f"[DEBUG] resolve_path_value result preview: {str(result)[:100]}...")
+        return result
 
     # Flow Namespace Management (delegated to namespace manager)
     def create_flow_namespace(
@@ -498,12 +496,22 @@ class ExecutionContext:
         for part in parts[:-1]:
             if part not in current:
                 current[part] = {}
-            elif not isinstance(current[part], dict):
-                raise ValueError(f"Cannot set nested value: '{part}' is not a dict")
+            elif not (isinstance(current[part], dict) or hasattr(current[part], '__getitem__')):
+                raise ValueError(f"Cannot set nested value: '{part}' is not a dict-like object")
             current = current[part]
 
         # Set the final value
-        current[parts[-1]] = value
+        final_key = parts[-1]
+        if hasattr(current, '__setitem__'):
+            current[final_key] = value
+        elif isinstance(current, dict):
+            current[final_key] = value
+        else:
+            # For ModelAwareDict and similar objects, try to set the underlying data
+            if hasattr(current, '_data'):
+                current._data[final_key] = value
+            else:
+                setattr(current, final_key, value)
 
     def initialize_output_models(self, outputs: list, system) -> None:
         """Initialize outputs with complete model instances."""

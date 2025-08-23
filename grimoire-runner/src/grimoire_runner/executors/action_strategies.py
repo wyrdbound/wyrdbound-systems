@@ -51,23 +51,29 @@ class SetValueActionStrategy(ActionStrategy):
             f"Action set_value: Resolved path from '{path}' to '{resolved_path}'"
         )
 
-        # Handle dictionary values specially to avoid string conversion
+        # Resolve the value to append
         if isinstance(value, dict):
-            # Use dictionary directly without template resolution
+            # Use dictionary directly without template resolution to preserve ModelAwareDict
             resolved_value = value
             logger.debug(f"Action set_value: Using dict directly for {resolved_path}")
+            print(f"[DEBUG] SetValueActionStrategy: Using dict directly for {resolved_path}")
         elif isinstance(value, bool):
             # Preserve boolean values without template resolution
             resolved_value = value
             logger.debug(
                 f"Action set_value: Using boolean directly for {resolved_path}"
             )
+            print(f"[DEBUG] SetValueActionStrategy: Using boolean directly for {resolved_path}")
         else:
             # Check if this is a variable assignment and if we can preserve object types
             resolved_value = self._resolve_value_with_type_preservation(
                 value, resolved_path, context, system
             )
             logger.debug(f"Action set_value: Resolved value for {resolved_path}")
+            print(f"[DEBUG] SetValueActionStrategy: Template resolved value for {resolved_path}")
+            print(f"[DEBUG] SetValueActionStrategy: Original value type: {type(value)}")
+            print(f"[DEBUG] SetValueActionStrategy: Resolved value type: {type(resolved_value)}")
+            print(f"[DEBUG] SetValueActionStrategy: Resolved value preview: {str(resolved_value)[:100]}...")
 
         # Use path resolver as the primary mechanism
         try:
@@ -123,7 +129,10 @@ class SetValueActionStrategy(ActionStrategy):
         )
 
         # First resolve the template to get the actual value
+        print(f"[DEBUG] _resolve_value_with_type_preservation: About to resolve template: {value}")
         resolved_value = context.resolve_template(str(value))
+        print(f"[DEBUG] _resolve_value_with_type_preservation: Template resolved to type: {type(resolved_value)}")
+        print(f"[DEBUG] _resolve_value_with_type_preservation: Template resolved to preview: {str(resolved_value)[:100]}...")
         logger.debug(
             f"Template resolved to: {repr(resolved_value)} (type: {type(resolved_value).__name__})"
         )
@@ -197,6 +206,54 @@ class SetValueActionStrategy(ActionStrategy):
         return None
 
 
+class AppendItemActionStrategy(ActionStrategy):
+    """Strategy for handling append_item actions."""
+
+    def get_action_type(self) -> str:
+        return "append_item"
+
+    def execute(
+        self,
+        action_data: dict[str, Any],
+        context: "ExecutionContext",
+        system: "System | None" = None,
+    ) -> None:
+        """Execute an append_item action."""
+        path = action_data["path"]
+        value = action_data["value"]
+
+        # Resolve templates in the path
+        resolved_path = context.resolve_template(path)
+        logger.debug(
+            f"Action append_item: Resolved path from '{path}' to '{resolved_path}'"
+        )
+
+        # Resolve the value to append
+        if isinstance(value, dict):
+            # Use dictionary directly without template resolution to preserve ModelAwareDict
+            resolved_value = value
+            logger.debug(f"Action append_item: Using dict directly for {resolved_path}")
+        else:
+            resolved_value = context.resolve_template(str(value))
+            logger.debug(f"Action append_item: Resolved value for {resolved_path}")
+
+        # Get the current list value
+        try:
+            current_list = context.path_resolver.get_value(context, resolved_path, [])
+            if not isinstance(current_list, list):
+                current_list = []
+            
+            # Append the new item to the list
+            updated_list = current_list + [resolved_value]
+            
+            # Set the updated list back
+            context.path_resolver.set_value(context, resolved_path, updated_list)
+            logger.debug(f"Successfully appended item to {resolved_path}")
+        except Exception as e:
+            logger.error(f"Failed to append item to {resolved_path}: {e}")
+            raise
+
+
 class DisplayValueActionStrategy(ActionStrategy):
     """Strategy for handling display_value actions."""
 
@@ -228,10 +285,17 @@ class DisplayValueActionStrategy(ActionStrategy):
 
             # Format the value for user-friendly display
             formatted_value = self._format_value_for_display(value, path)
+            
+            # Debug: Add print statements to understand what's happening
+            print(f"[DEBUG] Displaying {path}")
+            print(f"[DEBUG] Value type: {type(value)}")
+            print(f"[DEBUG] Value preview: {str(value)[:200]}...")
+            
+            display_value = value
 
             # Handle RollResult objects specially with table display
             from ..models.roll_result import RollResult
-            if isinstance(value, RollResult):
+            if isinstance(display_value, RollResult):
                 # Use Rich console directly for proper color rendering
                 from rich.console import Console
 
@@ -242,17 +306,17 @@ class DisplayValueActionStrategy(ActionStrategy):
                 console.print(path, style="bold cyan")
 
                 # Print the roll result as a table
-                self._print_roll_result_table(value, console)
+                self._print_roll_result_table(display_value, console)
 
             # For Rich-formatted content, we need to handle it specially
             # Check for dict-like objects (including ModelAwareDict and other custom dict subclasses)
-            elif hasattr(value, 'keys') and hasattr(value, '__getitem__'):
+            elif hasattr(display_value, 'keys') and hasattr(display_value, '__getitem__'):
                 # Check if it has content (safely handle objects that don't support len())
                 try:
-                    has_content = len(value) > 0
+                    has_content = len(display_value) > 0
                 except (TypeError, AttributeError):
                     # For objects that don't support len(), check if keys() returns anything
-                    has_content = bool(list(value.keys()) if hasattr(value, 'keys') else False)
+                    has_content = bool(list(display_value.keys()) if hasattr(display_value, 'keys') else False)
 
                 if has_content:
                     # Use Rich console directly for proper color rendering
@@ -265,7 +329,7 @@ class DisplayValueActionStrategy(ActionStrategy):
                     console.print(path, style="bold cyan")
 
                     # Print the table with proper Rich rendering
-                    self._print_table_for_dict(value, path, console)
+                    self._print_table_for_dict(display_value, path, console)
                 else:
                     # Empty dict-like object
                     context.add_action_message(f"📋 Display Value: [bold cyan]{path}[/bold cyan]\n(empty)")
@@ -796,6 +860,7 @@ class ActionStrategyRegistry:
         """Register the default action strategies."""
         default_strategies = [
             SetValueActionStrategy(),
+            AppendItemActionStrategy(),
             DisplayValueActionStrategy(),
             LogEventActionStrategy(),
             LogMessageActionStrategy(),

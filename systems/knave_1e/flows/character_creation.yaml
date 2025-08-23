@@ -44,62 +44,22 @@ steps:
     inputs:
       character: "{{ outputs.knave }}"
     actions:
-      - display_value: "result"
-      - display_value: "result.inventory"
       - set_value:
           path: "outputs.knave"
           value: "{{ result }}"
-    next_step: roll_starting_gear
+    next_step: invoke_roll_starting_gear
 
-  - id: roll_starting_gear
-    name: "Determine Starting Equipment"
-    type: table_roll
-    prompt: "Rolling for your starting equipment..."
-    parallel: true
-    tables:
-      - table: armor
-        actions:
-          - flow_call:
-              flow: add_item_to_character
-              inputs:
-                character: "{{ outputs.knave }}"
-                item: "{{ result.entry }}"
-      - table: helmets_and_shields
-        actions:
-          - flow_call:
-              flow: add_item_to_character
-              inputs:
-                character: "{{ outputs.knave }}"
-                item: "{{ result.entry }}"
-      - table: dungeoneering_gear
-        count: 2
-        actions:
-          - flow_call:
-              flow: add_items_to_character
-              inputs:
-                character: "{{ outputs.knave }}"
-                items: "{{ results | map(attribute='entry') | list }}"
-      - table: general_gear_1
-        actions:
-          - flow_call:
-              flow: add_item_to_character
-              inputs:
-                character: "{{ outputs.knave }}"
-                item: "{{ result.entry }}"
-      - table: general_gear_2
-        actions:
-          - flow_call:
-              flow: add_item_to_character
-              inputs:
-                character: "{{ outputs.knave }}"
-                item: "{{ result.entry }}"
-    additional_actions:
-      - flow_call:
-          flow: add_item_to_character
-          inputs:
-            character: "{{ outputs.knave }}"
-            item: rations
-            quantity: 2
+  - id: invoke_roll_starting_gear
+    name: "Invoke Roll Starting Gear"
+    type: flow_call
+    flow: roll_starting_gear
+    inputs:
+      character: "{{ outputs.knave }}"
+    actions:
+      - set_value:
+          path: "outputs.knave"
+          value: "{{ result }}"
+    next_step: generate_traits
 
   - id: generate_traits
     name: "Determine Character Traits"
