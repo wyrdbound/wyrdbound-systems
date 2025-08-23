@@ -232,9 +232,17 @@ class RuntimeTemplateStrategy(TemplateResolutionStrategy):
 
         except Exception as e:
             # Create explicit error with full context for debugging
+            try:
+                if isinstance(context_data, dict):
+                    context_info = f"Available context keys: {list(context_data.keys())}"
+                else:
+                    context_info = f"Context data type: {type(context_data).__name__}"
+            except Exception:
+                context_info = "Context data could not be analyzed"
+            
             error_msg = (
                 f"Runtime template resolution failed for '{template_str}': {e}. "
-                f"Available context keys: {list(context_data.keys()) if isinstance(context_data, dict) else 'N/A'}"
+                f"{context_info}"
             )
             logger.error(error_msg)
             raise RuntimeError(error_msg) from e
@@ -248,6 +256,14 @@ class RuntimeTemplateStrategy(TemplateResolutionStrategy):
 
         def make_object_accessible(obj):
             """Convert objects to be more accessible in Jinja2 templates."""
+            # Skip System objects and other complex objects that shouldn't be processed
+            from ..models.system import System
+            from ..models.model import ModelDefinition
+            
+            if isinstance(obj, (System, ModelDefinition)):
+                logger.debug(f"[TEMPLATE_SERVICE] Skipping {type(obj).__name__} object in template context")
+                return obj  # Return as-is, don't process these objects
+                
             if isinstance(obj, RollResult):
                 # Convert RollResult to a dict-like object that preserves all attributes
                 return {
@@ -263,16 +279,32 @@ class RuntimeTemplateStrategy(TemplateResolutionStrategy):
             elif isinstance(obj, dict):
                 # Check if this looks like a model instance by checking for type information
                 # Model instances typically come with metadata about their type
-                if self._is_model_instance_dict(obj, enhanced_context):
-                    # Get models from system context (always a dictionary in template context)
-                    system_dict = enhanced_context.get("system", {})
-                    logger.info(f"[TEMPLATE_SERVICE] system_dict type: {type(system_dict)}, value: {system_dict}")
-                    models = system_dict.get("models", {})
-                    logger.info(f"[TEMPLATE_SERVICE] models type: {type(models)}, value: {models}")
-                    return ModelAwareDict(obj, models)
-                else:
-                    # Recursively process dict values
-                    return {k: make_object_accessible(v) for k, v in obj.items()}
+                try:
+                    if self._is_model_instance_dict(obj, enhanced_context):
+                        # Get models from system context (always a dictionary in template context)
+                        system_dict = enhanced_context.get("system", {})
+                        logger.info(f"[TEMPLATE_SERVICE] system_dict type: {type(system_dict)}, value: {system_dict}")
+                        models = system_dict.get("models", {})
+                        logger.info(f"[TEMPLATE_SERVICE] models type: {type(models)}, value: {models}")
+                        
+                        # Ensure models is a proper dictionary for ModelAwareDict
+                        if not isinstance(models, dict):
+                            logger.warning(f"[TEMPLATE_SERVICE] models is not a dict (type: {type(models)}), using empty dict")
+                            models = {}
+                        
+                        return ModelAwareDict(obj, models)
+                    else:
+                        # Recursively process dict values
+                        return {k: make_object_accessible(v) for k, v in obj.items()}
+                except Exception as e:
+                    logger.debug(f"[TEMPLATE_SERVICE] Harmless error in _is_model_instance_dict for obj type {type(obj)}: {e}")
+                    logger.debug(f"[TEMPLATE_SERVICE] Obj content: {str(obj)[:200]}...")  # Truncated for brevity
+                    # Fall back to simple dict processing
+                    try:
+                        return {k: make_object_accessible(v) for k, v in obj.items()}
+                    except Exception as e2:
+                        logger.debug(f"[TEMPLATE_SERVICE] Error in fallback dict processing: {e2}")
+                        return obj
             elif isinstance(obj, list):
                 # Recursively process list items
                 return [make_object_accessible(item) for item in obj]
@@ -287,12 +319,31 @@ class RuntimeTemplateStrategy(TemplateResolutionStrategy):
 
     def _is_model_instance_dict(self, obj: dict, context: dict) -> bool:
         """Check if a dictionary appears to be a model instance."""
+        # Safety check: ensure obj is actually a dict
+        if not isinstance(obj, dict):
+            logger.warning(f"[TEMPLATE_SERVICE] _is_model_instance_dict called with non-dict: {type(obj)}")
+            return False
+        
+        # Safety check: ensure context is actually a dict
+        if not isinstance(context, dict):
+            logger.warning(f"[TEMPLATE_SERVICE] _is_model_instance_dict called with non-dict context: {type(context)}")
+            return False
+            
         # Don't treat top-level context containers as model instances
-        if obj is context.get("variables") or obj is context.get("inputs") or obj is context.get("outputs") or obj is context.get("system"):
+        try:
+            if obj is context.get("variables") or obj is context.get("inputs") or obj is context.get("outputs") or obj is context.get("system"):
+                return False
+        except (AttributeError, TypeError):
+            logger.warning(f"[TEMPLATE_SERVICE] Error checking context objects in _is_model_instance_dict")
             return False
         
         # Don't treat converted RollResult objects as model instances
-        if obj.get("_original") or "total" in obj or "expression" in obj or "breakdown" in obj:
+        try:
+            if obj.get("_original") or "total" in obj or "expression" in obj or "breakdown" in obj:
+                return False
+        except AttributeError:
+            # If obj doesn't have .get() method, it's not a dict we should be processing
+            logger.warning(f"[TEMPLATE_SERVICE] Object in _is_model_instance_dict doesn't have .get() method: {type(obj)}")
             return False
         
         # This is a heuristic - we could improve this by checking against known model definitions
@@ -607,6 +658,17 @@ class TemplateService:
         if system:
             logger.debug(f"System object type: {type(system)}")
             logger.debug(f"System object: {system}")
+            
+            # Convert system.models to a simple dict format to avoid complex object processing
+            models_dict = {}
+            if hasattr(system, 'models') and system.models:
+                for model_id, model_def in system.models.items():
+                    if hasattr(model_def, '__dict__'):
+                        # Convert ModelDefinition to a simple dict
+                        models_dict[model_id] = model_def.__dict__
+                    else:
+                        models_dict[model_id] = model_def
+            
             context_dict["system"] = {
                 "id": system.id,
                 "name": system.name,
@@ -614,7 +676,7 @@ class TemplateService:
                 "version": system.version,
                 "currency": getattr(system, "currency", {}),
                 "credits": getattr(system, "credits", {}),
-                "models": system.models,  # Add models for template resolution
+                "models": models_dict,  # Use the converted dict instead of system.models directly
             }
             logger.debug(f"Context dict system: {context_dict['system']}")
 
