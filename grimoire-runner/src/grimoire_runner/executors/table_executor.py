@@ -11,6 +11,7 @@ if TYPE_CHECKING:
     from ..models.context_data import ExecutionContext
     from ..models.flow import StepDefinition, StepResult
     from ..models.system import System
+    from .action_executor import ActionExecutor
 
 logger = logging.getLogger(__name__)
 
@@ -18,8 +19,15 @@ logger = logging.getLogger(__name__)
 class TableExecutor(BaseStepExecutor):
     """Executor for table rolling steps."""
 
-    def __init__(self):
+    def __init__(self, action_executor: "ActionExecutor" = None):
+        """Initialize the table executor with optional action executor."""
         self.dice_integration = DiceIntegration()
+        
+        if action_executor is None:
+            # Fallback to direct creation for backward compatibility
+            from .action_executor import ActionExecutor
+            action_executor = ActionExecutor()
+        self.action_executor = action_executor
 
     def _dice_result_to_roll_result(self, dice_result) -> RollResult:
         """Convert a DiceResult from DiceIntegration to a RollResult."""

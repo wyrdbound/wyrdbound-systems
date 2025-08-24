@@ -11,6 +11,7 @@ if TYPE_CHECKING:
     from ..models.context_data import ExecutionContext
     from ..models.flow import StepDefinition, StepResult
     from ..models.system import System
+    from .action_executor import ActionExecutor
 
 # Import StepType and StepResult for runtime use
 from ..models.flow import StepResult, StepType
@@ -21,10 +22,14 @@ logger = logging.getLogger(__name__)
 class DiceExecutor(BaseStepExecutor):
     """Executor for dice rolling steps."""
 
-    def __init__(self):
-        """Initialize the DiceExecutor."""
+    def __init__(self, action_executor: "ActionExecutor" = None):
+        """Initialize the DiceExecutor with optional action executor."""
         super().__init__()
-        self.action_executor = None  # Will be lazily initialized
+        if action_executor is None:
+            # Fallback to direct creation for backward compatibility
+            from .action_executor import ActionExecutor
+            action_executor = ActionExecutor()
+        self.action_executor = action_executor
         self.dice_integration = DiceIntegration()
 
     def execute(self, step, context, system) -> StepResult:
@@ -188,12 +193,6 @@ class DiceExecutor(BaseStepExecutor):
         system: "System",
     ) -> None:
         """Execute a single action within a dice sequence with proper action executor support."""
-        # Initialize action executor if needed
-        if not hasattr(self, "action_executor") or self.action_executor is None:
-            from .action_executor import ActionExecutor
-
-            self.action_executor = ActionExecutor()
-
         # Prepare step data for the action executor with item and result
         step_data = {"item": item, "result": dice_result}
 

@@ -61,15 +61,40 @@ class DefaultExecutorFactory(ExecutorFactory):
         from ..executors.table_executor import TableExecutor
 
         if step_type in ["dice_roll", "dice_sequence"]:
-            return DiceExecutor()
+            # Inject action executor dependency if registry is available
+            if self.executor_registry:
+                action_executor = self.executor_registry.create_action_executor()
+                return DiceExecutor(action_executor)
+            else:
+                return DiceExecutor()  # Falls back to internal creation
         elif step_type == "player_choice":
-            return ChoiceExecutor(engine)
+            # Inject action executor dependency if registry is available
+            if self.executor_registry:
+                action_executor = self.executor_registry.create_action_executor()
+                return ChoiceExecutor(engine, action_executor)
+            else:
+                return ChoiceExecutor(engine)  # Falls back to internal creation
         elif step_type == "player_input":
-            return PlayerInputExecutor()
+            # Inject action executor dependency if registry is available
+            if self.executor_registry:
+                action_executor = self.executor_registry.create_action_executor()
+                return PlayerInputExecutor(action_executor)
+            else:
+                return PlayerInputExecutor()  # Falls back to internal creation
         elif step_type == "table_roll":
-            return TableExecutor()
+            # Inject action executor dependency if registry is available
+            if self.executor_registry:
+                action_executor = self.executor_registry.create_action_executor()
+                return TableExecutor(action_executor)
+            else:
+                return TableExecutor()  # Falls back to internal creation
         elif step_type == "llm_generation":
-            return LLMExecutor()
+            # Inject action executor dependency if registry is available
+            if self.executor_registry:
+                action_executor = self.executor_registry.create_action_executor()
+                return LLMExecutor(action_executor)
+            else:
+                return LLMExecutor()  # Falls back to internal creation
         elif step_type == "conditional":
             # Inject action executor dependency if registry is available
             if self.executor_registry:

@@ -14,6 +14,7 @@ if TYPE_CHECKING:
     from ..models.context_data import ExecutionContext
     from ..models.flow import StepDefinition, StepResult
     from ..models.system import System
+    from .action_executor import ActionExecutor
 
 logger = logging.getLogger(__name__)
 
@@ -21,9 +22,16 @@ logger = logging.getLogger(__name__)
 class LLMExecutor(BaseStepExecutor):
     """Executor for LLM generation steps."""
 
-    def __init__(self):
+    def __init__(self, action_executor: "ActionExecutor" = None):
+        """Initialize the LLM executor with optional action executor."""
         super().__init__()
         self.llm_integration = LLMIntegration()
+        
+        if action_executor is None:
+            # Fallback to direct creation for backward compatibility
+            from .action_executor import ActionExecutor
+            action_executor = ActionExecutor()
+        self.action_executor = action_executor
 
     def _extract_json_from_response(self, response: str) -> tuple[dict, bool]:
         """

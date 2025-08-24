@@ -10,6 +10,7 @@ if TYPE_CHECKING:
     from ..models.context_data import ExecutionContext
     from ..models.flow import StepDefinition, StepResult
     from ..models.system import System
+    from .action_executor import ActionExecutor
 
 logger = logging.getLogger(__name__)
 
@@ -17,10 +18,16 @@ logger = logging.getLogger(__name__)
 class ChoiceExecutor(BaseStepExecutor):
     """Executor for player choice steps."""
 
-    def __init__(self, engine=None):
-        """Initialize the choice executor with optional engine reference."""
+    def __init__(self, engine=None, action_executor: "ActionExecutor" = None):
+        """Initialize the choice executor with optional engine reference and action executor."""
         self.engine = engine
         self.flow_helper = create_flow_helper(engine)
+        
+        if action_executor is None:
+            # Fallback to direct creation for backward compatibility
+            from .action_executor import ActionExecutor
+            action_executor = ActionExecutor()
+        self.action_executor = action_executor
 
     def execute(
         self, step: "StepDefinition", context: "ExecutionContext", system: "System"
