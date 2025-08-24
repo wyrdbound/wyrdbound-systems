@@ -126,6 +126,19 @@ class PlayerInputExecutor(BaseStepExecutor):
                 else:
                     context.set_output(path, resolved_value)
 
+        elif action_type == "display_value":
+            # Display a value from context
+            path = (
+                action_data
+                if isinstance(action_data, str)
+                else action_data.get("path", "")
+            )
+            try:
+                value = context.resolve_path_value(path)
+                logger.debug(f"Display: {value}")
+            except Exception as e:
+                logger.warning(f"Could not display value at path {path}: {e}")
+
         else:
             logger.warning(f"Unknown action type in player input step: {action_type}")
 

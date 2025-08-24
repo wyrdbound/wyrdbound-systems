@@ -346,14 +346,14 @@ class GrimoireEngine:
                     first_value = next(iter(result.data.values()))
                     context.set_variable(step.output, first_value)
 
-            # Execute post-step actions, but skip for choice steps that require user input
+            # Execute post-step actions, but skip for steps that require user input
             # Those will be handled after user interaction
             # Also skip if the executor already handled the actions (e.g., flow_call)
             actions_already_handled = getattr(result, "actions_already_executed", False)
 
             if (
                 step.actions
-                and not (result.requires_input and step_type == "player_choice")
+                and not result.requires_input
                 and not actions_already_handled
             ):
                 logger.debug(

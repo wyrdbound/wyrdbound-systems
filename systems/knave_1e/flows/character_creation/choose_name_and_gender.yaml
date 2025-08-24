@@ -1,0 +1,79 @@
+id: choose_name_and_gender
+type: flow
+name: "Choose Name and Gender for Character Creation"
+description: "Name and gender selection for character creation process for {{ system.name }}"
+version: "1.0"
+
+inputs:
+  - type: character
+    id: knave
+outputs:
+  - type: character
+    id: knave
+
+variables:
+  []
+  # - id: selected_weapon
+  #   type: weapon
+  # - id: character_with_name_and_gender
+  #   type: character
+
+steps:
+  - id: choose_gender_choice
+    name: "Gender Determination Choice"
+    type: player_choice
+    prompt: "How would you like to determine your character's gender?"
+    choices:
+      - id: player_choice
+        label: "Player Choice"
+        next_step: "choose_gender"
+      - id: random_roll
+        label: "Randomly Choose"
+        next_step: "roll_gender"
+
+  - id: choose_gender
+    name: "Choose Character Gender"
+    type: player_choice
+    prompt: "Select your gender"
+    choices:
+      - id: female
+        label: "Female"
+        actions:
+          - set_value:
+              path: "outputs.knave.gender"
+              value: "Female"
+      - id: male
+        label: "Male"
+        actions:
+          - set_value:
+              path: "outputs.knave.gender"
+              value: "Male"
+      - id: non_binary
+        label: "Non-binary"
+        actions:
+          - set_value:
+              path: "outputs.knave.gender"
+              value: "Non-binary"
+    next_step: choose_name
+
+  - id: roll_gender
+    name: "Determine Character Gender"
+    type: table_roll
+    prompt: "Rolling for your character's gender..."
+    tables:
+      - table: gender
+        actions:
+          - set_value:
+              path: "outputs.knave.gender"
+              value: "{{ result.entry }}"
+    next_step: choose_name
+
+  - id: choose_name
+    name: "Choose Character Name"
+    type: player_input
+    prompt: "What is your character's name?"
+    actions:
+      - display_value: "outputs.knave.gender"
+      - set_value:
+          path: "outputs.knave.name"
+          value: "{{ result }}"

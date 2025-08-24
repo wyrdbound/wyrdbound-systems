@@ -49,17 +49,17 @@ steps:
           value: "{{ result }}"
     next_step: invoke_roll_starting_gear
 
-  - id: invoke_roll_starting_gear
-    name: "Invoke Roll Starting Gear"
-    type: flow_call
-    flow: roll_starting_gear
-    inputs:
-      character: "{{ outputs.knave }}"
-    actions:
-      - set_value:
-          path: "outputs.knave"
-          value: "{{ result }}"
-    next_step: generate_traits
+  # - id: invoke_roll_starting_gear
+  #   name: "Invoke Roll Starting Gear"
+  #   type: flow_call
+  #   flow: roll_starting_gear
+  #   inputs:
+  #     character: "{{ outputs.knave }}"
+  #   actions:
+  #     - set_value:
+  #         path: "outputs.knave"
+  #         value: "{{ result }}"
+  #   next_step: generate_traits
 
   - id: generate_traits
     name: "Determine Character Traits"
@@ -123,69 +123,23 @@ steps:
               path: "outputs.knave.traits.alignment"
               value: "{{ result.entry }}"
 
-  - id: choose_gender_choice
-    name: "Gender Determination Choice"
-    type: player_choice
-    prompt: "How would you like to determine your character's gender?"
-    choices:
-      - id: player_choice
-        label: "Player Choice"
-        next_step: "choose_gender"
-      - id: random_roll
-        label: "Randomly Choose"
-        next_step: "roll_gender"
-
-  - id: choose_gender
-    name: "Choose Character Gender"
-    type: player_choice
-    prompt: "Select your gender"
-    choices:
-      - id: female
-        label: "Female"
-        actions:
-          - set_value:
-              path: "outputs.knave.gender"
-              value: "Female"
-      - id: male
-        label: "Male"
-        actions:
-          - set_value:
-              path: "outputs.knave.gender"
-              value: "Male"
-      - id: non_binary
-        label: "Non-binary"
-        actions:
-          - set_value:
-              path: "outputs.knave.gender"
-              value: "Non-binary"
-    next_step: choose_name
-
-  - id: roll_gender
-    name: "Determine Character Gender"
-    type: table_roll
-    prompt: "Rolling for your character's gender..."
-    tables:
-      - table: gender
-        actions:
-          - set_value:
-              path: "outputs.knave.gender"
-              value: "{{ result.entry }}"
-    next_step: choose_name
-
-  - id: choose_name
-    name: "Choose Character Name"
-    type: player_input
-    prompt: "What is your character's name?"
+  - id: invoke_choose_name_and_gender
+    name: "Invoke Choose Name and Gender"
+    type: flow_call
+    flow: choose_name_and_gender
+    inputs:
+      character: "{{ outputs.knave }}"
     actions:
       - set_value:
-          path: "outputs.knave.name"
+          path: "outputs.knave"
           value: "{{ result }}"
+    next_step: generate_character_description
 
-  - id: character_description
+  - id: generate_character_description
     name: "Generate Character Description"
     type: llm_generation
     condition: "llm_enabled"
-    prompt_id: character_description
+    prompt_id: generate_character_description
     prompt_data:
       name: "{{ outputs.knave.name }}"
       gender: "{{ outputs.knave.gender }}"
