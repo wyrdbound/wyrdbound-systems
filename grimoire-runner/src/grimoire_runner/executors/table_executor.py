@@ -203,8 +203,19 @@ class TableExecutor(BaseStepExecutor):
             path = action_data["path"]
             value = action_data["value"]
 
-            # Resolve templates
-            resolved_value = context.resolve_template(str(value))
+            # Use the same step data mechanism as ActionExecutor for consistency
+            step_data = {"result": result}
+            
+            # Temporarily add step_data to current step context for template resolution
+            for key, step_value in step_data.items():
+                context.set_current_step_data(key, step_value)
+            
+            try:
+                # Resolve templates with the step data context
+                resolved_value = context.resolve_template(str(value))
+            finally:
+                # Clean up step data (the context handles this automatically)
+                pass
 
             # Get current flow namespace for proper isolation
             current_namespace = context.get_current_flow_namespace()
