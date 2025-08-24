@@ -14,6 +14,7 @@ from ..services.flow_execution_context_manager import (
 )
 from ..services.path_resolver import PathResolver
 from .flow_namespace import FlowNamespaceManager
+from ..utils.debug import debug_print
 from .template_resolver import TemplateResolver
 
 if TYPE_CHECKING:
@@ -285,10 +286,10 @@ class ExecutionContext:
 
     def resolve_path_value(self, path: str) -> Any:
         """Resolve a value at the given path."""
-        print(f"[DEBUG] resolve_path_value called with path: {path}")
+        debug_print(f"resolve_path_value called with path: {path}")
         result = self.path_resolver.get_value(self, path)
-        print(f"[DEBUG] resolve_path_value result type: {type(result)}")
-        print(f"[DEBUG] resolve_path_value result preview: {str(result)[:100]}...")
+        debug_print(f"resolve_path_value result type: {type(result)}")
+        debug_print(f"resolve_path_value result preview: {str(result)[:100]}...")
         return result
 
     # Flow Namespace Management (delegated to namespace manager)

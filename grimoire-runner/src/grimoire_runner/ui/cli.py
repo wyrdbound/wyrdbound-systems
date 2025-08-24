@@ -13,6 +13,7 @@ from rich.progress import (
 from rich.table import Table
 
 from ..core.engine import GrimoireEngine
+from ..utils.debug import set_debug_enabled
 from .rich_browser import run_rich_browser
 from .rich_tui import run_rich_tui_executor
 
@@ -118,6 +119,9 @@ def execute(
     verbose: bool = typer.Option(
         False, "--verbose", "-v", help="Enable verbose output"
     ),
+    debug: bool = typer.Option(
+        False, "--debug", "-d", help="Enable debug output (shows internal processing)"
+    ),
     interactive: bool = typer.Option(
         True,
         "--interactive/--no-interactive",
@@ -127,6 +131,9 @@ def execute(
     """Execute a complete flow with enhanced visual output."""
     # TODO: Implement interactive mode functionality
     _ = interactive  # Currently unused - planned for future implementation
+
+    # Set global debug flag
+    set_debug_enabled(debug)
 
     # Configure logging based on verbose flag
     if verbose:

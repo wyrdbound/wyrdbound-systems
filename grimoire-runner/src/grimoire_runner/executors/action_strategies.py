@@ -4,6 +4,8 @@ import logging
 from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING, Any
 
+from ..utils.debug import debug_print
+
 if TYPE_CHECKING:
     from ..models.context_data import ExecutionContext
     from ..models.system import System
@@ -56,24 +58,24 @@ class SetValueActionStrategy(ActionStrategy):
             # Use dictionary directly without template resolution to preserve ModelAwareDict
             resolved_value = value
             logger.debug(f"Action set_value: Using dict directly for {resolved_path}")
-            print(f"[DEBUG] SetValueActionStrategy: Using dict directly for {resolved_path}")
+            debug_print(f"SetValueActionStrategy: Using dict directly for {resolved_path}")
         elif isinstance(value, bool):
             # Preserve boolean values without template resolution
             resolved_value = value
             logger.debug(
                 f"Action set_value: Using boolean directly for {resolved_path}"
             )
-            print(f"[DEBUG] SetValueActionStrategy: Using boolean directly for {resolved_path}")
+            debug_print(f"SetValueActionStrategy: Using boolean directly for {resolved_path}")
         else:
             # Check if this is a variable assignment and if we can preserve object types
             resolved_value = self._resolve_value_with_type_preservation(
                 value, resolved_path, context, system
             )
             logger.debug(f"Action set_value: Resolved value for {resolved_path}")
-            print(f"[DEBUG] SetValueActionStrategy: Template resolved value for {resolved_path}")
-            print(f"[DEBUG] SetValueActionStrategy: Original value type: {type(value)}")
-            print(f"[DEBUG] SetValueActionStrategy: Resolved value type: {type(resolved_value)}")
-            print(f"[DEBUG] SetValueActionStrategy: Resolved value preview: {str(resolved_value)[:100]}...")
+            debug_print(f"SetValueActionStrategy: Template resolved value for {resolved_path}")
+            debug_print(f"SetValueActionStrategy: Original value type: {type(value)}")
+            debug_print(f"SetValueActionStrategy: Resolved value type: {type(resolved_value)}")
+            debug_print(f"SetValueActionStrategy: Resolved value preview: {str(resolved_value)[:100]}...")
 
         # Use path resolver as the primary mechanism
         try:
@@ -129,10 +131,10 @@ class SetValueActionStrategy(ActionStrategy):
         )
 
         # First resolve the template to get the actual value
-        print(f"[DEBUG] _resolve_value_with_type_preservation: About to resolve template: {value}")
+        debug_print(f"_resolve_value_with_type_preservation: About to resolve template: {value}")
         resolved_value = context.resolve_template(str(value))
-        print(f"[DEBUG] _resolve_value_with_type_preservation: Template resolved to type: {type(resolved_value)}")
-        print(f"[DEBUG] _resolve_value_with_type_preservation: Template resolved to preview: {str(resolved_value)[:100]}...")
+        debug_print(f"_resolve_value_with_type_preservation: Template resolved to type: {type(resolved_value)}")
+        debug_print(f"_resolve_value_with_type_preservation: Template resolved to preview: {str(resolved_value)[:100]}...")
         logger.debug(
             f"Template resolved to: {repr(resolved_value)} (type: {type(resolved_value).__name__})"
         )
@@ -287,9 +289,9 @@ class DisplayValueActionStrategy(ActionStrategy):
             formatted_value = self._format_value_for_display(value, path)
             
             # Debug: Add print statements to understand what's happening
-            print(f"[DEBUG] Displaying {path}")
-            print(f"[DEBUG] Value type: {type(value)}")
-            print(f"[DEBUG] Value preview: {str(value)[:200]}...")
+            debug_print(f"Displaying {path}")
+            debug_print(f"Value type: {type(value)}")
+            debug_print(f"Value preview: {str(value)[:200]}...")
             
             display_value = value
 
