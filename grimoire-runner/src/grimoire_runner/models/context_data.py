@@ -529,6 +529,21 @@ class ExecutionContext:
                 
                 self.outputs[output_def.id] = complete_instance
 
+    def initialize_input_models(self, inputs: list, system) -> None:
+        """Initialize inputs with complete model instances."""
+        for input_def in inputs:
+            if input_def.type in system.models:
+                model_def = system.models[input_def.type]
+                complete_instance = self._create_model_instance(model_def, system)
+                
+                # Merge with existing data if any
+                if input_def.id in self.inputs:
+                    existing_data = self.inputs[input_def.id]
+                    if isinstance(existing_data, dict):
+                        complete_instance.update(existing_data)
+                
+                self.inputs[input_def.id] = complete_instance
+
     def _create_model_instance(self, model_def: ModelDefinition, system, visited_models=None) -> dict[str, Any]:
         """Create a complete model instance with all attributes set to defaults."""
         if visited_models is None:

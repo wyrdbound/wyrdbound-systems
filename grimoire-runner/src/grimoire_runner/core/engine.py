@@ -62,9 +62,25 @@ class GrimoireEngine:
         """Load a GRIMOIRE system from filesystem."""
         return self.loader.load_system(system_path)
 
-    def create_execution_context(self, **kwargs) -> ExecutionContext:
+    def create_execution_context(self, system: System = None, **kwargs) -> ExecutionContext:
         """Create a new execution context with optional initial data."""
+        from ..utils.debug import debug_print
+        debug_print(f"[ENGINE] create_execution_context called with system: {system is not None}")
+        
         context = ExecutionContext()
+
+        # Populate system metadata if system is provided
+        if system:
+            debug_print(f"[ENGINE] Populating system_metadata with models: {list(system.models.keys())}")
+            context.system_metadata = {
+                "id": system.id,
+                "name": system.name,
+                "description": system.description,
+                "version": system.version,
+                "models": system.models,  # Add models for ModelAwareDict
+            }
+        else:
+            debug_print(f"[ENGINE] No system provided, system_metadata will be empty")
 
         # Set any provided initial data
         for key, value in kwargs.items():

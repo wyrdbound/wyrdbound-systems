@@ -59,6 +59,14 @@ class SetValueActionStrategy(ActionStrategy):
             resolved_value = value
             logger.debug(f"Action set_value: Using dict directly for {resolved_path}")
             debug_print(f"SetValueActionStrategy: Using dict directly for {resolved_path}")
+            
+            # Apply model enhancement to direct dictionary assignments
+            if system and system.models:
+                expected_type = self._get_output_type(resolved_path, context, system)
+                enhanced_value = self._enhance_with_model_defaults(resolved_value, expected_type, system)
+                if enhanced_value is not resolved_value:
+                    resolved_value = enhanced_value
+                    print(f"SetValueActionStrategy: Enhanced direct dict assignment with model defaults")
         elif isinstance(value, bool):
             # Preserve boolean values without template resolution
             resolved_value = value
@@ -294,6 +302,8 @@ class DisplayValueActionStrategy(ActionStrategy):
             debug_print(f"Value preview: {str(value)[:200]}...")
             
             display_value = value
+            
+            display_value = value
 
             # Handle RollResult objects specially with table display
             from ..models.roll_result import RollResult
@@ -425,6 +435,16 @@ class DisplayValueActionStrategy(ActionStrategy):
     def _print_table_for_dict(self, data: dict, path: str, console) -> None:
         """Print a table representation of a dictionary directly to console."""
         from rich.table import Table
+
+        # Debug the object type and keys
+        debug_print(f"_print_table_for_dict: data type = {type(data)}")
+        debug_print(f"_print_table_for_dict: data.keys() = {list(data.keys())}")
+        if hasattr(data, '_model_def'):
+            debug_print(f"_print_table_for_dict: has _model_def = {data._model_def}")
+            if data._model_def:
+                debug_print(f"_print_table_for_dict: model_def.id = {data._model_def.id}")
+                all_attrs = data._model_def.get_all_attributes()
+                debug_print(f"_print_table_for_dict: all_attrs keys = {list(all_attrs.keys())}")
 
         # Create table with styling and left-justified title for accessibility
         table = Table(show_header=True, header_style="bold blue", show_lines=True, title_justify="left")

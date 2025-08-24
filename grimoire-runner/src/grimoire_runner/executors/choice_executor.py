@@ -94,28 +94,13 @@ class ChoiceExecutor(BaseStepExecutor):
 
     def _execute_pre_actions(self, pre_actions, context: "ExecutionContext") -> None:
         """Execute pre-actions before presenting choices."""
-        for action in pre_actions:
-            try:
-                action_type = list(action.keys())[0]
-                action_data = action[action_type]
-
-                if action_type == "display_value":
-                    # Display a value from context
-                    path = (
-                        action_data
-                        if isinstance(action_data, str)
-                        else action_data.get("path", "")
-                    )
-                    try:
-                        value = context.resolve_path_value(path)
-                        logger.debug(f"Display: {value}")
-                    except Exception as e:
-                        logger.warning(f"Could not display value at path {path}: {e}")
-
-                # TODO: Add other pre-action types as needed
-
-            except Exception as e:
-                logger.error(f"Error executing pre-action {action}: {e}")
+        # Delegate all pre-actions to the centralized ActionExecutor
+        try:
+            self.action_executor.execute_actions(
+                pre_actions, context, {}, None
+            )
+        except Exception as e:
+            logger.error(f"Error executing pre-actions: {e}")
 
     def _generate_choices_from_source(
         self, choice_source, context: "ExecutionContext", system: "System"
@@ -423,14 +408,17 @@ class ChoiceExecutor(BaseStepExecutor):
         """Execute a step-level action (including flow calls)."""
         action_type = list(action.keys())[0]
 
-        if action_type == "flow_call":
-            # Use the shared flow helper to execute flow calls
-            self.flow_helper.execute_flow_call_action(
-                action, context, system, step_result_data
+    def _execute_step_action(
+        self, action, context: "ExecutionContext", system: "System", step_result_data: dict
+    ) -> None:
+        """Execute a step action using centralized ActionExecutor."""
+        # Delegate all step actions to the centralized ActionExecutor
+        try:
+            self.action_executor.execute_single_action(
+                action, context, step_result_data, system
             )
-        else:
-            # Handle other action types as needed
-            logger.warning(f"Unhandled step action type: {action_type}")
+        except Exception as e:
+            logger.error(f"Error executing step action: {e}")
 
     def can_execute(self, step: "StepDefinition") -> bool:
         """Check if this executor can handle the step."""

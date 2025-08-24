@@ -191,7 +191,7 @@ class RichTUI:
             )
 
         # Create execution context
-        self.context = self.engine.create_execution_context()
+        self.context = self.engine.create_execution_context(system=self.system)
 
         # Initialize flow variables
         if self.flow_obj.variables:
@@ -210,6 +210,12 @@ class RichTUI:
                     f"  [cyan]{input_name}[/cyan] = [yellow]{input_value}[/yellow]"
                 )
 
+        # Initialize complete model instances for declared inputs (after setting input values)
+        self.context.initialize_input_models(self.flow_obj.inputs, self.system)
+
+        # Initialize reactive system for input models by copying them to outputs
+        if self.input_values:
+            for input_name, input_value in self.input_values.items():
                 # Initialize reactive system for input models by copying them to outputs
                 for input_def in self.flow_obj.inputs:
                     if input_def.id == input_name and input_def.type in self.system.models:
@@ -686,6 +692,15 @@ class RichTUI:
             from ..models.context_data import ExecutionContext
 
             sub_context = ExecutionContext()
+
+            # Populate system metadata for template resolution
+            sub_context.system_metadata = {
+                "id": self.system.id,
+                "name": self.system.name,
+                "description": self.system.description,
+                "version": self.system.version,
+                "models": self.system.models,  # Add models for ModelAwareDict
+            }
 
             # Set the resolved inputs in the sub-flow context
             for key, value in resolved_inputs.items():

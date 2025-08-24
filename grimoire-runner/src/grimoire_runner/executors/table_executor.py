@@ -206,40 +206,32 @@ class TableExecutor(BaseStepExecutor):
             # Use the same step data mechanism as ActionExecutor for consistency
             step_data = {"result": result}
             
-            # Temporarily add step_data to current step context for template resolution
-            for key, step_value in step_data.items():
-                context.set_current_step_data(key, step_value)
-            
+            # Delegate to the centralized ActionExecutor for consistency
+            logger.debug(f"Delegating table set_value action to centralized ActionExecutor")
             try:
-                # Resolve templates with the step data context
-                resolved_value = context.resolve_template(str(value))
-            finally:
-                # Clean up step data (the context handles this automatically)
-                pass
+                self.action_executor.execute_single_action(action, context, step_data, system)
+            except Exception as e:
+                logger.error(f"Error delegating set_value action to ActionExecutor: {e}")
+                # Fallback to original behavior
+                # Temporarily add step_data to current step context for template resolution
+                for key, step_value in step_data.items():
+                    context.set_current_step_data(key, step_value)
+                
+                try:
+                    # Resolve templates with the step data context
+                    resolved_value = context.resolve_template(str(value))
+                finally:
+                    # Clean up step data (the context handles this automatically)
+                    pass
 
-            # Get current flow namespace for proper isolation
-            current_namespace = context.get_current_flow_namespace()
-
-            if current_namespace:
-                # Use namespaced path to avoid collision
-                if path.startswith("outputs."):
-                    namespaced_path = f"{current_namespace}.outputs.{path[8:]}"
-                elif path.startswith("variables."):
-                    namespaced_path = f"{current_namespace}.variables.{path[10:]}"
-                else:
-                    # Default to outputs if no prefix specified
-                    namespaced_path = f"{current_namespace}.outputs.{path}"
-
-                context.set_namespaced_value(namespaced_path, resolved_value)
-            else:
-                # Fallback to original behavior for backward compatibility
+                # Simple path handling without namespacing complications
                 if path.startswith("outputs."):
                     context.set_output(path[8:], resolved_value)
                 elif path.startswith("variables."):
                     context.set_variable(path[10:], resolved_value)
                 else:
                     context.set_output(path, resolved_value)
-                logger.debug(f"Set non-namespaced value: {path} = {resolved_value}")
+                logger.debug(f"Set value using fallback: {path} = {resolved_value}")
 
         elif action_type == "flow_call":
             # Handle sub-flow calls
@@ -292,6 +284,15 @@ class TableExecutor(BaseStepExecutor):
 
         # Create a new execution context for the sub-flow
         sub_context = ExecutionContext()
+
+        # Populate system metadata for template resolution
+        sub_context.system_metadata = {
+            "id": system.id,
+            "name": system.name,
+            "description": system.description,
+            "version": system.version,
+            "models": system.models,  # Add models for ModelAwareDict
+        }
 
         # Resolve and set inputs for the sub-flow
         resolved_inputs = self._resolve_sub_flow_inputs(inputs, context, system)

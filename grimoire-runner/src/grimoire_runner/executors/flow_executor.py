@@ -205,6 +205,15 @@ class FlowExecutor(BaseStepExecutor):
         # Create a new execution context for the sub-flow
         sub_context = ExecutionContext()
 
+        # Populate system metadata with model information for template resolution
+        sub_context.system_metadata = {
+            "id": system.id,
+            "name": system.name,
+            "description": system.description,
+            "version": system.version,
+            "models": system.models,  # Add models for ModelAwareDict
+        }
+
         # Set the resolved inputs in the sub-flow context
         for key, value in resolved_inputs.items():
             sub_context.set_input(key, value)

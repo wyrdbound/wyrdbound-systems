@@ -23,17 +23,17 @@ class ModelAwareDict:
     of missing attributes by checking against model definitions.
     """
 
-    def __init__(self, data: dict, model_definitions: dict):
+    def __init__(self, data: dict, model_definitions: dict, model_type: str = None):
         self._data = data
         self._models = model_definitions
         self._model_def = None
-        logger.info(f"[ModelAwareDict] model_definitions type: {type(model_definitions)}")
-        logger.info(f"[ModelAwareDict] model_definitions: {model_definitions}")
 
-        # Try to determine the model type from the data
-        # This is a heuristic - in a more complete implementation,
-        # we might store type information with the data
-        self._infer_model_type()
+        # If we have an explicit model type, use it directly
+        if model_type and model_type in self._models:
+            self._model_def = self._models[model_type]
+        else:
+            # Fall back to inferring the model type from the data
+            self._infer_model_type()
 
     def _infer_model_type(self):
         """Try to infer the model type from the data structure."""
@@ -44,11 +44,16 @@ class ModelAwareDict:
         # This makes it system-agnostic by checking actual model definitions
         # rather than hardcoded assumptions about specific field names
 
+        from ..utils.debug import debug_print
+        debug_print(f"[ModelAwareDict] _infer_model_type called, _models has {len(self._models)} entries")
+
         best_match = None
         best_score = 0
 
         for _model_name, model_def in self._models.items():
+            debug_print(f"[ModelAwareDict] checking model {_model_name}: {model_def}")
             if model_def is None:
+                debug_print(f"[ModelAwareDict] skipping {_model_name} - model_def is None")
                 continue
 
             # Calculate match score based on how many model fields are present in data
@@ -123,16 +128,33 @@ class ModelAwareDict:
         return result if result is not None else default
 
     def keys(self):
-        """Support dict.keys() method."""
-        return self._data.keys()
+        """Support dict.keys() method - returns only root-level keys."""
+        if self._model_def:
+            # Get all attributes (including nested ones like 'hit_points.max')
+            all_attrs = self._model_def.get_all_attributes()
+            
+            # Extract root-level keys from potentially dotted attribute names
+            root_model_keys = set()
+            for key in all_attrs.keys():
+                if '.' in key:
+                    # For nested keys like 'hit_points.max', take the root part 'hit_points'
+                    root_key = key.split('.')[0]
+                    root_model_keys.add(root_key)
+                else:
+                    # For non-nested keys, use as-is
+                    root_model_keys.add(key)
+            
+            data_keys = set(self._data.keys())
+            return list(root_model_keys | data_keys)
+        return list(self._data.keys())
 
     def values(self):
         """Support dict.values() method."""
-        return self._data.values()
+        return [self.__getattr__(key) for key in self.keys()]
 
     def items(self):
         """Support dict.items() method."""
-        return self._data.items()
+        return [(key, self.__getattr__(key)) for key in self.keys()]
 
     def __str__(self):
         """String representation - return the underlying data as a string."""
@@ -236,8 +258,6 @@ class RuntimeTemplateStrategy(TemplateResolutionStrategy):
                 )
 
             # Enhance context with roll_result attribute access
-            logger.debug(f"[RuntimeTemplateStrategy] About to enhance context. Original context keys: {list(context_data.keys()) if isinstance(context_data, dict) else 'Not a dict'}")
-            logger.debug(f"[RuntimeTemplateStrategy] Context values types: {[(k, type(v)) for k, v in context_data.items()] if isinstance(context_data, dict) else 'Not a dict'}")
             enhanced_context = self._enhance_context_for_objects(context_data)
 
             # Check for simple variable reference that should preserve object type
@@ -363,16 +383,34 @@ class RuntimeTemplateStrategy(TemplateResolutionStrategy):
                     if self._is_model_instance_dict(obj, enhanced_context):
                         # Get models from system context (always a dictionary in template context)
                         system_dict = enhanced_context.get("system", {})
-                        logger.info(f"[TEMPLATE_SERVICE] system_dict type: {type(system_dict)}, value: {system_dict}")
+                        from ..utils.debug import debug_print
+                        debug_print(f"[TEMPLATE_SERVICE] system_dict type: {type(system_dict)}, keys: {list(system_dict.keys()) if system_dict else 'None'}")
+                        debug_print(f"[TEMPLATE_SERVICE] full system_dict content: {system_dict}")
                         models = system_dict.get("models", {})
-                        logger.info(f"[TEMPLATE_SERVICE] models type: {type(models)}, value: {models}")
+                        debug_print(f"[TEMPLATE_SERVICE] models type: {type(models)}, keys: {list(models.keys()) if models else 'None'}")
+                        
+                        # Check what's actually in the models dict
+                        if models:
+                            for name, model_def in models.items():
+                                debug_print(f"[TEMPLATE_SERVICE] model '{name}' type: {type(model_def)}, has get_all_attributes: {hasattr(model_def, 'get_all_attributes')}")
+                                if hasattr(model_def, 'get_all_attributes'):
+                                    try:
+                                        attrs = model_def.get_all_attributes()
+                                        debug_print(f"[TEMPLATE_SERVICE] model '{name}' attributes: {list(attrs.keys())}")
+                                    except Exception as e:
+                                        debug_print(f"[TEMPLATE_SERVICE] model '{name}' get_all_attributes() failed: {e}")
+                        else:
+                            debug_print(f"[TEMPLATE_SERVICE] models dict is empty!")
                         
                         # Ensure models is a proper dictionary for ModelAwareDict
                         if not isinstance(models, dict):
                             logger.warning(f"[TEMPLATE_SERVICE] models is not a dict (type: {type(models)}), using empty dict")
                             models = {}
                         
-                        return ModelAwareDict(obj, models)
+                        # Check if we can determine model type from context structure
+                        # Look for type hints in the context path or object metadata
+                        model_type = self._determine_model_type_from_context(obj, enhanced_context)
+                        return ModelAwareDict(obj, models, model_type)
                     else:
                         # Recursively process dict values
                         return {k: make_object_accessible(v) for k, v in obj.items()}
@@ -429,6 +467,26 @@ class RuntimeTemplateStrategy(TemplateResolutionStrategy):
         # This is a heuristic - we could improve this by checking against known model definitions
         # For now, assume any dict that comes from outputs/inputs in a flow context is likely a model instance
         return isinstance(obj, dict) and len(obj) > 1
+
+    def _determine_model_type_from_context(self, obj: dict, context: dict) -> str | None:
+        """Try to determine the model type from context clues."""
+        # Strategy 1: Check if the object has explicit type information
+        if isinstance(obj, dict) and "type" in obj:
+            return obj["type"]
+        
+        # Strategy 2: Check context for type hints
+        # Look through the context to see if this object appears in a typed location
+        system_dict = context.get("system", {})
+        
+        # Strategy 3: For now, assume character type if it has character-like fields
+        # This is a fallback heuristic - in a better implementation we'd track object types
+        if isinstance(obj, dict):
+            character_like_fields = {"abilities", "traits", "inventory", "armor"}
+            obj_fields = set(obj.keys())
+            if len(character_like_fields & obj_fields) >= 2:
+                return "character"
+        
+        return None
 
     def is_template(self, text: str) -> bool:
         """Check if a string contains template syntax."""
