@@ -30,6 +30,8 @@ steps:
       - id: random_roll
         label: "Randomly Choose"
         next_step: "roll_gender"
+    actions:
+      - display_value: "inputs.knave"
 
   - id: choose_gender
     name: "Choose Character Gender"
@@ -73,7 +75,7 @@ steps:
     type: player_input
     prompt: "What is your character's name?"
     actions:
-      - display_value: "outputs.knave.gender"
       - set_value:
           path: "outputs.knave.name"
           value: "{{ result }}"
+      - display_value: "outputs.knave"
