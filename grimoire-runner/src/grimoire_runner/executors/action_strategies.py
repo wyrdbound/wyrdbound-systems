@@ -492,7 +492,7 @@ class DisplayValueActionStrategy(ActionStrategy):
             if not value:
                 return "[dim](empty list)[/dim]"
             elif len(value) == 1:
-                if isinstance(value[0], dict):
+                if isinstance(value[0], dict) or (hasattr(value[0], 'keys') and hasattr(value[0], '__getitem__')):
                     item_name = self._get_display_identifier(value[0]) or 'item'
                     return f"[[green]{item_name}[/green]]"
                 else:
@@ -501,7 +501,7 @@ class DisplayValueActionStrategy(ActionStrategy):
                 # Show summary for multiple items
                 item_descriptions = []
                 for item in value[:3]:
-                    if isinstance(item, dict):
+                    if isinstance(item, dict) or (hasattr(item, 'keys') and hasattr(item, '__getitem__')):
                         name = self._get_display_identifier(item) or 'item'
                         item_descriptions.append(f"[green]{name}[/green]")
                     else:
