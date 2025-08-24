@@ -253,7 +253,18 @@ class TableExecutor(BaseStepExecutor):
             # Execute the sub-flow
             self._execute_sub_flow(flow_id, inputs, context, system, inputs)
 
-        # TODO: Add other action types as needed
+        else:
+            # Use centralized ActionExecutor for other action types (display_value, etc.)
+            logger.debug(f"Delegating table action '{action_type}' to centralized ActionExecutor")
+            
+            # Prepare step data from the table result
+            step_data = {"result": result}
+            
+            try:
+                self.action_executor.execute_single_action(action, context, step_data, system)
+            except Exception as e:
+                logger.warning(f"Unsupported table action type '{action_type}' or execution failed: {e}")
+                logger.debug(f"Available action types: {self.action_executor.get_supported_action_types()}")
 
     def _execute_sub_flow(
         self,

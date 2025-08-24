@@ -1,0 +1,87 @@
+id: determine_traits
+type: flow
+name: "Determine Character Traits"
+description: "Determine the physical and personality traits for character creation process for {{ system.name }}"
+version: "1.0"
+
+inputs:
+  - type: character
+    id: knave
+
+output:
+  - type: character
+    id: knave
+
+steps:
+  - id: generate_traits
+    name: "Determine Character Traits"
+    type: table_roll
+    prompt: "Rolling for your character's physical and personality traits..."
+    parallel: true
+    tables:
+      - table: physique
+        actions:
+          - set_value:
+              path: "outputs.knave.traits.physique"
+              value: "{{ result.entry }}"
+          - display_value: "outputs.knave.traits.physique"
+      - table: face
+        actions:
+          - set_value:
+              path: "outputs.knave.traits.face"
+              value: "{{ result.entry }}"
+          - display_value: "outputs.knave.traits.face"
+      - table: skin
+        actions:
+          - set_value:
+              path: "outputs.knave.traits.skin"
+              value: "{{ result.entry }}"
+          - display_value: "outputs.knave.traits.skin"
+      - table: hair
+        actions:
+          - set_value:
+              path: "outputs.knave.traits.hair"
+              value: "{{ result.entry }}"
+          - display_value: "outputs.knave.traits.hair"
+      - table: clothing
+        actions:
+          - set_value:
+              path: "outputs.knave.traits.clothing"
+              value: "{{ result.entry }}"
+          - display_value: "outputs.knave.traits.clothing"
+      - table: virtue
+        actions:
+          - set_value:
+              path: "outputs.knave.traits.virtue"
+              value: "{{ result.entry }}"
+          - display_value: "outputs.knave.traits.virtue"
+      - table: vice
+        actions:
+          - set_value:
+              path: "outputs.knave.traits.vice"
+              value: "{{ result.entry }}"
+          - display_value: "outputs.knave.traits.vice"
+      - table: speech
+        actions:
+          - set_value:
+              path: "outputs.knave.traits.speech"
+              value: "{{ result.entry }}"
+          - display_value: "outputs.knave.traits.speech"
+      - table: background
+        actions:
+          - set_value:
+              path: "outputs.knave.traits.background"
+              value: "{{ result.entry }}"
+          - display_value: "outputs.knave.traits.background"
+      - table: misfortunes
+        actions:
+          - set_value:
+              path: "outputs.knave.traits.misfortunes"
+              value: "{{ result.entry }}"
+          - display_value: "outputs.knave.traits.misfortunes"
+      - table: alignment
+        actions:
+          - set_value:
+              path: "outputs.knave.traits.alignment"
+              value: "{{ result.entry }}"
+          - display_value: "outputs.knave.traits.alignment"

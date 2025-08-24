@@ -61,67 +61,17 @@ steps:
   #         value: "{{ result }}"
   #   next_step: generate_traits
 
-  - id: generate_traits
-    name: "Determine Character Traits"
-    type: table_roll
-    prompt: "Rolling for your character's physical and personality traits..."
-    parallel: true
-    tables:
-      - table: physique
-        actions:
-          - set_value:
-              path: "outputs.knave.traits.physique"
-              value: "{{ result.entry }}"
-      - table: face
-        actions:
-          - set_value:
-              path: "outputs.knave.traits.face"
-              value: "{{ result.entry }}"
-      - table: skin
-        actions:
-          - set_value:
-              path: "outputs.knave.traits.skin"
-              value: "{{ result.entry }}"
-      - table: hair
-        actions:
-          - set_value:
-              path: "outputs.knave.traits.hair"
-              value: "{{ result.entry }}"
-      - table: clothing
-        actions:
-          - set_value:
-              path: "outputs.knave.traits.clothing"
-              value: "{{ result.entry }}"
-      - table: virtue
-        actions:
-          - set_value:
-              path: "outputs.knave.traits.virtue"
-              value: "{{ result.entry }}"
-      - table: vice
-        actions:
-          - set_value:
-              path: "outputs.knave.traits.vice"
-              value: "{{ result.entry }}"
-      - table: speech
-        actions:
-          - set_value:
-              path: "outputs.knave.traits.speech"
-              value: "{{ result.entry }}"
-      - table: background
-        actions:
-          - set_value:
-              path: "outputs.knave.traits.background"
-              value: "{{ result.entry }}"
-      - table: misfortunes
-        actions:
-          - set_value:
-              path: "outputs.knave.traits.misfortunes"
-              value: "{{ result.entry }}"
-      - table: alignment
-        actions:
-          - set_value:
-              path: "outputs.knave.traits.alignment"
-              value: "{{ result.entry }}"
+  - id: invoke_determine_traits
+    name: "Invoke Determine Traits"
+    type: flow_call
+    flow: determine_traits
+    inputs:
+      character: "{{ outputs.knave }}"
+    actions:
+      - set_value:
+          path: "outputs.knave"
+          value: "{{ result }}"
+    next_step: generate_traits
 
   - id: invoke_choose_name_and_gender
     name: "Invoke Choose Name and Gender"
