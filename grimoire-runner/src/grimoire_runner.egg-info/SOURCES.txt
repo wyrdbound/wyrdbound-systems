@@ -49,6 +49,7 @@ src/grimoire_runner/models/table.py
 src/grimoire_runner/models/template_resolver.py
 src/grimoire_runner/services/__init__.py
 src/grimoire_runner/services/commands.py
+src/grimoire_runner/services/event_signals.py
 src/grimoire_runner/services/events.py
 src/grimoire_runner/services/flow_execution_context_manager.py
 src/grimoire_runner/services/interfaces.py

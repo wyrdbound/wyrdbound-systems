@@ -4,9 +4,9 @@ Minimal CLI tool for GRIMOIRE engine development and testing.
 
 This is a development tool to test engine changes without the complexity
 of the full Rich TUI interface. It provides simple command-line interaction
-with event logging and user input prompting using the new UI service interface.
+with event logging and user input prompting using blinker signals.
 
-Phase 1, Step 4: Enhanced to use the new service interface and event system.
+Phase 1, Step 4: Enhanced to use blinker signal-based event system.
 """
 
 import argparse
@@ -15,27 +15,18 @@ import time
 from pathlib import Path
 from typing import Any, Dict
 
-from .services.ui_service import (
-    GrimoireUIService,
-    ExecutionStatus,
-    InputType,
-    # Events
-    SystemLoadedEvent,
-    SessionCreatedEvent,
-    FlowStartedEvent,
-    StepStartedEvent,
-    StepCompletedEvent,
-    InputRequiredEvent,
-    ChoiceRequiredEvent,
-    FlowCompletedEvent,
-    ErrorOccurredEvent,
-    FlowCancelledEvent,
+from .services.ui_service import GrimoireUIService, InputType
+from .services import event_signals
+from .services.event_signals import (
+    SystemLoadedData, SessionCreatedData, FlowStartedData, StepStartedData,
+    StepCompletedData, InputRequiredData, ChoiceRequiredData, FlowCompletedData,
+    ErrorOccurredData, FlowCancelledData
 )
 from .utils.debug import debug_print, set_debug_enabled
 
 
 class SimpleEventCLI:
-    """Minimal CLI that uses the UI service interface and logs events."""
+    """Minimal CLI that uses blinker signals for event handling."""
     
     def __init__(self, debug: bool = False):
         self.ui_service = GrimoireUIService()
@@ -46,80 +37,184 @@ class SimpleEventCLI:
         self.execution_complete = False
         self.execution_successful = False
         
-        # Subscribe to all events
-        self.ui_service.subscribe_to_events(self._handle_event)
+        # Connect to blinker signals instead of subscribing to events
+        self._connect_signals()
         
         debug_print(f"[SIMPLE_CLI] SimpleEventCLI initialized (debug={debug})")
     
-    def _handle_event(self, event) -> None:
-        """Handle events from the UI service."""
-        event_name = event.__class__.__name__
-        debug_print(f"[SIMPLE_CLI] Received event: {event_name}")
-        
-        if isinstance(event, SystemLoadedEvent):
-            self._handle_system_loaded(event)
-        elif isinstance(event, SessionCreatedEvent):
-            self._handle_session_created(event)
-        elif isinstance(event, FlowStartedEvent):
-            self._handle_flow_started(event)
-        elif isinstance(event, StepStartedEvent):
-            self._handle_step_started(event)
-        elif isinstance(event, StepCompletedEvent):
-            self._handle_step_completed(event)
-        elif isinstance(event, InputRequiredEvent):
-            self._handle_input_required(event)
-        elif isinstance(event, ChoiceRequiredEvent):
-            self._handle_choice_required(event)
-        elif isinstance(event, FlowCompletedEvent):
-            self._handle_flow_completed(event)
-        elif isinstance(event, ErrorOccurredEvent):
-            self._handle_error_occurred(event)
-        elif isinstance(event, FlowCancelledEvent):
-            self._handle_flow_cancelled(event)
-        else:
-            debug_print(f"[SIMPLE_CLI] Unhandled event type: {event_name}")
+    def _connect_signals(self):
+        """Connect to all blinker signals."""
+        event_signals.system_loaded.connect(self._handle_system_loaded)
+        event_signals.session_created.connect(self._handle_session_created)
+        event_signals.flow_started.connect(self._handle_flow_started)
+        event_signals.step_started.connect(self._handle_step_started)
+        event_signals.step_completed.connect(self._handle_step_completed)
+        event_signals.input_required.connect(self._handle_input_required)
+        event_signals.choice_required.connect(self._handle_choice_required)
+        event_signals.flow_completed.connect(self._handle_flow_completed)
+        event_signals.error_occurred.connect(self._handle_error_occurred)
+        event_signals.flow_cancelled.connect(self._handle_flow_cancelled)
     
-    def _handle_system_loaded(self, event: SystemLoadedEvent) -> None:
+    def _handle_system_loaded(self, sender, **kwargs):
         """Handle system loaded event."""
-        print(f"✅ Loaded: {event.system_name} ({event.system_id})")
-        print(f"   Flows: {event.flow_count}")
-        print(f"   Models: {event.model_count}")
+        data = kwargs.get('data')
+        debug_print(f"System loaded: {data.system_name} ({data.system_id})")
+        debug_print(f"  Path: {data.system_path}")
+        debug_print(f"  Flows: {data.flow_count}, Models: {data.model_count}")
+        print(f"Loaded system: {data.system_name}")
     
-    def _handle_session_created(self, event: SessionCreatedEvent) -> None:
+    def _handle_session_created(self, sender, **kwargs):
         """Handle session created event."""
-        self.session_id = event.session_id
-        debug_print(f"[SIMPLE_CLI] Session created: {self.session_id}")
+        data = kwargs.get('data')
+        self.session_id = data.session_id
+        debug_print(f"Session created: {data.session_id} for flow {data.flow_id}")
     
-    def _handle_flow_started(self, event: FlowStartedEvent) -> None:
+    def _handle_flow_started(self, sender, **kwargs):
         """Handle flow started event."""
-        print(f"\n🚀 Starting flow: {event.flow_id}")
-        if event.inputs:
-            print(f"   With inputs: {event.inputs}")
+        data = kwargs.get('data')
+        debug_print(f"Flow started: {data.flow_id} with inputs: {data.inputs}")
+        print(f"Starting flow: {data.flow_id}")
     
-    def _handle_step_started(self, event: StepStartedEvent) -> None:
-        """Handle step started event."""
-        step = event.step_info
+    def _handle_step_started(self, sender=None, **kwargs):
+        """Handle step started signal."""
+        data = kwargs.get('data')
+        debug_print(f"[SIMPLE_CLI] Received signal: step_started")
+        step = data.step_info
         print(f"\n📋 Step: {step.id} ({step.type})")
         if step.name:
             print(f"   Name: {step.name}")
         if step.description:
             print(f"   Description: {step.description}")
     
-    def _handle_step_completed(self, event: StepCompletedEvent) -> None:
-        """Handle step completed event."""
-        step = event.step_info
+    def _handle_step_completed(self, sender=None, **kwargs):
+        """Handle step completed signal."""
+        data = kwargs.get('data')
+        debug_print(f"[SIMPLE_CLI] Received signal: step_completed")
+        step = data.step_info
         print(f"✅ Step {step.id} completed")
         
         # Show any result data (excluding internal fields)
-        if event.step_data:
-            for key, value in event.step_data.items():
+        if data.step_data:
+            for key, value in data.step_data.items():
+                if key not in ["resolved_message", "internal_state"]:
+                    print(f"   {key}: {value}")
+
+    def _handle_input_required(self, sender=None, **kwargs):
+        """Handle input required signal."""
+        data = kwargs.get('data')
+        debug_print(f"[SIMPLE_CLI] Received signal: input_required")
+        self.waiting_for_input = True
+        print(f"\n💬 {data.prompt}")
+        
+        # Get user input
+        try:
+            user_input = input("Enter input: ").strip()
+            
+            # Provide input to the service
+            self.ui_service.submit_input(data.session_id, user_input)
+            self.waiting_for_input = False
+            
+        except KeyboardInterrupt:
+            print("\nCancelling...")
+            self.ui_service.cancel_flow(data.session_id)
+            return False
+
+    def _handle_choice_required(self, sender=None, **kwargs):
+        """Handle choice required signal."""
+        data = kwargs.get('data')
+        debug_print(f"[SIMPLE_CLI] Received signal: choice_required")
+        self.waiting_for_choice = True
+        print(f"\n📋 {data.prompt}")
+        print("Available options:")
+        
+        for i, choice in enumerate(data.choices, 1):
+            description = f" - {choice.description}" if choice.description else ""
+            print(f"  {i}. {choice.label}{description}")
+        
+        # Get user choice
+        try:
+            while True:
+                try:
+                    choice_input = input(f"\nEnter choice (1-{len(data.choices)}): ").strip()
+                    choice_index = int(choice_input) - 1
+                    if 0 <= choice_index < len(data.choices):
+                        selected_choice = data.choices[choice_index]
+                        self.ui_service.submit_choice(data.session_id, selected_choice)
+                        self.waiting_for_choice = False
+                        break
+                    else:
+                        print(f"❌ Invalid choice. Please enter a number between 1 and {len(data.choices)}")
+                except ValueError:
+                    print("❌ Please enter a valid number")
+                    
+        except KeyboardInterrupt:
+            print("\nCancelling...")
+            self.ui_service.cancel_flow(data.session_id)
+            return False
+
+    def _handle_flow_completed(self, sender=None, **kwargs):
+        """Handle flow completed signal."""
+        data = kwargs.get('data')
+        debug_print(f"[SIMPLE_CLI] Received signal: flow_completed")
+        self.execution_complete = True
+        self.execution_successful = True
+        
+        print(f"\n🎉 Flow '{data.flow_id}' completed successfully!")
+        print(f"   Steps executed: {data.step_count}")
+        
+        # Show final outputs if any
+        if data.outputs:
+            print("\n📊 Final outputs:")
+            for output_id, output_value in data.outputs.items():
+                print(f"   {output_id}: {output_value}")
+        
+        # Show variables if any (debug mode)
+        if data.variables:
+            print("\n🔧 Variables (debug):")
+            for var_name, var_value in data.variables.items():
+                print(f"   {var_name}: {var_value}")
+
+    def _handle_error_occurred(self, sender=None, **kwargs):
+        """Handle error occurred signal."""
+        data = kwargs.get('data')
+        debug_print(f"[SIMPLE_CLI] Received signal: error_occurred")
+        self.execution_complete = True
+        self.execution_successful = False
+        
+        print(f"❌ Error occurred: {data.error_message}")
+        if data.step_id:
+            print(f"   At step: {data.step_id}")
+        if data.error_type != "execution_error":
+            print(f"   Error type: {data.error_type}")
+
+    def _handle_flow_cancelled(self, sender=None, **kwargs):
+        """Handle flow cancelled signal."""
+        data = kwargs.get('data')
+        debug_print(f"[SIMPLE_CLI] Received signal: flow_cancelled")
+        self.execution_complete = True
+        self.execution_successful = False
+        
+        print(f"⏹️  Flow '{data.flow_id}' cancelled: {data.reason}")
+    
+    def _handle_step_completed(self, sender, **kwargs):
+        """Handle step completed signal."""
+        data = kwargs.get('data')
+        debug_print(f"[SIMPLE_CLI] Received signal: step_completed")
+        step = data.step_info
+        print(f"✅ Step {step.id} completed")
+        
+        # Show any result data (excluding internal fields)
+        if data.step_data:
+            for key, value in data.step_data.items():
                 if key not in ["resolved_message", "internal_state"]:
                     print(f"   {key}: {value}")
     
-    def _handle_input_required(self, event: InputRequiredEvent) -> None:
-        """Handle input required event."""
+    def _handle_input_required(self, sender, **kwargs):
+        """Handle input required signal."""
+        data = kwargs.get('data')
+        debug_print(f"[SIMPLE_CLI] Received signal: input_required")
         self.waiting_for_input = True
-        print(f"\n💬 {event.prompt}")
+        print(f"\n💬 {data.prompt}")
         
         # Get user input
         try:
@@ -137,27 +232,29 @@ class SimpleEventCLI:
             print(f"❌ Error providing input: {e}")
             self.ui_service.cancel_execution(self.session_id)
     
-    def _handle_choice_required(self, event: ChoiceRequiredEvent) -> None:
-        """Handle choice required event."""
+    def _handle_choice_required(self, sender, **kwargs):
+        """Handle choice required signal."""
+        data = kwargs.get('data')
+        debug_print(f"[SIMPLE_CLI] Received signal: choice_required")
         self.waiting_for_choice = True
-        print(f"\n📋 {event.prompt}")
+        print(f"\n📋 {data.prompt}")
         print("Available options:")
         
-        for i, choice in enumerate(event.choices, 1):
+        for i, choice in enumerate(data.choices, 1):
             description = f" - {choice.description}" if choice.description else ""
             print(f"  {i}. {choice.label}{description}")
         
         # Get user choice
         try:
             while True:
-                choice_input = input(f"\nEnter choice (1-{len(event.choices)}): ").strip()
+                choice_input = input(f"\nEnter choice (1-{len(data.choices)}): ").strip()
                 try:
                     choice_index = int(choice_input) - 1
-                    if 0 <= choice_index < len(event.choices):
-                        selected_choice = event.choices[choice_index]
+                    if 0 <= choice_index < len(data.choices):
+                        selected_choice = data.choices[choice_index]
                         break
                     else:
-                        print(f"❌ Invalid choice. Please enter a number between 1 and {len(event.choices)}")
+                        print(f"❌ Invalid choice. Please enter a number between 1 and {len(data.choices)}")
                 except ValueError:
                     print("❌ Please enter a valid number")
             
@@ -173,44 +270,50 @@ class SimpleEventCLI:
             print(f"❌ Error making choice: {e}")
             self.ui_service.cancel_execution(self.session_id)
     
-    def _handle_flow_completed(self, event: FlowCompletedEvent) -> None:
-        """Handle flow completed event."""
+    def _handle_flow_completed(self, sender, **kwargs):
+        """Handle flow completed signal."""
+        data = kwargs.get('data')
+        debug_print(f"[SIMPLE_CLI] Received signal: flow_completed")
         self.execution_complete = True
         self.execution_successful = True
         
-        print(f"\n🎉 Flow '{event.flow_id}' completed successfully!")
-        print(f"   Steps executed: {event.step_count}")
+        print(f"\n🎉 Flow '{data.flow_id}' completed successfully!")
+        print(f"   Steps executed: {data.step_count}")
         
         # Show final outputs if any
-        if event.outputs:
+        if data.outputs:
             print("\n📤 Final outputs:")
-            for output_id, output_value in event.outputs.items():
+            for output_id, output_value in data.outputs.items():
                 print(f"   {output_id}: {output_value}")
         
         # Show final variables if any (excluding system variables)
-        if event.variables:
+        if data.variables:
             print("\n📊 Final variables:")
-            for var_name, var_value in event.variables.items():
+            for var_name, var_value in data.variables.items():
                 if not var_name.startswith('_'):  # Skip internal variables
                     print(f"   {var_name}: {var_value}")
     
-    def _handle_error_occurred(self, event: ErrorOccurredEvent) -> None:
-        """Handle error occurred event."""
+    def _handle_error_occurred(self, sender, **kwargs):
+        """Handle error occurred signal."""
+        data = kwargs.get('data')
+        debug_print(f"[SIMPLE_CLI] Received signal: error_occurred")
         self.execution_complete = True
         self.execution_successful = False
         
-        print(f"❌ Error occurred: {event.error_message}")
-        if event.step_id:
-            print(f"   At step: {event.step_id}")
-        if event.error_type != "execution_error":
-            print(f"   Error type: {event.error_type}")
+        print(f"❌ Error occurred: {data.error_message}")
+        if data.step_id:
+            print(f"   At step: {data.step_id}")
+        if data.error_type != "execution_error":
+            print(f"   Error type: {data.error_type}")
     
-    def _handle_flow_cancelled(self, event: FlowCancelledEvent) -> None:
-        """Handle flow cancelled event."""
+    def _handle_flow_cancelled(self, sender, **kwargs):
+        """Handle flow cancelled signal."""
+        data = kwargs.get('data')
+        debug_print(f"[SIMPLE_CLI] Received signal: flow_cancelled")
         self.execution_complete = True
         self.execution_successful = False
         
-        print(f"⏹️  Flow '{event.flow_id}' cancelled: {event.reason}")
+        print(f"⏹️  Flow '{data.flow_id}' cancelled: {data.reason}")
     
     def load_system(self, system_path: Path) -> bool:
         """Load a system using the UI service."""
@@ -292,7 +395,7 @@ def execute_flow_interactively(
 def main():
     """Main entry point for the simple CLI."""
     parser = argparse.ArgumentParser(
-        description="Minimal GRIMOIRE CLI for engine development using the new UI service interface",
+        description="Minimal GRIMOIRE CLI for engine development using blinker signals",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:

@@ -19,18 +19,8 @@ from .ui_service import (
     StepInfo,
     Choice,
     InputType,
-    # Events
-    SystemLoadedEvent,
-    SessionCreatedEvent,
-    FlowStartedEvent,
-    StepStartedEvent,
-    StepCompletedEvent,
-    InputRequiredEvent,
-    ChoiceRequiredEvent,
-    FlowCompletedEvent,
-    ErrorOccurredEvent,
-    FlowCancelledEvent,
 )
+from . import event_signals
 from ..utils.debug import debug_print
 
 
@@ -41,7 +31,6 @@ class GrimoireUIService(UIServiceInterface):
         self.engine = GrimoireEngine()
         self.loaded_systems: Dict[str, System] = {}
         self.active_sessions: Dict[str, ExecutionSession] = {}
-        self.event_subscribers: List[Callable] = []
         self._session_lock = Lock()
         
         debug_print("[UI_SERVICE] GrimoireUIService initialized")
@@ -65,15 +54,14 @@ class GrimoireUIService(UIServiceInterface):
                 table_count=len(system.tables)
             )
             
-            # Publish system loaded event
-            event = SystemLoadedEvent(
+            # Publish system loaded event using blinker
+            event_signals.publish_system_loaded(
                 system_id=system.id,
                 system_name=system.name,
                 system_path=str(system_path),
                 flow_count=len(system.flows),
                 model_count=len(system.models)
             )
-            self._publish_event(event)
             
             debug_print(f"[UI_SERVICE] System loaded: {system.name} ({system.id})")
             return system_info
@@ -130,12 +118,12 @@ class GrimoireUIService(UIServiceInterface):
             self.active_sessions[session.session_id] = session
         
         # Publish session created event
-        event = SessionCreatedEvent(
+        # Publish session created event using blinker
+        event_signals.publish_session_created(
             session_id=session.session_id,
             system_id=system_id,
             flow_id=flow_id
         )
-        self._publish_event(event)
         
         # Start flow execution in background
         inputs = inputs or {}
@@ -239,35 +227,24 @@ class GrimoireUIService(UIServiceInterface):
             session = self.active_sessions[session_id]
             session.status = ExecutionStatus.CANCELLED
             
-            # Publish cancellation event
-            event = FlowCancelledEvent(
+            # Publish cancellation event using blinker
+            event_signals.publish_flow_cancelled(
                 session_id=session_id,
                 flow_id=session.flow_id,
                 reason="user_cancelled"
             )
-            self._publish_event(event)
             
             debug_print(f"[UI_SERVICE] Session {session_id} cancelled")
     
     def subscribe_to_events(self, handler: Callable) -> None:
-        """Subscribe to execution events."""
-        debug_print(f"[UI_SERVICE] Adding event subscriber: {handler}")
-        self.event_subscribers.append(handler)
+        """Subscribe to execution events (legacy - blinker signals are used instead)."""
+        debug_print(f"[UI_SERVICE] Legacy event subscription - use blinker signals directly")
+        pass
     
     def unsubscribe_from_events(self, handler: Callable) -> None:
-        """Unsubscribe from execution events."""
-        debug_print(f"[UI_SERVICE] Removing event subscriber: {handler}")
-        if handler in self.event_subscribers:
-            self.event_subscribers.remove(handler)
-    
-    def _publish_event(self, event) -> None:
-        """Publish an event to all subscribers."""
-        debug_print(f"[UI_SERVICE] Publishing event: {event.__class__.__name__}")
-        for handler in self.event_subscribers:
-            try:
-                handler(event)
-            except Exception as e:
-                debug_print(f"[UI_SERVICE] Error in event handler: {e}")
+        """Unsubscribe from execution events (legacy - blinker signals are used instead)."""
+        debug_print(f"[UI_SERVICE] Legacy event unsubscription - use blinker signals directly")
+        pass
     
     def _execute_flow_async(
         self, 
@@ -282,14 +259,13 @@ class GrimoireUIService(UIServiceInterface):
         try:
             session.status = ExecutionStatus.RUNNING
             
-            # Publish flow started event
-            event = FlowStartedEvent(
+            # Publish flow started event using blinker
+            event_signals.publish_flow_started(
                 session_id=session.session_id,
                 flow_id=flow_id,
                 system_id=system.id,
-                inputs=inputs
+                inputs=inputs or {}
             )
-            self._publish_event(event)
             
             # Create execution context
             context = self.engine.create_execution_context(system, **inputs)
@@ -323,20 +299,22 @@ class GrimoireUIService(UIServiceInterface):
                         prompt=getattr(step, 'prompt', None)
                     )
                     
-                    # Publish step started event
-                    event = StepStartedEvent(session.session_id, step_info)
-                    self._publish_event(event)
+                    # Publish step started event using blinker
+                    event_signals.publish_step_started(
+                        session_id=session.session_id,
+                        step_info=step_info
+                    )
                     
                     if not current_step_result.success:
                         session.status = ExecutionStatus.FAILED
                         session.error = current_step_result.error
                         
-                        event = ErrorOccurredEvent(
+                        # Publish error occurred event using blinker
+                        event_signals.publish_error_occurred(
                             session_id=session.session_id,
                             error_message=current_step_result.error,
                             step_id=current_step_result.step_id
                         )
-                        self._publish_event(event)
                         return
                     
                     # Handle input/choice requirements
@@ -368,13 +346,13 @@ class GrimoireUIService(UIServiceInterface):
                             # Store the step for choice processing
                             session._current_choice_step = step
                             
-                            event = ChoiceRequiredEvent(
+                            # Publish choice required event using blinker
+                            event_signals.publish_choice_required(
                                 session_id=session.session_id,
                                 step_info=step_info,
                                 prompt=current_step_result.prompt or "Make a choice:",
                                 choices=choices
                             )
-                            self._publish_event(event)
                             
                             # Wait for user choice
                             while session.requires_choice:
@@ -396,12 +374,12 @@ class GrimoireUIService(UIServiceInterface):
                                     session.status = ExecutionStatus.FAILED
                                     session.error = choice_result.error
                                     
-                                    event = ErrorOccurredEvent(
+                                    # Publish error occurred event using blinker
+                                    event_signals.publish_error_occurred(
                                         session_id=session.session_id,
                                         error_message=choice_result.error,
                                         step_id=current_step_result.step_id
                                     )
-                                    self._publish_event(event)
                                     return
                                 
                                 # Continue the step execution with the choice processed
@@ -419,13 +397,13 @@ class GrimoireUIService(UIServiceInterface):
                             elif step_type == "dice_roll":
                                 input_type = InputType.NUMBER
                             
-                            event = InputRequiredEvent(
+                            # Publish input required event using blinker
+                            event_signals.publish_input_required(
                                 session_id=session.session_id,
                                 step_info=step_info,
                                 prompt=current_step_result.prompt or "Enter input:",
                                 input_type=input_type.value
                             )
-                            self._publish_event(event)
                             
                             # Wait for user input
                             while session.requires_input:
@@ -436,14 +414,13 @@ class GrimoireUIService(UIServiceInterface):
                             # Input should be processed by the engine - continue with next iteration
                             continue
                     
-                    # Publish step completed event
-                    event = StepCompletedEvent(
+                    # Publish step completed event using blinker
+                    event_signals.publish_step_completed(
                         session_id=session.session_id,
                         step_info=step_info,
                         step_data=current_step_result.data,
                         next_step_id=current_step_result.next_step_id
                     )
-                    self._publish_event(event)
                     
                 except StopIteration:
                     # Flow completed successfully
@@ -454,14 +431,14 @@ class GrimoireUIService(UIServiceInterface):
             session.outputs = context.outputs.copy()
             session.variables.update(context.variables)
             
-            event = FlowCompletedEvent(
+            # Publish flow completed event using blinker
+            event_signals.publish_flow_completed(
                 session_id=session.session_id,
                 flow_id=flow_id,
                 outputs=session.outputs,
                 variables=session.variables,
                 step_count=step_count
             )
-            self._publish_event(event)
             
             debug_print(f"[UI_SERVICE] Flow execution completed for session {session.session_id}")
             
@@ -470,9 +447,9 @@ class GrimoireUIService(UIServiceInterface):
             session.status = ExecutionStatus.FAILED
             session.error = str(e)
             
-            event = ErrorOccurredEvent(
+            # Publish error occurred event using blinker
+            event_signals.publish_error_occurred(
                 session_id=session.session_id,
                 error_message=str(e),
                 error_type="execution_error"
             )
-            self._publish_event(event)

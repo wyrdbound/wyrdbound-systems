@@ -12,19 +12,6 @@ from .interfaces import (
     Choice,
     InputType,
 )
-from .events import (
-    ExecutionEvent,
-    StepStartedEvent,
-    StepCompletedEvent,
-    InputRequiredEvent,
-    ChoiceRequiredEvent,
-    FlowCompletedEvent,
-    ErrorOccurredEvent,
-    FlowStartedEvent,
-    FlowCancelledEvent,
-    SessionCreatedEvent,
-    SystemLoadedEvent,
-)
 from .commands import (
     Command,
     LoadSystemCommand,
@@ -36,6 +23,7 @@ from .commands import (
     ListFlowsCommand,
     ContinueExecutionCommand,
 )
+from . import event_signals
 from .ui_service_impl import GrimoireUIService
 
 __all__ = [
@@ -50,18 +38,6 @@ __all__ = [
     "StepInfo",
     "Choice",
     "InputType",
-    # Events
-    "ExecutionEvent",
-    "StepStartedEvent",
-    "StepCompletedEvent",
-    "InputRequiredEvent",
-    "ChoiceRequiredEvent",
-    "FlowCompletedEvent",
-    "ErrorOccurredEvent",
-    "FlowStartedEvent",
-    "FlowCancelledEvent",
-    "SessionCreatedEvent",
-    "SystemLoadedEvent",
     # Commands
     "Command",
     "LoadSystemCommand",
@@ -72,6 +48,8 @@ __all__ = [
     "GetExecutionStatusCommand",
     "ListFlowsCommand",
     "ContinueExecutionCommand",
+    # Blinker event signals
+    "event_signals",
     # Implementation
     "GrimoireUIService",
 ]
