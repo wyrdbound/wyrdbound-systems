@@ -204,16 +204,22 @@ class GrimoireUIService(UIServiceInterface):
             
             # Find the selected choice
             selected_choice = None
-            for choice in session.choices:
+            original_choice = None
+            for i, choice in enumerate(session.choices):
                 if choice.id == choice_id:
                     selected_choice = choice
+                    # Also try to find the original choice data if available
+                    if hasattr(session, '_original_choices') and i < len(session._original_choices):
+                        original_choice = session._original_choices[i]
                     break
             
             if not selected_choice:
                 raise ValueError(f"Choice '{choice_id}' not found in session '{session_id}'")
             
-            # Store the choice and mark as no longer requiring choice
+            # Store both the UI choice object and the choice ID for engine processing
             session.variables['user_choice'] = selected_choice
+            session._user_choice_id = choice_id  # Store for engine processing
+            
             session.requires_choice = False
             session.choice_prompt = None
             session.choices = []
@@ -290,113 +296,158 @@ class GrimoireUIService(UIServiceInterface):
             
             # Use step_through_flow for interactive execution
             step_count = 0
-            for step_result in self.engine.step_through_flow(flow_id, context, system):
-                step_count += 1
-                
-                # Update session progress
-                session.progress = ExecutionProgress(
-                    current_step=step_result.step_id,
-                    step_number=step_count,
-                    completed_steps=context.step_history.copy()
-                )
-                
-                # Get step info
-                flow = system.get_flow(flow_id)
-                step = flow.get_step(step_result.step_id)
-                step_info = StepInfo(
-                    id=step.id,
-                    name=getattr(step, 'name', None),
-                    type=str(step.type.value if hasattr(step.type, 'value') else step.type),
-                    description=getattr(step, 'description', None),
-                    prompt=getattr(step, 'prompt', None)
-                )
-                
-                # Publish step started event
-                event = StepStartedEvent(session.session_id, step_info)
-                self._publish_event(event)
-                
-                if not step_result.success:
-                    session.status = ExecutionStatus.FAILED
-                    session.error = step_result.error
+            flow = system.get_flow(flow_id)
+            step_generator = self.engine.step_through_flow(flow_id, context, system)
+            current_step_result = None
+            
+            while True:
+                try:
+                    # Get next step result from the generator
+                    current_step_result = next(step_generator)
+                    step_count += 1
                     
-                    event = ErrorOccurredEvent(
-                        session_id=session.session_id,
-                        error_message=step_result.error,
-                        step_id=step_result.step_id
+                    # Update session progress
+                    session.progress = ExecutionProgress(
+                        current_step=current_step_result.step_id,
+                        step_number=step_count,
+                        completed_steps=context.step_history.copy()
                     )
-                    self._publish_event(event)
-                    return
-                
-                # Handle input/choice requirements
-                if step_result.requires_input:
-                    session.status = ExecutionStatus.WAITING_FOR_INPUT
-                    session.requires_input = True
-                    session.input_prompt = step_result.prompt
-                    session.current_step = step_info
                     
-                    # Determine input type based on step type and data
-                    input_type = InputType.TEXT  # Default
-                    if hasattr(step_result, 'data') and step_result.data:
-                        if 'choices' in step_result.data:
+                    # Get step info
+                    step = flow.get_step(current_step_result.step_id)
+                    step_info = StepInfo(
+                        id=step.id,
+                        name=getattr(step, 'name', None),
+                        type=str(step.type.value if hasattr(step.type, 'value') else step.type),
+                        description=getattr(step, 'description', None),
+                        prompt=getattr(step, 'prompt', None)
+                    )
+                    
+                    # Publish step started event
+                    event = StepStartedEvent(session.session_id, step_info)
+                    self._publish_event(event)
+                    
+                    if not current_step_result.success:
+                        session.status = ExecutionStatus.FAILED
+                        session.error = current_step_result.error
+                        
+                        event = ErrorOccurredEvent(
+                            session_id=session.session_id,
+                            error_message=current_step_result.error,
+                            step_id=current_step_result.step_id
+                        )
+                        self._publish_event(event)
+                        return
+                    
+                    # Handle input/choice requirements
+                    if current_step_result.requires_input:
+                        session.current_step = step_info
+                        
+                        # Check step type first to determine if this is a choice step
+                        step_type = str(step.type.value if hasattr(step.type, 'value') else step.type)
+                        
+                        if step_type == "player_choice":
+                            # This is a choice step
                             session.status = ExecutionStatus.WAITING_FOR_CHOICE
-                            session.requires_input = False
                             session.requires_choice = True
-                            session.choice_prompt = step_result.prompt
+                            session.choice_prompt = current_step_result.prompt
                             
-                            # Convert choices from step result
+                            # Convert choices from step result choices (these are the resolved choices)
                             choices = []
-                            for i, choice_data in enumerate(step_result.data['choices']):
-                                if isinstance(choice_data, dict):
+                            if hasattr(current_step_result, 'choices') and current_step_result.choices:
+                                for i, choice_def in enumerate(current_step_result.choices):
                                     choice = Choice(
-                                        id=str(i),
-                                        label=choice_data.get('label', f'Choice {i+1}'),
-                                        description=choice_data.get('description'),
-                                        next_step=choice_data.get('next_step')
+                                        id=getattr(choice_def, 'id', str(i)),
+                                        label=getattr(choice_def, 'label', f'Choice {i+1}'),
+                                        description=getattr(choice_def, 'description', None),
+                                        next_step=getattr(choice_def, 'next_step', None)
                                     )
-                                else:
-                                    choice = Choice(
-                                        id=str(i),
-                                        label=str(choice_data),
-                                        description=None,
-                                        next_step=None
-                                    )
-                                choices.append(choice)
+                                    choices.append(choice)
                             
                             session.choices = choices
+                            # Store the step for choice processing
+                            session._current_choice_step = step
                             
                             event = ChoiceRequiredEvent(
                                 session_id=session.session_id,
                                 step_info=step_info,
-                                prompt=step_result.prompt or "Make a choice:",
+                                prompt=current_step_result.prompt or "Make a choice:",
                                 choices=choices
                             )
                             self._publish_event(event)
+                            
+                            # Wait for user choice
+                            while session.requires_choice:
+                                if session.status == ExecutionStatus.CANCELLED:
+                                    return
+                                time.sleep(0.1)  # Small delay to prevent busy waiting
+                            
+                            # Process the choice through the engine's choice executor
+                            if hasattr(session, '_user_choice_id'):
+                                choice_id = session._user_choice_id
+                                delattr(session, '_user_choice_id')
+                                
+                                # Use the engine's choice executor to process the choice
+                                from ..executors.choice_executor import ChoiceExecutor
+                                choice_executor = ChoiceExecutor(self.engine)
+                                choice_result = choice_executor.process_choice(choice_id, step, context, system)
+                                
+                                if not choice_result.success:
+                                    session.status = ExecutionStatus.FAILED
+                                    session.error = choice_result.error
+                                    
+                                    event = ErrorOccurredEvent(
+                                        session_id=session.session_id,
+                                        error_message=choice_result.error,
+                                        step_id=current_step_result.step_id
+                                    )
+                                    self._publish_event(event)
+                                    return
+                                
+                                # Continue the step execution with the choice processed
+                                current_step_result = choice_result
                         else:
+                            # This is a regular input step
+                            session.status = ExecutionStatus.WAITING_FOR_INPUT
+                            session.requires_input = True
+                            session.input_prompt = current_step_result.prompt
+                            
+                            # Determine input type based on step type
+                            input_type = InputType.TEXT  # Default
+                            if step_type == "player_input":
+                                input_type = InputType.TEXT
+                            elif step_type == "dice_roll":
+                                input_type = InputType.NUMBER
+                            
                             event = InputRequiredEvent(
                                 session_id=session.session_id,
                                 step_info=step_info,
-                                prompt=step_result.prompt or "Enter input:",
+                                prompt=current_step_result.prompt or "Enter input:",
                                 input_type=input_type.value
                             )
                             self._publish_event(event)
+                            
+                            # Wait for user input
+                            while session.requires_input:
+                                if session.status == ExecutionStatus.CANCELLED:
+                                    return
+                                time.sleep(0.1)  # Small delay to prevent busy waiting
+                            
+                            # Input should be processed by the engine - continue with next iteration
+                            continue
                     
-                    # Wait for user input/choice
-                    while session.requires_input or session.requires_choice:
-                        if session.status == ExecutionStatus.CANCELLED:
-                            return
-                        time.sleep(0.1)  # Small delay to prevent busy waiting
+                    # Publish step completed event
+                    event = StepCompletedEvent(
+                        session_id=session.session_id,
+                        step_info=step_info,
+                        step_data=current_step_result.data,
+                        next_step_id=current_step_result.next_step_id
+                    )
+                    self._publish_event(event)
                     
-                    # Continue with the provided input/choice
-                    continue
-                
-                # Publish step completed event
-                event = StepCompletedEvent(
-                    session_id=session.session_id,
-                    step_info=step_info,
-                    step_data=step_result.data,
-                    next_step_id=step_result.next_step_id
-                )
-                self._publish_event(event)
+                except StopIteration:
+                    # Flow completed successfully
+                    break
             
             # Flow completed successfully
             session.status = ExecutionStatus.COMPLETED
