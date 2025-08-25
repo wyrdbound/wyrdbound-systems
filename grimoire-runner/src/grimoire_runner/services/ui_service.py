@@ -36,6 +36,7 @@ from .commands import (
     ListFlowsCommand,
     ContinueExecutionCommand,
 )
+from .ui_service_impl import GrimoireUIService
 
 __all__ = [
     # Interfaces
@@ -71,4 +72,6 @@ __all__ = [
     "GetExecutionStatusCommand",
     "ListFlowsCommand",
     "ContinueExecutionCommand",
+    # Implementation
+    "GrimoireUIService",
 ]
