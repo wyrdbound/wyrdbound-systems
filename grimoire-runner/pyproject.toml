@@ -47,6 +47,7 @@ dev = [
 
 [project.scripts]
 grimoire-runner = "grimoire_runner.ui.cli:main"
+grimoire = "grimoire_runner.simple_cli:main"
 
 [project.urls]
 Homepage = "https://github.com/wyrdbound/wyrdbound-systems"

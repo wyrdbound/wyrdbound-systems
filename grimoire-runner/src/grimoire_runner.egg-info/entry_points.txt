@@ -1,2 +1,3 @@
 [console_scripts]
+grimoire = grimoire_runner.simple_cli:main
 grimoire-runner = grimoire_runner.ui.cli:main

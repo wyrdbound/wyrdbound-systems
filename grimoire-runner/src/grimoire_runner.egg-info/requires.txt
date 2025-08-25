@@ -7,6 +7,8 @@ langchain-anthropic>=0.1
 langchain-ollama>=0.1
 wyrdbound-dice>=0.0.1
 wyrdbound-rng>=0.0.1
+jsonschema>=4.0
+blinker>=1.7
 
 [dev]
 pytest>=7.0
