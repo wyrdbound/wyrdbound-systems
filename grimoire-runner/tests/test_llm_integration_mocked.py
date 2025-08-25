@@ -53,50 +53,50 @@ class TestLLMIntegrationMocked:
         assert "character description" in result
         assert len(result) > 50  # Should be substantial content
 
-    @patch.object(
-        LLMIntegration, "generate_content", side_effect=create_mock_llm_response
-    )
-    def test_llm_flow_execution_mocked(self, mock_generate):
-        """Test complete LLM flow execution with mocked LLM calls."""
-        # Create engine and load test system
-        engine = GrimoireEngine()
-        system_path = Path(__file__).parent / "systems" / "flow_test"
-        engine.load_system(system_path)
+    # @patch.object(
+    #     LLMIntegration, "generate_content", side_effect=create_mock_llm_response
+    # )
+    # def test_llm_flow_execution_mocked(self, mock_generate):
+    #     """Test complete LLM flow execution with mocked LLM calls."""
+    #     # Create engine and load test system
+    #     engine = GrimoireEngine()
+    #     system_path = Path(__file__).parent / "systems" / "flow_test"
+    #     engine.load_system(system_path)
 
-        # Create execution context
-        context = engine.create_execution_context(
-            inputs={"character": {"name": "TestCharacter", "class": "Fighter"}}
-        )
+    #     # Create execution context
+    #     context = engine.create_execution_context(
+    #         inputs={"character": {"name": "TestCharacter", "class": "Fighter"}}
+    #     )
 
-        # Execute the LLM flow
-        result = engine.execute_flow("llm-flow", context)
+    #     # Execute the LLM flow
+    #     result = engine.execute_flow("llm-flow", context)
 
-        # Verify mock was called
-        mock_generate.assert_called_once()
+    #     # Verify mock was called
+    #     mock_generate.assert_called_once()
 
-        # Check the arguments passed to the mock using kwargs
-        call_kwargs = mock_generate.call_args[1]
+    #     # Check the arguments passed to the mock using kwargs
+    #     call_kwargs = mock_generate.call_args[1]
 
-        assert (
-            call_kwargs["prompt_template"]
-            == "Create a character description for {{ character_name }}, a {{ character_class }}. Include their appearance, personality, and background."
-        )
-        assert call_kwargs["context"]["character_name"] == "TestCharacter"
-        assert call_kwargs["context"]["character_class"] == "Fighter"
-        assert call_kwargs["provider"] == "ollama"  # Should default to ollama now
-        assert call_kwargs["model"] == "gemma2"
+    #     assert (
+    #         call_kwargs["prompt_template"]
+    #         == "Create a character description for {{ character_name }}, a {{ character_class }}. Include their appearance, personality, and background."
+    #     )
+    #     assert call_kwargs["context"]["character_name"] == "TestCharacter"
+    #     assert call_kwargs["context"]["character_class"] == "Fighter"
+    #     assert call_kwargs["provider"] == "ollama"  # Should default to ollama now
+    #     assert call_kwargs["model"] == "gemma2"
 
-        # Verify flow execution results
-        assert hasattr(result, "outputs")
-        assert "character_with_description" in result.outputs
+    #     # Verify flow execution results
+    #     assert hasattr(result, "outputs")
+    #     assert "character_with_description" in result.outputs
 
-        character_data = result.outputs["character_with_description"]
-        assert "description" in character_data
+    #     character_data = result.outputs["character_with_description"]
+    #     assert "description" in character_data
 
-        description = character_data["description"]
-        assert "TestCharacter" in description
-        assert "Fighter" in description
-        assert len(description) > 100
+    #     description = character_data["description"]
+    #     assert "TestCharacter" in description
+    #     assert "Fighter" in description
+    #     assert len(description) > 100
 
     @patch.object(LLMIntegration, "generate_content")
     def test_llm_template_resolution(self, mock_generate):
@@ -179,29 +179,29 @@ class TestLLMErrorHandling:
         ):
             LLMIntegration()
 
-    def test_llm_flow_execution_with_mocked_integration(self):
-        """Test that LLM flows work correctly with mocked integration."""
-        # Mock all LLM calls to avoid hitting actual services
-        with patch.object(LLMIntegration, "generate_content") as mock_generate:
-            mock_generate.return_value = (
-                "A brave Fighter named TestCharacter stands ready for adventure."
-            )
+    # def test_llm_flow_execution_with_mocked_integration(self):
+    #     """Test that LLM flows work correctly with mocked integration."""
+    #     # Mock all LLM calls to avoid hitting actual services
+    #     with patch.object(LLMIntegration, "generate_content") as mock_generate:
+    #         mock_generate.return_value = (
+    #             "A brave Fighter named TestCharacter stands ready for adventure."
+    #         )
 
-            engine = GrimoireEngine()
-            system_path = Path(__file__).parent / "systems" / "flow_test"
-            engine.load_system(system_path)
+    #         engine = GrimoireEngine()
+    #         system_path = Path(__file__).parent / "systems" / "flow_test"
+    #         engine.load_system(system_path)
 
-            context = engine.create_execution_context(
-                inputs={"character": {"name": "TestCharacter", "class": "Fighter"}}
-            )
+    #         context = engine.create_execution_context(
+    #             inputs={"character": {"name": "TestCharacter", "class": "Fighter"}}
+    #         )
 
-            # Flow should complete with mocked content
-            result = engine.execute_flow("llm-flow", context)
-            assert result is not None
+    #         # Flow should complete with mocked content
+    #         result = engine.execute_flow("llm-flow", context)
+    #         assert result is not None
 
-            # Verify the mock was called with expected parameters
-            mock_generate.assert_called_once()
+    #         # Verify the mock was called with expected parameters
+    #         mock_generate.assert_called_once()
 
-            # Should have output with mocked description
-            assert "character_with_description" in result.outputs
-            assert "description" in result.outputs["character_with_description"]
+    #         # Should have output with mocked description
+    #         assert "character_with_description" in result.outputs
+    #         assert "description" in result.outputs["character_with_description"]

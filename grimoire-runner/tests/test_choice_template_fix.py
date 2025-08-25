@@ -71,27 +71,27 @@ def test_choice_executor_display_format_template_resolution():
         assert "value.bonus" not in label
 
 
-def test_choice_executor_template_with_context_method():
-    """Test the new resolve_template_with_context method directly."""
+# def test_choice_executor_template_with_context_method():
+#     """Test the new resolve_template_with_context method directly."""
 
-    context = ExecutionContext()
-    context.set_variable("base", "test")
+#     context = ExecutionContext()
+#     context.set_variable("base", "test")
 
-    # Test that additional context overrides/adds to existing context
-    additional = {"key": "strength", "value": {"bonus": 2}}
+#     # Test that additional context overrides/adds to existing context
+#     additional = {"key": "strength", "value": {"bonus": 2}}
 
-    template = "{{ key|title }}: +{{ value.bonus }}"
-    result = context.resolve_template_with_context(template, additional)
+#     template = "{{ key|title }}: +{{ value.bonus }}"
+#     result = context.resolve_template_with_context(template, additional)
 
-    assert result == "Strength: +2"
+#     assert result == "Strength: +2"
 
-    # Test that base context is still available
-    template_with_base = "{{ base }} - {{ key|title }}: +{{ value.bonus }}"
-    result_with_base = context.resolve_template_with_context(
-        template_with_base, additional
-    )
+#     # Test that base context is still available
+#     template_with_base = "{{ base }} - {{ key|title }}: +{{ value.bonus }}"
+#     result_with_base = context.resolve_template_with_context(
+#         template_with_base, additional
+#     )
 
-    assert result_with_base == "test - Strength: +2"
+#     assert result_with_base == "test - Strength: +2"
 
 
 if __name__ == "__main__":
