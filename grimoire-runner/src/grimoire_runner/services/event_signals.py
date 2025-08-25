@@ -1,4 +1,9 @@
-"""Blinker-based event system for UI/Engine communication."""
+"""Unified Blinker-based event system for GRIMOIRE Engine.
+
+This module provides two categories of events:
+1. Core/Engine Events: Internal engine operations (value updates, model changes)
+2. UI/Service Events: External communication for UI clients (flow lifecycle, user interactions)
+"""
 
 from blinker import Namespace
 from dataclasses import dataclass
@@ -7,10 +12,17 @@ from typing import Any, Dict, List, Optional
 
 from .interfaces import Choice, StepInfo
 
-# Create a namespace for our signals
-ui_signals = Namespace()
+# Create namespaces for different event categories
+core_signals = Namespace()  # Internal engine events
+ui_signals = Namespace()    # UI/service events
 
-# Define signals for each event type
+# Core/Engine signals for internal operations
+value_set = core_signals.signal('value-set')
+field_computed = core_signals.signal('field-computed')
+model_updated = core_signals.signal('model-updated')
+step_executed = core_signals.signal('step-executed')
+
+# UI/Service signals for external communication
 system_loaded = ui_signals.signal('system-loaded')
 session_created = ui_signals.signal('session-created')
 flow_started = ui_signals.signal('flow-started')
@@ -22,6 +34,70 @@ flow_completed = ui_signals.signal('flow-completed')
 error_occurred = ui_signals.signal('error-occurred')
 flow_cancelled = ui_signals.signal('flow-cancelled')
 
+
+# ============================================================================
+# Core/Engine Event Data Classes
+# ============================================================================
+
+@dataclass
+class ValueSetData:
+    """Data for value set events (core engine)."""
+    path: str
+    value: Any
+    old_value: Any = None
+    context_id: Optional[str] = None
+    timestamp: Optional[datetime] = None
+    
+    def __post_init__(self):
+        if self.timestamp is None:
+            self.timestamp = datetime.now()
+
+
+@dataclass
+class FieldComputedData:
+    """Data for field computed events (core engine)."""
+    path: str
+    computed_value: Any
+    source_fields: List[str]
+    context_id: Optional[str] = None
+    timestamp: Optional[datetime] = None
+    
+    def __post_init__(self):
+        if self.timestamp is None:
+            self.timestamp = datetime.now()
+
+
+@dataclass
+class ModelUpdatedData:
+    """Data for model updated events (core engine)."""
+    model_type: str
+    instance_path: str
+    fields_changed: List[str]
+    context_id: Optional[str] = None
+    timestamp: Optional[datetime] = None
+    
+    def __post_init__(self):
+        if self.timestamp is None:
+            self.timestamp = datetime.now()
+
+
+@dataclass
+class StepExecutedData:
+    """Data for step executed events (core engine)."""
+    step_type: str
+    step_id: str
+    result: Any
+    context_id: Optional[str] = None
+    timestamp: Optional[datetime] = None
+    
+    def __post_init__(self):
+        if self.timestamp is None:
+            self.timestamp = datetime.now()
+
+
+# ============================================================================
+# UI/Service Event Data Classes
+# ============================================================================
 
 @dataclass
 class SystemLoadedData:
@@ -163,7 +239,10 @@ class FlowCancelledData:
             self.timestamp = datetime.now()
 
 
-# Event helper functions for easy publishing
+# ============================================================================
+# UI/Service Event Publishing Functions
+# ============================================================================
+
 def publish_system_loaded(system_id: str, system_name: str, system_path: str, 
                          flow_count: int, model_count: int) -> None:
     """Publish a system loaded event."""
@@ -276,3 +355,54 @@ def publish_flow_cancelled(session_id: str, flow_id: str, reason: str = "user_ca
         reason=reason
     )
     flow_cancelled.send(data=data)
+
+
+# ============================================================================
+# Core/Engine Event Publishing Functions
+# ============================================================================
+
+def publish_value_set(path: str, value: Any, old_value: Any = None, context_id: Optional[str] = None) -> None:
+    """Publish a value set event (core engine)."""
+    data = ValueSetData(
+        path=path,
+        value=value,
+        old_value=old_value,
+        context_id=context_id
+    )
+    value_set.send(data=data)
+
+
+def publish_field_computed(path: str, computed_value: Any, source_fields: List[str], 
+                          context_id: Optional[str] = None) -> None:
+    """Publish a field computed event (core engine)."""
+    data = FieldComputedData(
+        path=path,
+        computed_value=computed_value,
+        source_fields=source_fields,
+        context_id=context_id
+    )
+    field_computed.send(data=data)
+
+
+def publish_model_updated(model_type: str, instance_path: str, fields_changed: List[str],
+                         context_id: Optional[str] = None) -> None:
+    """Publish a model updated event (core engine)."""
+    data = ModelUpdatedData(
+        model_type=model_type,
+        instance_path=instance_path,
+        fields_changed=fields_changed,
+        context_id=context_id
+    )
+    model_updated.send(data=data)
+
+
+def publish_step_executed(step_type: str, step_id: str, result: Any, 
+                         context_id: Optional[str] = None) -> None:
+    """Publish a step executed event (core engine)."""
+    data = StepExecutedData(
+        step_type=step_type,
+        step_id=step_id,
+        result=result,
+        context_id=context_id
+    )
+    step_executed.send(data=data)

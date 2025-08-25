@@ -11,7 +11,8 @@ if TYPE_CHECKING:
     from .model import ModelDefinition
 
 # Import events at module level to avoid circular imports
-from ..events import FieldComputedEvent, ValueSetEvent, events
+from ..services import event_signals
+from ..services.event_signals import FieldComputedData, ValueSetData
 
 logger = logging.getLogger(__name__)
 
@@ -180,15 +181,11 @@ class DerivedFieldManager:
         )
 
         # Emit value set event
-        events.emit(
-            'value_set',
-            sender=self,
-            event_data=ValueSetEvent(
-                path=field_name,
-                value=value,
-                old_value=old_value,
-                context_id=self.execution_context.id
-            )
+        event_signals.publish_value_set(
+            path=field_name,
+            value=value,
+            old_value=old_value,
+            context_id=self.execution_context.id
         )
 
         # Then create/update observable which will trigger recomputation
@@ -294,15 +291,11 @@ class DerivedFieldManager:
             )
 
             # Emit field computed event
-            events.emit(
-                'field_computed',
-                sender=self,
-                event_data=FieldComputedEvent(
-                    path=field,
-                    computed_value=result,
-                    source_fields=dependencies,
-                    context_id=self.execution_context.id
-                )
+            event_signals.publish_field_computed(
+                path=field,
+                computed_value=result,
+                source_fields=list(dependencies),
+                context_id=self.execution_context.id
             )
 
             # Create/update observable for this computed field

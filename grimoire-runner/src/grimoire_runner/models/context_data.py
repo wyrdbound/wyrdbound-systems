@@ -16,6 +16,7 @@ from ..services.path_resolver import PathResolver
 from .flow_namespace import FlowNamespaceManager
 from ..utils.debug import debug_print
 from .template_resolver import TemplateResolver
+from ..services import event_signals
 
 if TYPE_CHECKING:
     from .observable import DerivedFieldManager
@@ -98,7 +99,21 @@ class ExecutionContext:
 
     def set_variable(self, path: str, value: Any) -> None:
         """Set a variable at the specified path."""
+        # Get old value for event
+        old_value = self.path_resolver.get_value(self, f"variables.{path}", None)
+        
+        # Set the new value
         self.path_resolver.set_value(self, f"variables.{path}", value)
+        
+        # Publish value set event
+        event_signals.publish_value_set(
+            path=f"variables.{path}",
+            value=value,
+            old_value=old_value,
+            context_id=getattr(self, 'execution_id', self.id)
+        )
+        
+        debug_print(f"[CONTEXT] Variable set: variables.{path} = {value}")
 
     def get_variable(self, path: str, default: Any = None) -> Any:
         """Get a variable at the specified path."""
@@ -110,7 +125,21 @@ class ExecutionContext:
 
     def set_output(self, path: str, value: Any) -> None:
         """Set an output at the specified path, triggering derived field computation if applicable."""
+        # Get old value for event
+        old_value = self.path_resolver.get_value(self, f"outputs.{path}", None)
+        
+        # Set the new value
         self.path_resolver.set_value(self, f"outputs.{path}", value)
+        
+        # Publish value set event
+        event_signals.publish_value_set(
+            path=f"outputs.{path}",
+            value=value,
+            old_value=old_value,
+            context_id=getattr(self, 'execution_id', self.id)
+        )
+        
+        debug_print(f"[CONTEXT] Output set: outputs.{path} = {value}")
 
     def set_output_with_observables(self, path: str, value: Any) -> None:
         """Set an output and trigger observable updates."""

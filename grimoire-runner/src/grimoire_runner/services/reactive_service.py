@@ -3,7 +3,8 @@
 import logging
 from typing import TYPE_CHECKING
 
-from ..events import FieldComputedEvent, ValueSetEvent, events
+from . import event_signals
+from .event_signals import ValueSetData, FieldComputedData
 
 if TYPE_CHECKING:
     from ..models.observable import DerivedFieldManager
@@ -21,10 +22,10 @@ class ReactiveFieldService:
     def _setup_event_listeners(self):
         """Setup event listeners for reactive field computation."""
         # Listen for value set events to trigger derived field computation
-        events.on('value_set', self._on_value_set)
+        event_signals.value_set.connect(self._on_value_set)
 
         # Listen for field computed events for logging/debugging
-        events.on('field_computed', self._on_field_computed)
+        event_signals.field_computed.connect(self._on_field_computed)
 
     def register_field_manager(self, context_id: str, field_manager: 'DerivedFieldManager'):
         """Register a field manager for a specific context."""
@@ -39,7 +40,7 @@ class ReactiveFieldService:
 
     def _on_value_set(self, sender, **kwargs):
         """Handle value set events."""
-        event_data: ValueSetEvent = kwargs.get('event_data')
+        event_data: ValueSetData = kwargs.get('data')
         if not event_data:
             return
 
@@ -64,7 +65,7 @@ class ReactiveFieldService:
 
     def _on_field_computed(self, sender, **kwargs):
         """Handle field computed events for logging."""
-        event_data: FieldComputedEvent = kwargs.get('event_data')
+        event_data: FieldComputedData = kwargs.get('data')
         if not event_data:
             return
 

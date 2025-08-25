@@ -11,6 +11,7 @@ from ..models.context_data import ExecutionContext
 from ..models.flow import FlowDefinition, FlowResult, StepResult
 from ..models.system import System
 from .loader import SystemLoader
+from ..services import event_signals
 
 logger = logging.getLogger(__name__)
 
@@ -99,6 +100,8 @@ class GrimoireEngine:
         self, flow_id: str, context: ExecutionContext, system: System | None = None
     ) -> FlowResult:
         """Execute a complete flow and return the result."""
+        from ..utils.debug import debug_print
+        
         if system is None:
             # Try to find the system from loaded systems
             systems = self.loader.list_loaded_systems()
@@ -110,13 +113,16 @@ class GrimoireEngine:
         if not flow:
             raise ValueError(f"Flow '{flow_id}' not found in system")
 
-        logger.debug(f"Executing flow: {flow.name} ({flow_id})")
+        debug_print(f"[ENGINE] Executing flow: {flow.name} ({flow_id})")
 
         # Create unique execution namespace for this flow
         import uuid
 
         execution_id = str(uuid.uuid4())[:8]
         namespace_id = f"flow_{execution_id}"
+        
+        # Add execution ID to context for event tracking
+        context.execution_id = execution_id
 
         # Create isolated namespace for this flow execution
         context.create_flow_namespace(namespace_id, flow_id, execution_id)
@@ -146,7 +152,7 @@ class GrimoireEngine:
             for output_def in flow.outputs:
                 if output_def.type in system.models:
                     model = system.models[output_def.type]
-                    logger.debug(
+                    debug_print(
                         f"Initializing model observables for {output_def.type} ({output_def.id})"
                     )
                     # Create a generic model resolver function
@@ -172,13 +178,15 @@ class GrimoireEngine:
                     step_results.append(step_result)
 
                     if not step_result.success:
-                        return FlowResult(
+                        flow_result = FlowResult(
                             flow_id=flow_id,
                             success=False,
                             error=step_result.error,
                             step_results=step_results,
                             completed_at_step=current_step_id,
                         )
+                        
+                        return flow_result
 
                     # Handle user input requirements
                     if step_result.requires_input:
@@ -200,16 +208,19 @@ class GrimoireEngine:
                     raise
                 except Exception as e:
                     logger.error(f"Error executing step {current_step_id}: {e}")
-                    return FlowResult(
+                    
+                    flow_result = FlowResult(
                         flow_id=flow_id,
                         success=False,
                         error=str(e),
                         step_results=step_results,
                         completed_at_step=current_step_id,
                     )
+                    
+                    return flow_result
 
             # Compute all derived fields before extracting outputs
-            logger.debug("Computing derived fields after flow execution")
+            debug_print("Computing derived fields after flow execution")
             context.compute_derived_fields()
 
             # Copy flow outputs from namespace to root level for result
@@ -226,21 +237,24 @@ class GrimoireEngine:
                 flow_namespace_data["variables"].copy() if flow_namespace_data else {}
             )
 
-            logger.debug(
+            debug_print(
                 f"Flow execution completed: {flow_id} (namespace: {namespace_id})"
             )
-            return FlowResult(
+            
+            flow_result = FlowResult(
                 flow_id=flow_id,
                 success=True,
                 outputs=outputs,
                 variables=variables,
                 step_results=step_results,
             )
+            
+            return flow_result
 
         finally:
             # Clean up the flow namespace
             context.pop_flow_namespace()
-            logger.debug(f"Cleaned up flow namespace: {namespace_id}")
+            debug_print(f"Cleaned up flow namespace: {namespace_id}")
 
     def step_through_flow(
         self, flow_id: str, context: ExecutionContext, system: System | None = None
@@ -303,28 +317,53 @@ class GrimoireEngine:
         self, step, context: ExecutionContext, system: System
     ) -> StepResult:
         """Execute a single step."""
+        from ..utils.debug import debug_print
+        
         step_type = step.type.value if hasattr(step.type, "value") else str(step.type)
-
+        
+        debug_print(f"[ENGINE] Executing step {step.id} (type: {step_type})")
         # Check step condition
         if step.condition:
             try:
                 condition_result = context.resolve_template(step.condition)
                 if not condition_result:
-                    logger.debug(
+                    debug_print(
                         f"Step {step.id} skipped due to condition: {step.condition}"
                     )
-                    return StepResult(
+                    
+                    result = StepResult(
                         step_id=step.id,
                         success=True,
                         data={"skipped": True, "reason": "condition_false"},
                     )
+                    
+                    # Publish step executed event for skipped step
+                    event_signals.publish_step_executed(
+                        step_type=step_type,
+                        step_id=step.id,
+                        result=result.data,
+                        context_id=getattr(context, 'execution_id', None)
+                    )
+                    
+                    return result
             except Exception as e:
                 logger.error(f"Error evaluating condition for step {step.id}: {e}")
-                return StepResult(
+                
+                error_result = StepResult(
                     step_id=step.id,
                     success=False,
                     error=f"Condition evaluation failed: {e}",
                 )
+                
+                # Publish step executed event for failed condition
+                event_signals.publish_step_executed(
+                    step_type=step_type,
+                    step_id=step.id,
+                    result={"error": error_result.error},
+                    context_id=getattr(context, 'execution_id', None)
+                )
+                
+                return error_result
 
         # Get the appropriate executor
         executor = self.executors.get(step_type)
@@ -336,6 +375,8 @@ class GrimoireEngine:
         # Execute the step
         try:
             result = executor.execute(step, context, system)
+            
+            debug_print(f"[ENGINE] Step {step.id} executed with success: {result.success}")
 
             # Resolve result message template if present
             if step.result_message and result.success:
@@ -372,22 +413,41 @@ class GrimoireEngine:
                 and not result.requires_input
                 and not actions_already_handled
             ):
-                logger.debug(
+                debug_print(
                     f"Engine executing {len(step.actions)} post-step actions for step {step.id}"
                 )
                 self.action_executor.execute_actions(
                     step.actions, context, result.data, system
                 )
             elif actions_already_handled:
-                logger.debug(
+                debug_print(
                     f"Skipping post-step actions for step {step.id} - already handled by executor"
                 )
+
+            # Publish step executed event
+            event_signals.publish_step_executed(
+                step_type=step_type,
+                step_id=step.id,
+                result=result.data,
+                context_id=getattr(context, 'execution_id', None)
+            )
 
             return result
 
         except Exception as e:
             logger.error(f"Error executing step {step.id}: {e}")
-            return StepResult(step_id=step.id, success=False, error=str(e))
+            
+            error_result = StepResult(step_id=step.id, success=False, error=str(e))
+            
+            # Publish step executed event for error
+            event_signals.publish_step_executed(
+                step_type=step_type,
+                step_id=step.id,
+                result={"error": str(e)},
+                context_id=getattr(context, 'execution_id', None)
+            )
+            
+            return error_result
 
     def get_available_flows(self, system: System | None = None) -> list[FlowDefinition]:
         """Get all available flows from a system."""
