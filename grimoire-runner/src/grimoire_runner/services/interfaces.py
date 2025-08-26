@@ -57,6 +57,7 @@ class StepInfo:
     type: str = "unknown"
     description: Optional[str] = None
     prompt: Optional[str] = None
+    step_number: Optional[int] = None  # Execution order number (1-based)
 
 
 @dataclass

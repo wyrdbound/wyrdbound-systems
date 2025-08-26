@@ -147,6 +147,7 @@ class StepStartedData:
     """Data for step started events."""
     session_id: str
     step_info: StepInfo
+    step_number: int  # Execution order number (1-based)
     timestamp: Optional[datetime] = None
     
     def __post_init__(self):
@@ -159,6 +160,7 @@ class StepCompletedData:
     """Data for step completed events."""
     session_id: str
     step_info: StepInfo
+    step_number: int  # Execution order number (1-based)
     step_data: Optional[Dict[str, Any]] = None
     next_step_id: Optional[str] = None
     timestamp: Optional[datetime] = None
@@ -277,21 +279,23 @@ def publish_flow_started(session_id: str, flow_id: str, system_id: str, inputs: 
     flow_started.send(data=data)
 
 
-def publish_step_started(session_id: str, step_info: StepInfo) -> None:
+def publish_step_started(session_id: str, step_info: StepInfo, step_number: int) -> None:
     """Publish a step started event."""
     data = StepStartedData(
         session_id=session_id,
-        step_info=step_info
+        step_info=step_info,
+        step_number=step_number
     )
     step_started.send(data=data)
 
 
-def publish_step_completed(session_id: str, step_info: StepInfo, step_data: Optional[Dict[str, Any]] = None,
+def publish_step_completed(session_id: str, step_info: StepInfo, step_number: int, step_data: Optional[Dict[str, Any]] = None,
                           next_step_id: Optional[str] = None) -> None:
     """Publish a step completed event."""
     data = StepCompletedData(
         session_id=session_id,
         step_info=step_info,
+        step_number=step_number,
         step_data=step_data,
         next_step_id=next_step_id
     )

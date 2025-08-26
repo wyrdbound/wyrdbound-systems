@@ -296,13 +296,15 @@ class GrimoireUIService(UIServiceInterface):
                         name=getattr(step, 'name', None),
                         type=str(step.type.value if hasattr(step.type, 'value') else step.type),
                         description=getattr(step, 'description', None),
-                        prompt=getattr(step, 'prompt', None)
+                        prompt=getattr(step, 'prompt', None),
+                        step_number=step_count
                     )
                     
                     # Publish step started event using blinker
                     event_signals.publish_step_started(
                         session_id=session.session_id,
-                        step_info=step_info
+                        step_info=step_info,
+                        step_number=step_count
                     )
                     
                     if not current_step_result.success:
@@ -418,6 +420,7 @@ class GrimoireUIService(UIServiceInterface):
                     event_signals.publish_step_completed(
                         session_id=session.session_id,
                         step_info=step_info,
+                        step_number=step_count,
                         step_data=current_step_result.data,
                         next_step_id=current_step_result.next_step_id
                     )

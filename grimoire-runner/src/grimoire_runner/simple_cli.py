@@ -80,7 +80,8 @@ class SimpleEventCLI:
         data = kwargs.get('data')
         debug_print(f"[SIMPLE_CLI] Received signal: step_started")
         step = data.step_info
-        print(f"\n📋 Step: {step.id} ({step.type})")
+        step_number = data.step_number
+        print(f"\n📋 Step {step_number}: {step.id} ({step.type})")
         if step.name:
             print(f"   Name: {step.name}")
         if step.description:
@@ -91,7 +92,8 @@ class SimpleEventCLI:
         data = kwargs.get('data')
         debug_print(f"[SIMPLE_CLI] Received signal: step_completed")
         step = data.step_info
-        print(f"✅ Step {step.id} completed")
+        step_number = data.step_number
+        print(f"✅ Step {step_number} ({step.id}) completed")
         
         # Show any result data (excluding internal fields)
         if data.step_data:
