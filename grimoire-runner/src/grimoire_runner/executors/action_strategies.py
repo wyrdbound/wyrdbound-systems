@@ -721,24 +721,33 @@ class SwapValuesActionStrategy(ActionStrategy):
         system: "System | None" = None,
     ) -> None:
         """Execute a swap_values action."""
+        debug_print(f"[SWAP_ACTION] SwapValuesActionStrategy.execute called with action_data: {action_data}")
+        
         # Swap values between two paths
         path1 = action_data.get("path1", "")
         path2 = action_data.get("path2", "")
+        
+        debug_print(f"[SWAP_ACTION] Raw paths - path1: '{path1}', path2: '{path2}'")
 
         # Resolve templates in the paths
         path1 = context.resolve_template(path1)
         path2 = context.resolve_template(path2)
+        
+        debug_print(f"[SWAP_ACTION] Resolved paths - path1: '{path1}', path2: '{path2}'")
 
         try:
             # Get values from both paths
             value1 = context.resolve_path_value(path1)
             value2 = context.resolve_path_value(path2)
+            
+            debug_print(f"[SWAP_ACTION] Current values - path1 value: {value1}, path2 value: {value2}")
 
             # Swap them
             self._set_value_at_path(context, path1, value2)
             self._set_value_at_path(context, path2, value1)
 
-            logger.debug(f"Swapped values: {path1} <-> {path2}")
+            debug_print(f"[SWAP_ACTION] Swapped values: {path1} <-> {path2}")
+            debug_print(f"[SWAP_ACTION] After swap - setting {path1} = {value2}, {path2} = {value1}")
 
         except Exception as e:
             logger.error(f"Error swapping values between {path1} and {path2}: {e}")

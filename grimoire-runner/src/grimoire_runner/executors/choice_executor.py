@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING, Any
 
 from .base import BaseStepExecutor
 from .flow_helper import create_flow_helper
+from ..utils.debug import debug_print
 
 if TYPE_CHECKING:
     from ..models.context_data import ExecutionContext
@@ -40,9 +41,6 @@ class ChoiceExecutor(BaseStepExecutor):
             if step.pre_actions:
                 self._execute_pre_actions(step.pre_actions, context)
 
-            # For now, we'll return a result that requires user input
-            # In an interactive environment, this would present choices to the user
-
             # Resolve choice source if specified
             choices = step.choices
             selection_count = 1  # Default to single selection
@@ -73,18 +71,77 @@ class ChoiceExecutor(BaseStepExecutor):
             for i, choice in enumerate(resolved_choices):
                 logger.debug(f"  {i + 1}. {choice.label}")
 
-            return StepResult(
-                step_id=step.id,
-                success=True,
-                requires_input=True,
-                prompt=step.prompt,
-                choices=resolved_choices,
-                data={
-                    "choice_count": len(resolved_choices),
-                    "selection_count": selection_count,
-                    "has_choice_source": bool(step.choice_source),
-                },
-            )
+            # Check if user input is already available in the context
+            user_choice_id = context.get_variable("pending_user_choice_id")
+            user_choice_ids = context.get_variable("pending_user_choice_ids")
+            
+            if selection_count > 1 and user_choice_ids is not None:
+                # Process multiple choice selection
+                debug_print(f"[CHOICE_EXECUTOR] MULTIPLE CHOICE PATH - Processing multiple user choices: {user_choice_ids}")
+                debug_print(f"[CHOICE_EXECUTOR] MULTIPLE CHOICE PATH - selection_count: {selection_count}")
+                
+                # Clear the pending input
+                context.set_variable("pending_user_choice_ids", None)
+                
+                # Set the results variable for multiple choices
+                context.set_variable("results", user_choice_ids)
+                
+                # Debug: Check if step has actions
+                debug_print(f"[CHOICE_EXECUTOR] Step {step.id} step object: {step}")
+                debug_print(f"[CHOICE_EXECUTOR] Step {step.id} step dir: {dir(step)}")
+                debug_print(f"[CHOICE_EXECUTOR] Step {step.id} has actions: {step.actions is not None}")
+                if hasattr(step, 'actions') and step.actions:
+                    debug_print(f"[CHOICE_EXECUTOR] Step {step.id} actions count: {len(step.actions)}")
+                    debug_print(f"[CHOICE_EXECUTOR] Step {step.id} actions: {step.actions}")
+                else:
+                    debug_print(f"[CHOICE_EXECUTOR] Step {step.id} has no actions or actions is None")
+                
+                # Execute step-level actions if present
+                actions_already_executed = False
+                if hasattr(step, 'actions') and step.actions:
+                    debug_print(f"[CHOICE_EXECUTOR] Executing {len(step.actions)} step actions after multiple choice")
+                    step_result_data = {"results": user_choice_ids}
+                    self.action_executor.execute_actions(step.actions, context, step_result_data, system)
+                    debug_print(f"[CHOICE_EXECUTOR] Finished executing step actions for {step.id}")
+                    actions_already_executed = True
+                else:
+                    debug_print(f"[CHOICE_EXECUTOR] No step actions to execute for {step.id}")
+                
+                # Return successful result with next_step_id if specified
+                result = StepResult(
+                    step_id=step.id,
+                    success=True,
+                    data={"results": user_choice_ids},
+                    next_step_id=step.next_step
+                )
+                result.actions_already_executed = actions_already_executed
+                return result
+                
+            elif selection_count == 1 and user_choice_id is not None:
+                # Process single choice selection
+                logger.debug(f"Processing user choice: {user_choice_id}")
+                
+                # Clear the pending input
+                context.set_variable("pending_user_choice_id", None)
+                
+                # Process the choice using existing logic
+                choice_result = self.process_choice(user_choice_id, step, context, system)
+                return choice_result
+                
+            else:
+                # No user input available - return step that requires input
+                return StepResult(
+                    step_id=step.id,
+                    success=True,
+                    requires_input=True,
+                    prompt=step.prompt,
+                    choices=resolved_choices,
+                    data={
+                        "choice_count": len(resolved_choices),
+                        "selection_count": selection_count,
+                        "has_choice_source": bool(step.choice_source),
+                    },
+                )
 
         except Exception as e:
             logger.error(f"Error executing choice step {step.id}: {e}")

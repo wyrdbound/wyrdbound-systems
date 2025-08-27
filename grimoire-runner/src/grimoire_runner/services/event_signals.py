@@ -192,6 +192,7 @@ class ChoiceRequiredData:
     step_info: StepInfo
     prompt: str
     choices: List[Choice]
+    selection_count: int = 1
     timestamp: Optional[datetime] = None
     
     def __post_init__(self):
@@ -315,13 +316,14 @@ def publish_input_required(session_id: str, step_info: StepInfo, prompt: str,
     input_required.send(data=data)
 
 
-def publish_choice_required(session_id: str, step_info: StepInfo, prompt: str, choices: List[Choice]) -> None:
+def publish_choice_required(session_id: str, step_info: StepInfo, prompt: str, choices: List[Choice], selection_count: int = 1) -> None:
     """Publish a choice required event."""
     data = ChoiceRequiredData(
         session_id=session_id,
         step_info=step_info,
         prompt=prompt,
-        choices=choices
+        choices=choices,
+        selection_count=selection_count
     )
     choice_required.send(data=data)
 

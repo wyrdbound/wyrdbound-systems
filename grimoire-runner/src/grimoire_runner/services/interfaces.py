@@ -195,6 +195,15 @@ class UIServiceInterface(ABC):
         pass
     
     @abstractmethod
+    def make_multiple_choices(
+        self, 
+        session_id: str, 
+        choice_ids: List[str]
+    ) -> ExecutionSession:
+        """Make multiple choices to continue execution."""
+        pass
+    
+    @abstractmethod
     def cancel_execution(self, session_id: str) -> None:
         """Cancel an active execution session."""
         pass

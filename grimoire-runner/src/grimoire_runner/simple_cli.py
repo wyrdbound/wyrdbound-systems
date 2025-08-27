@@ -126,6 +126,18 @@ class SimpleEventCLI:
         debug_print(f"[SIMPLE_CLI] Received signal: choice_required")
         self.waiting_for_choice = True
         print(f"\n📋 {data.prompt}")
+        
+        selection_count = getattr(data, 'selection_count', 1)
+        
+        if selection_count > 1:
+            # Handle multiple choice selection
+            self._handle_multiple_choices(data, selection_count)
+        else:
+            # Handle single choice selection
+            self._handle_single_choice(data)
+
+    def _handle_single_choice(self, data):
+        """Handle single choice selection."""
         print("Available options:")
         
         for i, choice in enumerate(data.choices, 1):
@@ -148,6 +160,57 @@ class SimpleEventCLI:
                 except ValueError:
                     print("❌ Please enter a valid number")
                     
+        except KeyboardInterrupt:
+            print("\n⏹️  Cancelled by user")
+            self.ui_service.cancel_execution(self.session_id)
+
+    def _handle_multiple_choices(self, data, selection_count):
+        """Handle multiple choice selection."""
+        print(f"You need to select {selection_count} options:")
+        selected_choices = []
+        available_choices = data.choices.copy()
+        
+        try:
+            for selection_num in range(selection_count):
+                print(f"\n🔢 Selection {selection_num + 1} of {selection_count}:")
+                print("Available options:")
+                
+                # Show remaining choices
+                choice_map = {}
+                for i, choice in enumerate(available_choices, 1):
+                    description = f" - {choice.description}" if choice.description else ""
+                    print(f"  {i}. {choice.label}{description}")
+                    choice_map[str(i)] = choice
+                
+                # Show previously selected items
+                if selected_choices:
+                    selected_labels = [c.label for c in selected_choices]
+                    print(f"\n✅ Already selected: {', '.join(selected_labels)}")
+                
+                # Get user choice
+                while True:
+                    try:
+                        choice_input = input(f"\nEnter choice (1-{len(available_choices)}): ").strip()
+                        
+                        if choice_input in choice_map:
+                            selected_choice = choice_map[choice_input]
+                            selected_choices.append(selected_choice)
+                            print(f"✅ Selected: {selected_choice.label}")
+                            
+                            # Remove from available choices
+                            available_choices.remove(selected_choice)
+                            break
+                        else:
+                            choices_text = " / ".join([str(i) for i in range(1, len(available_choices) + 1)])
+                            print(f"❌ Invalid choice. Please choose from: {choices_text}")
+                    except ValueError:
+                        print("❌ Please enter a valid number")
+            
+            # All choices made, process multiple selection
+            choice_ids = [choice.id for choice in selected_choices]
+            self.ui_service.make_multiple_choices(self.session_id, choice_ids)
+            self.waiting_for_choice = False
+            
         except KeyboardInterrupt:
             print("\n⏹️  Cancelled by user")
             self.ui_service.cancel_execution(self.session_id)
