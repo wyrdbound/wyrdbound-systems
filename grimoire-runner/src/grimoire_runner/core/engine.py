@@ -378,6 +378,27 @@ class GrimoireEngine:
             
             debug_print(f"[ENGINE] Step {step.id} executed with success: {result.success}")
 
+            # Special handling for player_input steps when user input is available
+            if (step_type == "player_input" and 
+                result.requires_input and 
+                hasattr(context, 'get_variable') and 
+                context.get_variable('user_input') is not None):
+                
+                debug_print(f"[ENGINE] User input available for player_input step {step.id}, processing input")
+                
+                # Call the process_input method to handle the user input
+                user_input = context.get_variable('user_input')
+                if hasattr(executor, 'process_input'):
+                    try:
+                        result = executor.process_input(user_input, step, context, system)
+                        debug_print(f"[ENGINE] User input processed with success: {result.success}")
+                        
+                        # Clear the user_input variable after processing
+                        context.set_variable('user_input', None)
+                    except Exception as e:
+                        logger.error(f"Error processing user input for step {step.id}: {e}")
+                        result = StepResult(step_id=step.id, success=False, error=f"Input processing failed: {e}")
+
             # Resolve result message template if present
             if step.result_message and result.success:
                 try:

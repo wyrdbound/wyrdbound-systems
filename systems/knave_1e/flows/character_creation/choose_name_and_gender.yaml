@@ -4,12 +4,11 @@ name: "Choose Name and Gender for Character Creation"
 description: "Name and gender selection for character creation process for {{ system.name }}"
 version: "1.0"
 
-inputs:
-  - type: character
-    id: knave
 outputs:
-  - type: character
-    id: knave
+  - type: str
+    id: character_name
+  - type: str
+    id: character_gender
 
 variables:
   []
@@ -26,12 +25,10 @@ steps:
     choices:
       - id: player_choice
         label: "Player Choice"
-        next_step: "choose_gender"
+        next_step: choose_gender
       - id: random_roll
         label: "Randomly Choose"
-        next_step: "roll_gender"
-    actions:
-      - display_value: "inputs.knave"
+        next_step: roll_gender
 
   - id: choose_gender
     name: "Choose Character Gender"
@@ -39,25 +36,25 @@ steps:
     prompt: "Select your gender"
     choices:
       - id: female
-        label: "Female"
+        label: Female
         actions:
           - set_value:
-              path: "outputs.knave.gender"
-              value: "Female"
+              path: outputs.character_gender
+              value: Female
       - id: male
-        label: "Male"
+        label: Male
         actions:
           - set_value:
-              path: "outputs.knave.gender"
-              value: "Male"
+              path: "outputs.character_gender"
+              value: Male
       - id: non_binary
-        label: "Non-binary"
+        label: Non-binary
         actions:
           - set_value:
-              path: "outputs.knave.gender"
-              value: "Non-binary"
+              path: "outputs.character_gender"
+              value: Non-binary
     actions:
-      - display_value: "outputs.knave"
+      - display_value: "outputs.character_gender"
     next_step: choose_name
 
   - id: roll_gender
@@ -68,7 +65,7 @@ steps:
       - table: gender
         actions:
           - set_value:
-              path: "outputs.knave.gender"
+              path: "outputs.character_gender"
               value: "{{ result.entry }}"
     next_step: choose_name
 
@@ -78,6 +75,6 @@ steps:
     prompt: "What is your character's name?"
     actions:
       - set_value:
-          path: "outputs.knave.name"
+          path: "outputs.character_name"
           value: "{{ result }}"
-      - display_value: "outputs.knave"
+      - display_value: "outputs.character_name"

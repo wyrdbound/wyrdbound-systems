@@ -470,7 +470,15 @@ class GrimoireUIService(UIServiceInterface):
                                     return
                                 time.sleep(0.1)  # Small delay to prevent busy waiting
                             
-                            # Input should be processed by the engine - continue with next iteration
+                            # User input is now available in session.variables['user_input']
+                            # Put the user input in the context for the engine to process
+                            if 'user_input' in session.variables:
+                                context.set_variable('user_input', session.variables['user_input'])
+                                debug_print(f"[UI_SERVICE] Set user_input in context: {session.variables['user_input']}")
+                            
+                            # Re-execute the step with user input available
+                            debug_print(f"[UI_SERVICE] Re-executing step {current_step_result.step_id} with user input")
+                            current_step_result = self.engine._execute_step(step, context, system)
                             continue
                     
                     # Publish step completed event using blinker
