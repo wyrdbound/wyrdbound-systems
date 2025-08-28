@@ -81,11 +81,29 @@ class SimpleEventCLI:
         debug_print(f"[SIMPLE_CLI] Received signal: step_started")
         step = data.step_info
         step_number = data.step_number
-        print(f"\n📋 Step {step_number}: {step.id} ({step.type})")
+        
+        # Add emoji for different step types
+        step_emoji = "📋"
+        if step.type == "name_generation":
+            step_emoji = "🎲"
+        elif step.type == "dice_roll":
+            step_emoji = "🎲"
+        elif step.type == "player_input":
+            step_emoji = "💬"
+        elif step.type == "player_choice":
+            step_emoji = "🔀"
+        elif step.type == "table_roll":
+            step_emoji = "📊"
+        
+        print(f"\n{step_emoji} Step {step_number}: {step.id} ({step.type})")
         if step.name:
             print(f"   Name: {step.name}")
         if step.description:
             print(f"   Description: {step.description}")
+        
+        # Add specific handling for name generation steps
+        if step.type == "name_generation":
+            print(f"   🎯 Generating random name...")
     
     def _handle_step_completed(self, sender=None, **kwargs):
         """Handle step completed signal."""
@@ -93,13 +111,31 @@ class SimpleEventCLI:
         debug_print(f"[SIMPLE_CLI] Received signal: step_completed")
         step = data.step_info
         step_number = data.step_number
-        print(f"✅ Step {step_number} ({step.id}) completed")
+        
+        # Add emoji for different step types
+        step_emoji = "✅"
+        if step.type == "name_generation":
+            step_emoji = "🎯"
+        elif step.type == "dice_roll":
+            step_emoji = "🎲"
+        elif step.type == "player_input":
+            step_emoji = "💬"
+        elif step.type == "player_choice":
+            step_emoji = "🔀"
+        elif step.type == "table_roll":
+            step_emoji = "📊"
+        
+        print(f"{step_emoji} Step {step_number} ({step.id}) completed")
         
         # Show any result data (excluding internal fields)
         if data.step_data:
             for key, value in data.step_data.items():
                 if key not in ["resolved_message", "internal_state"]:
-                    print(f"   {key}: {value}")
+                    # Special formatting for name generation results
+                    if step.type == "name_generation" and key == "generated_name":
+                        print(f"   🎯 Generated name: {value}")
+                    else:
+                        print(f"   {key}: {value}")
 
     def _handle_input_required(self, sender=None, **kwargs):
         """Handle input required signal."""

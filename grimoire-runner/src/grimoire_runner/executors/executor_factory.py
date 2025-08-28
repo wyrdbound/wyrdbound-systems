@@ -57,6 +57,7 @@ class DefaultExecutorFactory(ExecutorFactory):
         from ..executors.dice_executor import DiceExecutor
         from ..executors.flow_executor import FlowExecutor
         from ..executors.llm_executor import LLMExecutor
+        from ..executors.name_generation_executor import NameGenerationExecutor
         from ..executors.player_input_executor import PlayerInputExecutor
         from ..executors.table_executor import TableExecutor
 
@@ -102,6 +103,13 @@ class DefaultExecutorFactory(ExecutorFactory):
                 return ConditionalExecutor(action_executor)
             else:
                 return ConditionalExecutor()  # Falls back to internal creation
+        elif step_type == "name_generation":
+            # Inject action executor dependency if registry is available
+            if self.executor_registry:
+                action_executor = self.executor_registry.create_action_executor()
+                return NameGenerationExecutor(action_executor)
+            else:
+                return NameGenerationExecutor()  # Falls back to internal creation
         elif step_type in ["completion", "flow_call"]:
             # Inject action executor dependency if registry is available
             if self.executor_registry:
@@ -121,6 +129,7 @@ class DefaultExecutorFactory(ExecutorFactory):
             "player_input",
             "table_roll",
             "llm_generation",
+            "name_generation",
             "completion",
             "flow_call",
             "conditional",

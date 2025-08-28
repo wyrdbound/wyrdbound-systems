@@ -14,6 +14,7 @@ class StepType(Enum):
     PLAYER_INPUT = "player_input"
     TABLE_ROLL = "table_roll"
     LLM_GENERATION = "llm_generation"
+    NAME_GENERATION = "name_generation"
     COMPLETION = "completion"
     FLOW_CALL = "flow_call"
     CONDITIONAL = "conditional"
@@ -174,6 +175,13 @@ class StepDefinition:
     inputs: dict[str, Any] = field(default_factory=dict)  # Inputs to pass to sub-flow
     result: str | None = None  # Where to store sub-flow result (variable path)
 
+    # For name_generation
+    generator: str | None = None  # Name generator identifier
+    output_variable: str | None = None  # Variable name to store generated name
+    settings: dict[str, Any] = field(default_factory=dict)  # Generator settings (corpus, segmenter, max_length)
+    generator_file: str | None = None  # Path to name generator file (legacy)
+    generator_params: dict[str, Any] = field(default_factory=dict)  # Parameters for name generation (legacy)
+
 
 @dataclass
 class FlowDefinition:
@@ -285,6 +293,14 @@ class FlowDefinition:
                 errors.append(
                     f"Step '{step.id}' references unknown next_step '{step.next_step}'"
                 )
+            
+            # Validate choice next_step references
+            if hasattr(step, 'choices') and step.choices:
+                for choice in step.choices:
+                    if choice.next_step and choice.next_step not in step_ids:
+                        errors.append(
+                            f"Step '{step.id}' choice '{choice.id}' references unknown next_step '{choice.next_step}'"
+                        )
 
         # Validate resume points
         for resume_point in self.resume_points:

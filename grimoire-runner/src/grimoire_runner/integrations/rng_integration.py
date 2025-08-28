@@ -37,42 +37,65 @@ class RNGIntegration:
         """Check if wyrdbound-rng is available."""
         return self._available
 
-    def load_name_generator(self, file_path: str) -> Any | None:
-        """Load and cache a name generator from file."""
+    def load_name_generator(self, corpus: str) -> Any | None:
+        """Load and cache a name generator for a corpus."""
         if not self._available:
             return None
 
         try:
-            if file_path not in self.generators:
-                # Load the generator using wyrdbound-rng
-                generator = wyrdbound_rng.Generator.from_file(file_path)
-                self.generators[file_path] = generator
-                logger.debug(f"Loaded name generator: {file_path}")
+            if corpus not in self.generators:
+                # Load the generator using wyrdbound-rng with the corpus name
+                # The Generator constructor takes the name source directly
+                generator = wyrdbound_rng.Generator(corpus)
+                self.generators[corpus] = generator
+                logger.debug(f"Loaded name generator for corpus: {corpus}")
 
-            return self.generators[file_path]
+            return self.generators[corpus]
         except Exception as e:
-            logger.error(f"Failed to load name generator from {file_path}: {e}")
+            logger.error(f"Failed to load name generator for corpus {corpus}: {e}")
             return None
 
     def generate_name(self, generator_id: str, **kwargs) -> str:
-        """Generate a name using a loaded generator."""
+        """Generate a name using the specified generator/corpus."""
         if not self._available:
-            return self._generate_fallback_name(generator_id, **kwargs)
+            raise RuntimeError("wyrdbound-rng package not available")
 
-        try:
-            if generator_id in self.generators:
-                generator = self.generators[generator_id]
-                return generator.generate(**kwargs)
-            else:
-                logger.warning(f"Name generator '{generator_id}' not loaded")
-                return self._generate_fallback_name(generator_id, **kwargs)
-        except Exception as e:
-            logger.error(f"Error generating name with {generator_id}: {e}")
-            return self._generate_fallback_name(generator_id, **kwargs)
+        if generator_id == "wyrdbound-rng":
+            # For wyrdbound-rng, use the corpus from kwargs to determine which data to load
+            corpus = kwargs.get("corpus", "generic-fantasy")
+            max_length = kwargs.get("max_length", 15)
+            segmenter = kwargs.get("segmenter", "fantasy")
+            algorithm = kwargs.get("algorithm", "bayesian")
+            
+            logger.debug(f"Attempting to generate name with corpus: {corpus}, max_length: {max_length}, algorithm: {algorithm}, segmenter: {segmenter}")
+            
+            # Load generator for the corpus if not already loaded
+            if corpus not in self.generators:
+                logger.debug(f"Generator for corpus '{corpus}' not loaded, loading now...")
+                generator = self.load_name_generator(corpus)
+                if not generator:
+                    raise RuntimeError(f"Failed to load generator for corpus: {corpus}")
+            
+            generator = self.generators[corpus]
+            logger.debug(f"Using generator for corpus: {corpus}")
+            
+            # Generate name using wyrdbound-rng API
+            # The generate_name method takes max_len and algorithm parameters
+            logger.debug(f"Calling generator.generate_name with max_len={max_length}, algorithm={algorithm}")
+            generated_name = generator.generate_name(max_len=max_length, algorithm=algorithm)
+            logger.debug(f"Generated name '{generated_name}' using corpus '{corpus}' with params: max_length={max_length}, algorithm={algorithm}")
+            
+            return generated_name
+        else:
+            # Handle other generators in the future
+            raise RuntimeError(f"Unknown generator '{generator_id}' - only 'wyrdbound-rng' is supported")
 
     def _generate_fallback_name(self, generator_id: str, **kwargs) -> str:
         """Fallback name generation."""
         import random
+
+        # Extract max_length from kwargs
+        max_length = kwargs.get("max_length", 15)
 
         # Very basic fallback names
         first_names = [
@@ -131,10 +154,22 @@ class RNGIntegration:
             "Zephyr",
         ]
 
+        # Generate name and trim to max_length if needed
         first = random.choice(first_names)
-        last = random.choice(last_names)
-
-        return f"{first} {last}"
+        
+        # If we have space for a last name within max_length, add it
+        if len(first) + 1 < max_length:  # +1 for space
+            last = random.choice(last_names)
+            full_name = f"{first} {last}"
+            
+            # Trim if too long
+            if len(full_name) > max_length:
+                return first  # Just use first name if full name is too long
+            else:
+                return full_name
+        else:
+            # Just return first name, trimmed if necessary
+            return first[:max_length]
 
     def list_generators(self) -> list[str]:
         """List all loaded generators."""

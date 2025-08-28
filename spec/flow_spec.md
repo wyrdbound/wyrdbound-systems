@@ -206,6 +206,37 @@ Uses Large Language Models to generate content.
         value: "{{ result }}"
 ```
 
+#### `name_generation`
+
+Generates random names using the wyrdbound-rng library.
+
+```yaml
+- id: "generate_character_name"
+  type: "name_generation"
+  prompt: "Generating a random name for your character..."
+  generator: "fantasy_names"
+  output_variable: "generated_name"
+  settings:
+    max_length: 12
+    corpus: "generic-fantasy"
+    segmenter: "fantasy"
+  actions:
+    - set_value:
+        path: "outputs.character.name"
+        value: "{{ generated_name }}"
+```
+
+**Configuration Options:**
+
+- **`generator`** (optional): Identifier for the name generator. Defaults to fallback if not specified.
+- **`output_variable`** (optional): Variable name to store the generated name. Defaults to `"generated_name"`.
+- **`settings`** (optional): Configuration parameters for name generation:
+  - **`max_length`** (optional): Maximum length of the generated name. Defaults to 15.
+  - **`corpus`** (optional): The name corpus/data file to use. Defaults to `"generic-fantasy"`. Must be a valid corpus available in wyrdbound-rng.
+  - **`segmenter`** (optional): The segmentation strategy to use. Defaults to `"fantasy"`.
+
+The generated name is available in templates using the `output_variable` name (e.g., `{{ generated_name }}`) and for backward compatibility also as `{{ result }}`.
+
 #### `player_input`
 
 Prompts the player for text input.

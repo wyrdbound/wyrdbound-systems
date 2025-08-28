@@ -10,16 +10,9 @@ outputs:
   - type: str
     id: character_gender
 
-variables:
-  []
-  # - id: selected_weapon
-  #   type: weapon
-  # - id: character_with_name_and_gender
-  #   type: character
-
 steps:
-  - id: choose_gender_choice
-    name: "Gender Determination Choice"
+  - id: choose_gender_method
+    name: "Choose Gender Method"
     type: player_choice
     prompt: "How would you like to determine your character's gender?"
     choices:
@@ -55,10 +48,10 @@ steps:
               value: Non-binary
     actions:
       - display_value: "outputs.character_gender"
-    next_step: choose_name
+    next_step: choose_name_method
 
   - id: roll_gender
-    name: "Determine Character Gender"
+    name: "Roll Character Gender"
     type: table_roll
     prompt: "Rolling for your character's gender..."
     tables:
@@ -67,9 +60,21 @@ steps:
           - set_value:
               path: "outputs.character_gender"
               value: "{{ result.entry }}"
-    next_step: choose_name
+    next_step: choose_name_method
 
-  - id: choose_name
+  - id: choose_name_method
+    name: "Choose Character Name Method"
+    type: player_choice
+    prompt: "How would you like to choose your character's name?"
+    choices:
+      - id: player_choice
+        label: "Input Name"
+        next_step: input_name
+      - id: random_roll
+        label: "Randomly Generate Name"
+        next_step: randomly_generate_name
+
+  - id: input_name
     name: "Choose Character Name"
     type: player_input
     prompt: "What is your character's name?"
@@ -78,3 +83,29 @@ steps:
           path: "outputs.character_name"
           value: "{{ result }}"
       - display_value: "outputs.character_name"
+    next_step: finish_flow
+
+  - id: randomly_generate_name
+    name: "Randomly Generate Character Name"
+    type: name_generation
+    prompt: "Generating a random name for your character..."
+    generator: "wyrdbound-rng"
+    output_variable: "generated_name"
+    settings:
+      max_length: 12
+      corpus: "generic-fantasy"
+      segmenter: "fantasy"
+      algorithm: "bayesian"
+    actions:
+      - set_value:
+          path: "outputs.character_name"
+          value: "{{ generated_name }}"
+      - display_value: "outputs.character_name"
+    next_step: finish_flow
+
+  - id: finish_flow
+    type: completion
+    prompt: "Selection of character gender and name complete!"
+    actions:
+      - display_value: "outputs.character_name"
+      - display_value: "outputs.character_gender"
