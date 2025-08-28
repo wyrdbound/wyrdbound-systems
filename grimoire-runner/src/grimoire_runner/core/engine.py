@@ -296,17 +296,34 @@ class GrimoireEngine:
 
             # Execute the step
             try:
+                from ..utils.debug import debug_print
+                
                 step_result = self._execute_step(step, context, system)
+                
+                # Store the step result in context so UI service can update it
+                context.set_variable(f"_last_step_result_{step.id}", step_result)
+                
                 yield step_result
 
                 if not step_result.success:
                     break
 
+                # Check if the step result was updated by UI service after user input
+                updated_result = context.get_variable(f"_updated_step_result_{step.id}")
+                if updated_result:
+                    debug_print(f"[ENGINE] Using updated step result for {step.id}")
+                    step_result = updated_result
+                    # Clean up the updated result
+                    context.set_variable(f"_updated_step_result_{step.id}", None)
+
                 # Determine next step
                 if step_result.next_step_id:
+                    debug_print(f"[ENGINE] Step {current_step_id} result has next_step_id: {step_result.next_step_id}")
                     current_step_id = step_result.next_step_id
                 else:
-                    current_step_id = flow.get_next_step_id(current_step_id)
+                    next_step_from_flow = flow.get_next_step_id(current_step_id)
+                    debug_print(f"[ENGINE] Step {current_step_id} using sequential next step: {next_step_from_flow}")
+                    current_step_id = next_step_from_flow
 
             except Exception as e:
                 logger.error(f"Error executing step {current_step_id}: {e}")

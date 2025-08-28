@@ -388,60 +388,15 @@ class GrimoireUIService(UIServiceInterface):
                             
                             # Re-execute the step with user input available
                             debug_print(f"[UI_SERVICE] Re-executing step {current_step_result.step_id} with user input")
-                            current_step_result = self.engine._execute_step(step, context, system)
+                            updated_step_result = self.engine._execute_step(step, context, system)
                             
-                            # If the step result has a next_step_id, we need to force the step generator to jump
-                            if current_step_result.next_step_id and current_step_result.next_step_id != step.next_step:
-                                debug_print(f"[UI_SERVICE] Flow jump from choice: {current_step_result.step_id} -> {current_step_result.next_step_id}")
-                                
-                                # Skip steps in the generator until we reach the target step
-                                try:
-                                    while True:
-                                        peek_result = next(step_generator)
-                                        step_count += 1
-                                        debug_print(f"[UI_SERVICE] Flow jump: found step {peek_result.step_id}, requires_input={peek_result.requires_input}")
-                                        if peek_result.step_id == current_step_result.next_step_id:
-                                            # Found the target step, replace current_step_result
-                                            current_step_result = peek_result
-                                            debug_print(f"[UI_SERVICE] Flow jump: target step found, requires_input={current_step_result.requires_input}")
-                                            
-                                            # Update session progress for the jumped-to step
-                                            session.progress = ExecutionProgress(
-                                                current_step=current_step_result.step_id,
-                                                step_number=step_count,
-                                                completed_steps=context.step_history.copy()
-                                            )
-                                            
-                                            # Get new step info
-                                            step = flow.get_step(current_step_result.step_id)
-                                            step_info = StepInfo(
-                                                id=step.id,
-                                                name=getattr(step, 'name', None),
-                                                type=str(step.type.value if hasattr(step.type, 'value') else step.type),
-                                                description=getattr(step, 'description', None),
-                                                prompt=getattr(step, 'prompt', None),
-                                                step_number=step_count
-                                            )
-                                            break
-                                except StopIteration:
-                                    # Reached end of flow while looking for target step
-                                    break
+                            # Store the updated result for the engine to use
+                            context.set_variable(f"_updated_step_result_{step.id}", updated_step_result)
+                            debug_print(f"[UI_SERVICE] Stored updated step result with next_step_id: {updated_step_result.next_step_id}")
                             
-                            # After flow jump, check if the jumped-to step requires input
-                            debug_print(f"[UI_SERVICE] Jumped-to step details: step_id={current_step_result.step_id}, requires_input={current_step_result.requires_input}, has_choices={hasattr(current_step_result, 'choices') and bool(current_step_result.choices)}")
-                            if current_step_result.requires_input:
-                                debug_print(f"[UI_SERVICE] Jumped-to step {current_step_result.step_id} requires input")
-                                # Check if it's a choice step or regular input step
-                                if hasattr(current_step_result, 'choices') and current_step_result.choices:
-                                    debug_print(f"[UI_SERVICE] Jumped-to step is a choice step with {len(current_step_result.choices)} choices")
-                                    # This is a choice step - restart the loop to handle the choices
-                                    continue
-                                else:
-                                    debug_print(f"[UI_SERVICE] Jumped-to step is a regular input step")
-                                    # This is a regular input step - restart the loop to handle the input
-                                    continue
-                            else:
-                                debug_print(f"[UI_SERVICE] Jumped-to step {current_step_result.step_id} is complete")
+                            # Clear current_step_result so next iteration will advance the generator
+                            current_step_result = None
+                            continue
                         else:
                             # This is a regular input step
                             session.status = ExecutionStatus.WAITING_FOR_INPUT
