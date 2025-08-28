@@ -47,9 +47,24 @@ class NameGenerationExecutor(BaseStepExecutor):
             logger.debug(f"[NAME_GEN] Step attributes: generator={generator}, output_variable={output_variable}, settings={settings}")
             logger.debug(f"[NAME_GEN] Step dir: {dir(step)}")
             
-            # Use the specified generator with the settings
-            logger.debug(f"Using name generator: {generator} with settings: {settings}")
-            generated_name = rng_integration.generate_name(generator, **settings)
+            # Resolve templates in settings values
+            resolved_settings = {}
+            for key, value in settings.items():
+                if isinstance(value, str):
+                    # Resolve template if it's a string
+                    resolved_value = context.resolve_template(value)
+                    resolved_settings[key] = resolved_value
+                    logger.debug(f"[NAME_GEN] Resolved setting {key}: '{value}' -> '{resolved_value}'")
+                else:
+                    # Use value as-is if not a string
+                    resolved_settings[key] = value
+            
+            logger.debug(f"[NAME_GEN] Original settings: {settings}")
+            logger.debug(f"[NAME_GEN] Resolved settings: {resolved_settings}")
+            
+            # Use the specified generator with the resolved settings
+            logger.debug(f"Using name generator: {generator} with resolved settings: {resolved_settings}")
+            generated_name = rng_integration.generate_name(generator, **resolved_settings)
 
             # Store the generated name in the context using the specified output variable
             context.set_variable("result", generated_name)
@@ -64,7 +79,7 @@ class NameGenerationExecutor(BaseStepExecutor):
                 }
                 self.action_executor.execute_actions(step.actions, context, step_data, system)
 
-            logger.debug(f"Generated name: '{generated_name}' using generator: {generator} with settings: {settings}")
+            logger.debug(f"Generated name: '{generated_name}' using generator: {generator} with resolved settings: {resolved_settings}")
 
             return StepResult(
                 step_id=step.id if step else "unknown",
@@ -74,7 +89,8 @@ class NameGenerationExecutor(BaseStepExecutor):
                     output_variable: generated_name,
                     "generated_name": generated_name,  # For backward compatibility
                     "generator": generator,
-                    "settings": settings,
+                    "settings": resolved_settings,  # Use resolved settings in the result
+                    "original_settings": settings,  # Keep original for debugging
                     "using_wyrdbound_rng": rng_integration.is_available(),
                 },
             )
