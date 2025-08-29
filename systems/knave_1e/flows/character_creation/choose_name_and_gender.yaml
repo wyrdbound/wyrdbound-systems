@@ -61,6 +61,7 @@ steps:
               path: "outputs.character_gender"
               value: "{{ result.entry }}"
           - log_message: "Rolled {{ result.roll_result.detail }}"
+          - log_message: "Character is {{ result.entry }}"
 
     next_step: choose_name_method
 
@@ -103,11 +104,12 @@ steps:
     actions:
       - set_value:
           path: "outputs.character_name"
-          value: "{{ generated_name }}"
+          value: "{{ generated_name.name }}"
       - display_value: "outputs.character_name"
     next_step: finish_flow
 
   - id: finish_flow
+    name: "Finish Name and Gender Selection"
     type: completion
     prompt: "Selection of character gender and name complete!"
     actions:

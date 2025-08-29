@@ -75,7 +75,7 @@ class SimpleEventCLI:
         """Handle flow started event."""
         data = kwargs.get('data')
         debug_print(f"Flow started: {data.flow_id} with inputs: {data.inputs}")
-        print(f"Starting flow: {data.flow_id}")
+        print(f"Starting Flow: {data.flow_name}")
     
     def _handle_step_started(self, sender=None, **kwargs):
         """Handle step started signal."""
@@ -97,9 +97,9 @@ class SimpleEventCLI:
         elif step.type == "table_roll":
             step_emoji = "📊"
         
-        print(f"\n{step_emoji} Step {step_number}: {step.id} ({step.type})")
-        if step.name:
-            print(f"   Name: {step.name}")
+        # Use step name if available, fallback to step id
+        step_display_name = step.name or step.id
+        print(f"\n{step_emoji} Step {step_number}: {step_display_name} ({step.type})")
         if step.description:
             print(f"   Description: {step.description}")
         

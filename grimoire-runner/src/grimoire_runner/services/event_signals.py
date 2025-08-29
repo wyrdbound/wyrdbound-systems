@@ -135,6 +135,7 @@ class FlowStartedData:
     """Data for flow started events."""
     session_id: str
     flow_id: str
+    flow_name: str
     system_id: str
     inputs: Dict[str, Any]
     timestamp: Optional[datetime] = None
@@ -142,8 +143,6 @@ class FlowStartedData:
     def __post_init__(self):
         if self.timestamp is None:
             self.timestamp = datetime.now()
-
-
 @dataclass
 class StepStartedData:
     """Data for step started events."""
@@ -300,11 +299,12 @@ def publish_session_created(session_id: str, system_id: str, flow_id: str) -> No
     session_created.send(data=data)
 
 
-def publish_flow_started(session_id: str, flow_id: str, system_id: str, inputs: Dict[str, Any]) -> None:
+def publish_flow_started(session_id: str, flow_id: str, flow_name: str, system_id: str, inputs: Dict[str, Any]) -> None:
     """Publish a flow started event."""
     data = FlowStartedData(
         session_id=session_id,
         flow_id=flow_id,
+        flow_name=flow_name,
         system_id=system_id,
         inputs=inputs
     )

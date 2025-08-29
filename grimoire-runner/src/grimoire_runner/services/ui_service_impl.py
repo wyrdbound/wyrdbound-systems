@@ -287,10 +287,15 @@ class GrimoireUIService(UIServiceInterface):
         try:
             session.status = ExecutionStatus.RUNNING
             
+            # Get flow object to access name
+            flow = system.get_flow(flow_id)
+            flow_name = getattr(flow, 'name', flow_id) or flow_id
+            
             # Publish flow started event using blinker
             event_signals.publish_flow_started(
                 session_id=session.session_id,
                 flow_id=flow_id,
+                flow_name=flow_name,
                 system_id=system.id,
                 inputs=inputs or {}
             )
@@ -300,7 +305,6 @@ class GrimoireUIService(UIServiceInterface):
             
             # Execute the flow step by step, letting the engine handle all logic
             step_count = 0
-            flow = system.get_flow(flow_id)
             step_generator = self.engine.step_through_flow(flow_id, context, system)
             current_step_result = None
             
