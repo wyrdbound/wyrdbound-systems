@@ -445,6 +445,39 @@ class GrimoireUIService(UIServiceInterface):
                         next_step_id=current_step_result.next_step_id
                     )
                     
+                    # Check for action messages (like display_value) and emit as events
+                    action_messages = context.get_and_clear_action_messages()
+                    for message in action_messages:
+                        # Parse display_value messages to extract path and value
+                        if message.startswith("📋 Display Value:"):
+                            # Extract path and formatted value from the message
+                            lines = message.split('\n')
+                            if len(lines) >= 2:
+                                # Parse path from first line (remove Rich markup)
+                                path_line = lines[0]
+                                path = path_line.replace("📋 Display Value: [bold cyan]", "").replace("[/bold cyan]", "")
+                                
+                                # Get formatted value from second line
+                                formatted_value = lines[1] if len(lines) > 1 else ""
+                                
+                                # Emit display_value event
+                                event_signals.publish_display_value(
+                                    session_id=session.session_id,
+                                    step_id=current_step_result.step_id,
+                                    path=path,
+                                    value=formatted_value,  # Use formatted value as the actual value for now
+                                    formatted_value=formatted_value
+                                )
+                        else:
+                            # For non-display_value action messages, emit as generic display events
+                            event_signals.publish_display_value(
+                                session_id=session.session_id,
+                                step_id=current_step_result.step_id,
+                                path="action_message",
+                                value=message,
+                                formatted_value=message
+                            )
+                    
                     # Clear current_step_result so next iteration will advance the generator
                     current_step_result = None
                     

@@ -20,7 +20,7 @@ from .services import event_signals
 from .services.event_signals import (
     SystemLoadedData, SessionCreatedData, FlowStartedData, StepStartedData,
     StepCompletedData, InputRequiredData, ChoiceRequiredData, FlowCompletedData,
-    ErrorOccurredData, FlowCancelledData
+    ErrorOccurredData, FlowCancelledData, DisplayValueData
 )
 from .utils.debug import debug_print, set_debug_enabled
 
@@ -54,6 +54,7 @@ class SimpleEventCLI:
         event_signals.flow_completed.connect(self._handle_flow_completed)
         event_signals.error_occurred.connect(self._handle_error_occurred)
         event_signals.flow_cancelled.connect(self._handle_flow_cancelled)
+        event_signals.display_value.connect(self._handle_display_value)
     
     def _handle_system_loaded(self, sender, **kwargs):
         """Handle system loaded event."""
@@ -294,6 +295,15 @@ class SimpleEventCLI:
         self.execution_successful = False
         
         print(f"⏹️  Flow '{data.flow_id}' cancelled: {data.reason}")
+
+    def _handle_display_value(self, sender=None, **kwargs):
+        """Handle display value signal."""
+        data = kwargs.get('data')
+        debug_print(f"[SIMPLE_CLI] Received signal: display_value")
+        
+        # Print the display value with formatting
+        print(f"📋 Display Value: {data.path}")
+        print(f"   {data.formatted_value}")
     
     def load_system(self, system_path: Path) -> bool:
         """Load a system using the UI service."""

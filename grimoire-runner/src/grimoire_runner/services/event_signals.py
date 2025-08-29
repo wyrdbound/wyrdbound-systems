@@ -33,6 +33,7 @@ choice_required = ui_signals.signal('choice-required')
 flow_completed = ui_signals.signal('flow-completed')
 error_occurred = ui_signals.signal('error-occurred')
 flow_cancelled = ui_signals.signal('flow-cancelled')
+display_value = ui_signals.signal('display-value')
 
 
 # ============================================================================
@@ -242,6 +243,21 @@ class FlowCancelledData:
             self.timestamp = datetime.now()
 
 
+@dataclass
+class DisplayValueData:
+    """Data for display value events."""
+    session_id: str
+    step_id: Optional[str]
+    path: str
+    value: Any
+    formatted_value: str
+    timestamp: Optional[datetime] = None
+    
+    def __post_init__(self):
+        if self.timestamp is None:
+            self.timestamp = datetime.now()
+
+
 # ============================================================================
 # UI/Service Event Publishing Functions
 # ============================================================================
@@ -361,6 +377,18 @@ def publish_flow_cancelled(session_id: str, flow_id: str, reason: str = "user_ca
         reason=reason
     )
     flow_cancelled.send(data=data)
+
+
+def publish_display_value(session_id: str, step_id: Optional[str], path: str, value: Any, formatted_value: str) -> None:
+    """Publish a display value event."""
+    data = DisplayValueData(
+        session_id=session_id,
+        step_id=step_id,
+        path=path,
+        value=value,
+        formatted_value=formatted_value
+    )
+    display_value.send(data=data)
 
 
 # ============================================================================

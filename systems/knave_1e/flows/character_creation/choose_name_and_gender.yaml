@@ -60,6 +60,8 @@ steps:
           - set_value:
               path: "outputs.character_gender"
               value: "{{ result.entry }}"
+          - display_value: "result.roll_result.detail"
+
     next_step: choose_name_method
 
   - id: choose_name_method
@@ -96,7 +98,7 @@ steps:
       corpus: generic-fantasy
       segmenter: fantasy
       algorithm: bayesian
-      min_probability: 1e-6
+      min_probability: 1e-4
       best_of: 2
     actions:
       - set_value:

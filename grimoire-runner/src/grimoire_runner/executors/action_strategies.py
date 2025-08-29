@@ -290,8 +290,14 @@ class DisplayValueActionStrategy(ActionStrategy):
                     # Fall back to path resolution
                     value = context.resolve_path_value(path)
             else:
-                # For complex paths, use path resolution
-                value = context.resolve_path_value(path)
+                # For complex paths, first try template resolution (which includes step data)
+                # This handles cases like "result.roll_result.detail" from table actions
+                try:
+                    template_string = f"{{{{ {path} }}}}"
+                    value = context.resolve_template(template_string)
+                except Exception:
+                    # If template resolution fails, fall back to path resolution
+                    value = context.resolve_path_value(path)
 
             # Format the value for user-friendly display
             formatted_value = self._format_value_for_display(value, path)
