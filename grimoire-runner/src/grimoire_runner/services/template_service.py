@@ -402,9 +402,10 @@ class RuntimeTemplateStrategy(TemplateResolutionStrategy):
                         else:
                             debug_print(f"[TEMPLATE_SERVICE] models dict is empty!")
                         
-                        # Ensure models is a proper dictionary for ModelAwareDict
-                        if not isinstance(models, dict):
-                            logger.warning(f"[TEMPLATE_SERVICE] models is not a dict (type: {type(models)}), using empty dict")
+                        # Ensure models has dictionary-like interface for ModelAwareDict
+                        if not hasattr(models, 'keys') or not hasattr(models, 'get'):
+                            from ..utils.debug import debug_print
+                            debug_print(f"[TEMPLATE_SERVICE] models is not dict-like (type: {type(models)}), using empty dict")
                             models = {}
                         
                         # Check if we can determine model type from context structure
