@@ -437,15 +437,8 @@ class GrimoireUIService(UIServiceInterface):
                             continue
                     
                     # Publish step completed event using blinker
-                    event_signals.publish_step_completed(
-                        session_id=session.session_id,
-                        step_info=step_info,
-                        step_number=step_count,
-                        step_data=current_step_result.data,
-                        next_step_id=current_step_result.next_step_id
-                    )
-                    
                     # Check for action messages (like display_value, log_message) and emit as events
+                    # Process these BEFORE publishing step_completed to ensure actions are shown before completion
                     action_messages = context.get_and_clear_action_messages()
                     for message in action_messages:
                         # Parse display_value messages to extract path and value
@@ -489,6 +482,15 @@ class GrimoireUIService(UIServiceInterface):
                                 value=message,
                                 formatted_value=message
                             )
+                    
+                    # Publish step completion AFTER all action events have been emitted
+                    event_signals.publish_step_completed(
+                        session_id=session.session_id,
+                        step_info=step_info,
+                        step_number=step_count,
+                        step_data=current_step_result.data,
+                        next_step_id=current_step_result.next_step_id
+                    )
                     
                     # Clear current_step_result so next iteration will advance the generator
                     current_step_result = None
