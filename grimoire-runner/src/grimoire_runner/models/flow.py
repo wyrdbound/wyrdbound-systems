@@ -151,6 +151,7 @@ class StepDefinition:
     choices: list[ChoiceDefinition] = field(default_factory=list)
     choice_source: str | None = None
     pre_actions: list[dict[str, Any]] = field(default_factory=list)
+    post_actions: list[dict[str, Any]] = field(default_factory=list)
 
     # For table_roll
     tables: list[TableRollDefinition] = field(default_factory=list)

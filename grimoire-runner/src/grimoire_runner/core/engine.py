@@ -389,6 +389,13 @@ class GrimoireEngine:
             logger.error(error_msg)
             raise ValueError(error_msg)
 
+        # Execute pre-actions before the step's main logic
+        if step.pre_actions:
+            debug_print(f"Engine executing {len(step.pre_actions)} pre-actions for step {step.id}")
+            self.action_executor.execute_actions(
+                step.pre_actions, context, {}, system
+            )
+
         # Execute the step
         try:
             result = executor.execute(step, context, system)
@@ -446,16 +453,21 @@ class GrimoireEngine:
             # Also skip if the executor already handled the actions (e.g., flow_call)
             actions_already_handled = getattr(result, "actions_already_executed", False)
 
+            # Combine actions (for backward compatibility) and post_actions
+            step_actions = getattr(step, 'actions', []) or []
+            step_post_actions = getattr(step, 'post_actions', []) or []
+            post_actions = list(step_actions) + list(step_post_actions)
+
             if (
-                step.actions
+                post_actions
                 and not result.requires_input
                 and not actions_already_handled
             ):
                 debug_print(
-                    f"Engine executing {len(step.actions)} post-step actions for step {step.id}"
+                    f"Engine executing {len(post_actions)} post-step actions for step {step.id}"
                 )
                 self.action_executor.execute_actions(
-                    step.actions, context, result.data, system
+                    post_actions, context, result.data, system
                 )
             elif actions_already_handled:
                 debug_print(

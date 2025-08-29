@@ -4,8 +4,6 @@ import logging
 from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING, Any
 
-from ..utils.debug import debug_print
-
 if TYPE_CHECKING:
     from ..models.context_data import ExecutionContext
     from ..models.system import System
@@ -58,7 +56,6 @@ class SetValueActionStrategy(ActionStrategy):
             # Use dictionary directly without template resolution to preserve ModelAwareDict
             resolved_value = value
             logger.debug(f"Action set_value: Using dict directly for {resolved_path}")
-            debug_print(f"SetValueActionStrategy: Using dict directly for {resolved_path}")
             
             # Apply model enhancement to direct dictionary assignments
             if system and system.models:
@@ -73,17 +70,12 @@ class SetValueActionStrategy(ActionStrategy):
             logger.debug(
                 f"Action set_value: Using boolean directly for {resolved_path}"
             )
-            debug_print(f"SetValueActionStrategy: Using boolean directly for {resolved_path}")
         else:
             # Check if this is a variable assignment and if we can preserve object types
             resolved_value = self._resolve_value_with_type_preservation(
                 value, resolved_path, context, system
             )
             logger.debug(f"Action set_value: Resolved value for {resolved_path}")
-            debug_print(f"SetValueActionStrategy: Template resolved value for {resolved_path}")
-            debug_print(f"SetValueActionStrategy: Original value type: {type(value)}")
-            debug_print(f"SetValueActionStrategy: Resolved value type: {type(resolved_value)}")
-            debug_print(f"SetValueActionStrategy: Resolved value preview: {str(resolved_value)[:100]}...")
 
         # Use path resolver as the primary mechanism
         try:
@@ -139,10 +131,7 @@ class SetValueActionStrategy(ActionStrategy):
         )
 
         # First resolve the template to get the actual value
-        debug_print(f"_resolve_value_with_type_preservation: About to resolve template: {value}")
         resolved_value = context.resolve_template(str(value))
-        debug_print(f"_resolve_value_with_type_preservation: Template resolved to type: {type(resolved_value)}")
-        debug_print(f"_resolve_value_with_type_preservation: Template resolved to preview: {str(resolved_value)[:100]}...")
         logger.debug(
             f"Template resolved to: {repr(resolved_value)} (type: {type(resolved_value).__name__})"
         )
@@ -276,7 +265,10 @@ class DisplayValueActionStrategy(ActionStrategy):
         context: "ExecutionContext",
         system: "System | None" = None,
     ) -> None:
-        """Execute a display_value action."""
+        """Execute a display_value action with structured data return.
+        
+        The engine returns structured data; the presentation layer handles formatting.
+        """
         path = (
             action_data if isinstance(action_data, str) else action_data.get("path", "")
         )
@@ -299,68 +291,83 @@ class DisplayValueActionStrategy(ActionStrategy):
                     # If template resolution fails, fall back to path resolution
                     value = context.resolve_path_value(path)
 
-            # Format the value for user-friendly display
-            formatted_value = self._format_value_for_display(value, path)
+            # Determine value type and structure the data appropriately
+            action_data = {
+                "path": path,
+                "value": self._extract_structured_value(value),
+                "value_type": self._determine_value_type(value)
+            }
             
-            # Debug: Add print statements to understand what's happening
-            debug_print(f"Displaying {path}")
-            debug_print(f"Value type: {type(value)}")
-            debug_print(f"Value preview: {str(value)[:200]}...")
-            
-            display_value = value
-            
-            display_value = value
-
-            # Handle RollResult objects specially with table display
-            from ..models.roll_result import RollResult
-            if isinstance(display_value, RollResult):
-                # Use Rich console directly for proper color rendering
-                from rich.console import Console
-
-                console = Console()
-
-                # Print the header with colored path
-                console.print("📋 Display Value: ", style="bold", end="")
-                console.print(path, style="bold cyan")
-
-                # Print the roll result as a table
-                self._print_roll_result_table(display_value, console)
-
-            # For Rich-formatted content, we need to handle it specially
-            # Check for dict-like objects (including ModelAwareDict and other custom dict subclasses)
-            elif hasattr(display_value, 'keys') and hasattr(display_value, '__getitem__'):
-                # Check if it has content (safely handle objects that don't support len())
-                try:
-                    has_content = len(display_value) > 0
-                except (TypeError, AttributeError):
-                    # For objects that don't support len(), check if keys() returns anything
-                    has_content = bool(list(display_value.keys()) if hasattr(display_value, 'keys') else False)
-
-                if has_content:
-                    # Use Rich console directly for proper color rendering
-                    from rich.console import Console
-
-                    console = Console()
-
-                    # Print the header with colored path
-                    console.print("📋 Display Value: ", style="bold", end="")
-                    console.print(path, style="bold cyan")
-
-                    # Print the table with proper Rich rendering
-                    self._print_table_for_dict(display_value, path, console)
-                else:
-                    # Empty dict-like object
-                    context.add_action_message(f"📋 Display Value: [bold cyan]{path}[/bold cyan]\n(empty)")
-            else:
-                # For simple values, use the regular message system
-                context.add_action_message(f"📋 Display Value: [bold cyan]{path}[/bold cyan]\n{formatted_value}")
+            # Add structured data to action messages for the presentation layer to format
+            context.add_action_message("display_value", action_data)
 
             # Also log it for debugging
             logger.debug(f"Display: {path} = {value}")
         except Exception as e:
             error_msg = f"Could not display value at path {path}: {e}"
-            context.add_action_message(f"⚠️ {error_msg}")
+            context.add_action_message("display_value", {
+                "path": path,
+                "value": None,
+                "value_type": "error",
+                "error": error_msg
+            })
             logger.warning(error_msg)
+
+    def _extract_structured_value(self, value: Any) -> Any:
+        """Extract structured data from a value, removing presentation-specific formatting."""
+        
+        if value is None:
+            return None
+        
+        # Handle RollResult objects
+        from ..models.roll_result import RollResult
+        if isinstance(value, RollResult):
+            return {
+                "total": value.total,
+                "detail": value.detail,
+                "expression": getattr(value, 'expression', None),
+                "breakdown": getattr(value, 'breakdown', None)
+            }
+        
+        # Handle dict-like objects (including model instances)
+        if hasattr(value, 'keys') and hasattr(value, '__getitem__'):
+            # For ModelAwareDict and similar objects, use dict() conversion
+            # Don't rely on __dict__ as it may not contain the actual data
+            result = dict(value)
+            return result
+        
+        # Handle lists
+        if isinstance(value, list):
+            return [self._extract_structured_value(item) for item in value]
+        
+        # Handle simple values (str, int, float, bool)
+        return value
+
+    def _determine_value_type(self, value: Any) -> str:
+        """Determine the type of value for the presentation layer."""
+        if value is None:
+            return "null"
+        
+        from ..models.roll_result import RollResult
+        if isinstance(value, RollResult):
+            return "roll_result"
+        
+        if hasattr(value, 'keys') and hasattr(value, '__getitem__'):
+            return "dict"
+        
+        if isinstance(value, list):
+            return "list"
+        
+        if isinstance(value, str):
+            return "string"
+        
+        if isinstance(value, (int, float)):
+            return "number"
+        
+        if isinstance(value, bool):
+            return "boolean"
+        
+        return "object"
 
     def _format_path_for_display(self, path: str) -> str:
         """Format a path for user-friendly display."""
@@ -443,14 +450,9 @@ class DisplayValueActionStrategy(ActionStrategy):
         from rich.table import Table
 
         # Debug the object type and keys
-        debug_print(f"_print_table_for_dict: data type = {type(data)}")
-        debug_print(f"_print_table_for_dict: data.keys() = {list(data.keys())}")
         if hasattr(data, '_model_def'):
-            debug_print(f"_print_table_for_dict: has _model_def = {data._model_def}")
             if data._model_def:
-                debug_print(f"_print_table_for_dict: model_def.id = {data._model_def.id}")
                 all_attrs = data._model_def.get_all_attributes()
-                debug_print(f"_print_table_for_dict: all_attrs keys = {list(all_attrs.keys())}")
 
         # Create table with styling and left-justified title for accessibility
         table = Table(show_header=True, header_style="bold blue", show_lines=True, title_justify="left")
@@ -701,7 +703,7 @@ class LogMessageActionStrategy(ActionStrategy):
         context: "ExecutionContext",
         system: "System | None" = None,
     ) -> None:
-        """Execute a log_message action."""
+        """Execute a log_message action with structured data return."""
         # Support both shorthand (string) and object (dict) syntax
         message = (
             action_data if isinstance(action_data, str) else action_data.get("message", "")
@@ -710,8 +712,11 @@ class LogMessageActionStrategy(ActionStrategy):
         # Resolve templates in the message
         resolved_message = context.resolve_template(str(message))
 
-        # Add the message to the execution context for UI display
-        context.add_action_message(f"📝 {resolved_message}")
+        # Add structured data to action messages for the presentation layer
+        context.add_action_message("log_message", {
+            "message": message,
+            "resolved_message": resolved_message
+        })
 
         # Also log it for debugging
         logger.debug(f"Action log_message: {resolved_message}")
@@ -730,33 +735,27 @@ class SwapValuesActionStrategy(ActionStrategy):
         system: "System | None" = None,
     ) -> None:
         """Execute a swap_values action."""
-        debug_print(f"[SWAP_ACTION] SwapValuesActionStrategy.execute called with action_data: {action_data}")
         
         # Swap values between two paths
         path1 = action_data.get("path1", "")
         path2 = action_data.get("path2", "")
         
-        debug_print(f"[SWAP_ACTION] Raw paths - path1: '{path1}', path2: '{path2}'")
 
         # Resolve templates in the paths
         path1 = context.resolve_template(path1)
         path2 = context.resolve_template(path2)
         
-        debug_print(f"[SWAP_ACTION] Resolved paths - path1: '{path1}', path2: '{path2}'")
 
         try:
             # Get values from both paths
             value1 = context.resolve_path_value(path1)
             value2 = context.resolve_path_value(path2)
             
-            debug_print(f"[SWAP_ACTION] Current values - path1 value: {value1}, path2 value: {value2}")
 
             # Swap them
             self._set_value_at_path(context, path1, value2)
             self._set_value_at_path(context, path2, value1)
 
-            debug_print(f"[SWAP_ACTION] Swapped values: {path1} <-> {path2}")
-            debug_print(f"[SWAP_ACTION] After swap - setting {path1} = {value2}, {path2} = {value1}")
 
         except Exception as e:
             logger.error(f"Error swapping values between {path1} and {path2}: {e}")

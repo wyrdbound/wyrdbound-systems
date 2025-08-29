@@ -62,7 +62,7 @@ class ExecutionContext:
     checkpoints: dict[str, Checkpoint] = field(default_factory=dict)
 
     # Action messages for UI display
-    action_messages: list[str] = field(default_factory=list)
+    action_messages: list[dict] = field(default_factory=list)
 
     # Template resolution (delegated to specialized resolver)
     template_resolver: TemplateResolver = field(default_factory=TemplateResolver)
@@ -468,11 +468,19 @@ class ExecutionContext:
             "timestamp": datetime.now().isoformat(),
         }
 
-    def add_action_message(self, message: str) -> None:
-        """Add an action message to be displayed by the UI."""
-        self.action_messages.append(message)
+    def add_action_message(self, action_type: str, action_data: dict | str) -> None:
+        """Add an action message to be displayed by the UI.
+        
+        Args:
+            action_type: The type of action (e.g., 'display_value', 'log_message')
+            action_data: Structured data for the action, or legacy string message
+        """
+        self.action_messages.append({
+            "type": action_type,
+            "data": action_data
+        })
 
-    def get_and_clear_action_messages(self) -> list[str]:
+    def get_and_clear_action_messages(self) -> list[dict]:
         """Get all action messages and clear the list."""
         messages = self.action_messages.copy()
         self.action_messages.clear()

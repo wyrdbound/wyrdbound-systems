@@ -444,47 +444,37 @@ class GrimoireUIService(UIServiceInterface):
                     # Check for action messages (like display_value, log_message) and emit as events
                     # Process these BEFORE publishing step_completed to ensure actions are shown before completion
                     action_messages = context.get_and_clear_action_messages()
-                    for message in action_messages:
-                        # Parse display_value messages to extract path and value
-                        if message.startswith("📋 Display Value:"):
-                            # Extract path and formatted value from the message
-                            lines = message.split('\n')
-                            if len(lines) >= 2:
-                                # Parse path from first line (remove Rich markup)
-                                path_line = lines[0]
-                                path = path_line.replace("📋 Display Value: [bold cyan]", "").replace("[/bold cyan]", "")
-                                
-                                # Get formatted value from second line
-                                formatted_value = lines[1] if len(lines) > 1 else ""
-                                
-                                # Emit display_value event
-                                event_signals.publish_display_value(
-                                    session_id=session.session_id,
-                                    step_id=current_step_result.step_id,
-                                    path=path,
-                                    value=formatted_value,  # Use formatted value as the actual value for now
-                                    formatted_value=formatted_value
-                                )
-                        # Parse log_message messages to extract resolved message
-                        elif message.startswith("📝 "):
-                            # Extract resolved message (remove emoji prefix)
-                            resolved_message = message[2:].strip()  # Remove "📝 " prefix
-                            
-                            # Emit log_message event
-                            event_signals.publish_log_message(
-                                session_id=session.session_id,
-                                step_id=current_step_result.step_id,
-                                message="",  # We don't have the original template
-                                resolved_message=resolved_message
-                            )
-                        else:
-                            # For other action messages, emit as generic display events
+                    for action_message in action_messages:
+                        action_type = action_message.get("type")
+                        action_data = action_message.get("data")
+                        
+                        if action_type == "display_value":
+                            # Handle structured display_value data
                             event_signals.publish_display_value(
                                 session_id=session.session_id,
                                 step_id=current_step_result.step_id,
-                                path="action_message",
-                                value=message,
-                                formatted_value=message
+                                path=action_data.get("path", ""),
+                                value=action_data.get("value"),
+                                formatted_value=""  # Let the presentation layer handle formatting
+                            )
+                        elif action_type == "log_message":
+                            # Handle structured log_message data
+                            event_signals.publish_log_message(
+                                session_id=session.session_id,
+                                step_id=current_step_result.step_id,
+                                message=action_data.get("message", ""),
+                                resolved_message=action_data.get("resolved_message", "")
+                            )
+                        else:
+                            # Handle legacy string messages or unknown action types
+                            # Convert to display_value for backward compatibility
+                            message_text = action_data if isinstance(action_data, str) else str(action_data)
+                            event_signals.publish_display_value(
+                                session_id=session.session_id,
+                                step_id=current_step_result.step_id,
+                                path="legacy_message",
+                                value=message_text,
+                                formatted_value=message_text
                             )
                     
                     # Publish step completion AFTER all action events have been emitted

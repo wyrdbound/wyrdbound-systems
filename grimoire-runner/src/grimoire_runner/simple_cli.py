@@ -298,13 +298,76 @@ class SimpleEventCLI:
         print(f"⏹️  Flow '{data.flow_id}' cancelled: {data.reason}")
 
     def _handle_display_value(self, sender=None, **kwargs):
-        """Handle display value signal."""
+        """Handle display value signal with structured data formatting."""
         data = kwargs.get('data')
         debug_print(f"[SIMPLE_CLI] Received signal: display_value")
         
-        # Print the display value with formatting
-        print(f"📋 Display Value: {data.path}")
-        print(f"   {data.formatted_value}")
+        # Format the display value based on the structured data
+        formatted_output = self._format_display_value(data.path, data.value)
+        print(formatted_output)
+
+    def _format_display_value(self, path: str, value: Any) -> str:
+        """Format a display value based on its type and content.
+        
+        This is the presentation layer handling the formatting of structured data.
+        Generic formatting that doesn't assume specific data structures.
+        """
+        from rich.console import Console
+        from rich.table import Table
+        from io import StringIO
+        
+        # Create a console for formatting
+        console = Console(file=StringIO(), width=100, force_terminal=True)
+        
+        if value is None:
+            return f"Display Value: {path}\n   (No value)"
+        
+        # Handle different value types generically
+        if isinstance(value, dict):
+            console.print(f"Display Value: {path}")
+            
+            if value:
+                # Create a vertical table: key-value pairs as rows
+                table = Table(show_header=True, header_style="bold magenta")
+                table.add_column("Property", style="cyan")
+                table.add_column("Value", style="white")
+                
+                # Add each key-value pair as a row
+                for key, val in value.items():
+                    # Format key to be more readable
+                    formatted_key = key.replace('_', ' ').title()
+                    formatted_val = str(val) if val is not None else "(none)"
+                    table.add_row(formatted_key, formatted_val)
+                
+                console.print(table)
+            else:
+                console.print("   (empty)")
+            
+            # Get the formatted output
+            output = console.file.getvalue()
+            console.file.close()
+            return output.strip()
+        
+        elif isinstance(value, list):
+            if not value:
+                return f"Display Value: {path}\n   (empty list)"
+            else:
+                # Format list with summary
+                if len(value) == 1:
+                    return f"Display Value: {path}\n   [1 item: {value[0]}]"
+                else:
+                    sample = ", ".join(str(item) for item in value[:2])
+                    suffix = ", ..." if len(value) > 2 else ""
+                    return f"Display Value: {path}\n   [{len(value)} items: {sample}{suffix}]"
+        
+        else:
+            # Simple values
+            if isinstance(value, str):
+                display_value = f'"{value}"' if len(str(value)) < 50 else f'"{str(value)[:47]}..."'
+            else:
+                display_value = str(value)
+            
+            return f"Display Value: {path}\n   {display_value}"
 
     def _handle_log_message(self, sender=None, **kwargs):
         """Handle log message signal."""
