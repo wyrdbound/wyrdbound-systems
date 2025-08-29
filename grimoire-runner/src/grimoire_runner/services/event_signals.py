@@ -34,6 +34,7 @@ flow_completed = ui_signals.signal('flow-completed')
 error_occurred = ui_signals.signal('error-occurred')
 flow_cancelled = ui_signals.signal('flow-cancelled')
 display_value = ui_signals.signal('display-value')
+log_message = ui_signals.signal('log-message')
 
 
 # ============================================================================
@@ -258,6 +259,20 @@ class DisplayValueData:
             self.timestamp = datetime.now()
 
 
+@dataclass
+class LogMessageData:
+    """Data for log message events."""
+    session_id: str
+    step_id: Optional[str]
+    message: str
+    resolved_message: str
+    timestamp: Optional[datetime] = None
+    
+    def __post_init__(self):
+        if self.timestamp is None:
+            self.timestamp = datetime.now()
+
+
 # ============================================================================
 # UI/Service Event Publishing Functions
 # ============================================================================
@@ -389,6 +404,17 @@ def publish_display_value(session_id: str, step_id: Optional[str], path: str, va
         formatted_value=formatted_value
     )
     display_value.send(data=data)
+
+
+def publish_log_message(session_id: str, step_id: Optional[str], message: str, resolved_message: str) -> None:
+    """Publish a log message event."""
+    data = LogMessageData(
+        session_id=session_id,
+        step_id=step_id,
+        message=message,
+        resolved_message=resolved_message
+    )
+    log_message.send(data=data)
 
 
 # ============================================================================

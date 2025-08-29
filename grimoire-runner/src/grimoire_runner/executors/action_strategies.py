@@ -697,12 +697,15 @@ class LogMessageActionStrategy(ActionStrategy):
 
     def execute(
         self,
-        action_data: dict[str, Any],
+        action_data: dict[str, Any] | str,
         context: "ExecutionContext",
         system: "System | None" = None,
     ) -> None:
         """Execute a log_message action."""
-        message = action_data.get("message", "")
+        # Support both shorthand (string) and object (dict) syntax
+        message = (
+            action_data if isinstance(action_data, str) else action_data.get("message", "")
+        )
 
         # Resolve templates in the message
         resolved_message = context.resolve_template(str(message))

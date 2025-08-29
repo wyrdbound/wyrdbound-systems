@@ -445,7 +445,7 @@ class GrimoireUIService(UIServiceInterface):
                         next_step_id=current_step_result.next_step_id
                     )
                     
-                    # Check for action messages (like display_value) and emit as events
+                    # Check for action messages (like display_value, log_message) and emit as events
                     action_messages = context.get_and_clear_action_messages()
                     for message in action_messages:
                         # Parse display_value messages to extract path and value
@@ -468,8 +468,20 @@ class GrimoireUIService(UIServiceInterface):
                                     value=formatted_value,  # Use formatted value as the actual value for now
                                     formatted_value=formatted_value
                                 )
+                        # Parse log_message messages to extract resolved message
+                        elif message.startswith("📝 "):
+                            # Extract resolved message (remove emoji prefix)
+                            resolved_message = message[2:].strip()  # Remove "📝 " prefix
+                            
+                            # Emit log_message event
+                            event_signals.publish_log_message(
+                                session_id=session.session_id,
+                                step_id=current_step_result.step_id,
+                                message="",  # We don't have the original template
+                                resolved_message=resolved_message
+                            )
                         else:
-                            # For non-display_value action messages, emit as generic display events
+                            # For other action messages, emit as generic display events
                             event_signals.publish_display_value(
                                 session_id=session.session_id,
                                 step_id=current_step_result.step_id,

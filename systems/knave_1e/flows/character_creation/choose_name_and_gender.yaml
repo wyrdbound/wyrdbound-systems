@@ -60,7 +60,7 @@ steps:
           - set_value:
               path: "outputs.character_gender"
               value: "{{ result.entry }}"
-          - display_value: "result.roll_result.detail"
+          - log_message: "Rolled {{ result.roll_result.detail }}"
 
     next_step: choose_name_method
 
