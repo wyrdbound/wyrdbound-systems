@@ -4,24 +4,11 @@ name: "Determine Character Traits"
 description: "Determine the physical and personality traits for character creation process for {{ system.name }}"
 version: "1.0"
 
-inputs:
-  - type: character
-    id: knave
-
-output:
-  - type: character
-    id: knave
+outputs:
+  - type: character_traits
+    id: traits
 
 steps:
-  - id: copy_input_to_output
-    name: "Copy Input Character to Output"
-    type: completion
-    actions:
-      - set_value:
-          path: "outputs.knave"
-          value: "{{ inputs.knave }}"
-      - display_value: "inputs.knave"
-
   - id: generate_traits
     name: "Determine Character Traits"
     type: table_roll
@@ -31,68 +18,68 @@ steps:
       - table: physique
         actions:
           - set_value:
-              path: "outputs.knave.traits.physique"
+              path: "outputs.traits.physique"
               value: "{{ result.entry }}"
-          # - display_value: "outputs.knave.traits.physique"
+          # - display_value: "outputs.traits.physique"
       - table: face
         actions:
           - set_value:
-              path: "outputs.knave.traits.face"
+              path: "outputs.traits.face"
               value: "{{ result.entry }}"
-          # - display_value: "outputs.knave.traits.face"
+          # - display_value: "outputs.traits.face"
       - table: skin
         actions:
           - set_value:
-              path: "outputs.knave.traits.skin"
+              path: "outputs.traits.skin"
               value: "{{ result.entry }}"
-          # - display_value: "outputs.knave.traits.skin"
+          # - display_value: "outputs.traits.skin"
       - table: hair
         actions:
           - set_value:
-              path: "outputs.knave.traits.hair"
+              path: "outputs.traits.hair"
               value: "{{ result.entry }}"
-          # - display_value: "outputs.knave.traits.hair"
+          # - display_value: "outputs.traits.hair"
       - table: clothing
         actions:
           - set_value:
-              path: "outputs.knave.traits.clothing"
+              path: "outputs.traits.clothing"
               value: "{{ result.entry }}"
-          # - display_value: "outputs.knave.traits.clothing"
+          # - display_value: "outputs.traits.clothing"
       - table: virtue
         actions:
           - set_value:
-              path: "outputs.knave.traits.virtue"
+              path: "outputs.traits.virtue"
               value: "{{ result.entry }}"
-          # - display_value: "outputs.knave.traits.virtue"
+          # - display_value: "outputs.traits.virtue"
       - table: vice
         actions:
           - set_value:
-              path: "outputs.knave.traits.vice"
+              path: "outputs.traits.vice"
               value: "{{ result.entry }}"
-          # - display_value: "outputs.knave.traits.vice"
+          # - display_value: "outputs.traits.vice"
       - table: speech
         actions:
           - set_value:
-              path: "outputs.knave.traits.speech"
+              path: "outputs.traits.speech"
               value: "{{ result.entry }}"
-          # - display_value: "outputs.knave.traits.speech"
+          # - display_value: "outputs.traits.speech"
       - table: background
         actions:
           - set_value:
-              path: "outputs.knave.traits.background"
+              path: "outputs.traits.background"
               value: "{{ result.entry }}"
-          # - display_value: "outputs.knave.traits.background"
+          # - display_value: "outputs.traits.background"
       - table: misfortunes
         actions:
           - set_value:
-              path: "outputs.knave.traits.misfortunes"
+              path: "outputs.traits.misfortunes"
               value: "{{ result.entry }}"
-          # - display_value: "outputs.knave.traits.misfortunes"
+          # - display_value: "outputs.traits.misfortunes"
       - table: alignment
         actions:
           - set_value:
-              path: "outputs.knave.traits.alignment"
+              path: "outputs.traits.alignment"
               value: "{{ result.entry }}"
-          # - display_value: "outputs.knave.traits.alignment"
+          # - display_value: "outputs.traits.alignment"
     actions:
-      - display_value: "outputs.knave"
+      - display_value: "outputs.traits"

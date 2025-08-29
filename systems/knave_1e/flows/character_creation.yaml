@@ -4,7 +4,6 @@ name: "Character Creation"
 description: "Character creation process for {{ system.name }}"
 version: "1.0"
 
-# inputs: []
 outputs:
   - type: character
     id: knave
@@ -47,7 +46,7 @@ steps:
       - set_value:
           path: "outputs.knave"
           value: "{{ result }}"
-    next_step: invoke_roll_starting_gear
+    next_step: invoke_determine_traits # TODO: Put this back to invoke_roll_starting_gear
 
   # - id: invoke_roll_starting_gear
   #   name: "Invoke Roll Starting Gear"
@@ -65,24 +64,23 @@ steps:
     name: "Invoke Determine Traits"
     type: flow_call
     flow: determine_traits
-    inputs:
-      character: "{{ outputs.knave }}"
     actions:
       - set_value:
-          path: "outputs.knave"
-          value: "{{ result }}"
-    next_step: generate_traits
+          path: "outputs.knave.traits"
+          value: "{{ result.traits }}"
+    next_step: invoke_choose_name_and_gender
 
   - id: invoke_choose_name_and_gender
     name: "Invoke Choose Name and Gender"
     type: flow_call
     flow: choose_name_and_gender
-    inputs:
-      character: "{{ outputs.knave }}"
     actions:
       - set_value:
-          path: "outputs.knave"
-          value: "{{ result }}"
+          path: "outputs.knave.name"
+          value: "{{ result.character_name }}"
+      - set_value:
+          path: "outputs.knave.gender"
+          value: "{{ result.character_gender }}"
     next_step: generate_character_description
 
   - id: generate_character_description
