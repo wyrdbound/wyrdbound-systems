@@ -267,8 +267,8 @@ class SimpleEventCLI:
             for output_id, output_value in data.outputs.items():
                 print(f"   {output_id}: {output_value}")
         
-        # Show variables if any (debug mode)
-        if data.variables:
+        # Show variables if any (debug mode only)
+        if self.debug and data.variables:
             print("\n🔧 Variables (debug):")
             for var_name, var_value in data.variables.items():
                 print(f"   {var_name}: {var_value}")
