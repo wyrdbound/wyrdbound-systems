@@ -1,6 +1,6 @@
 id: choose_name_and_gender
 type: flow
-name: "Choose Name and Gender for Character Creation"
+name: "Choose Character Name and Gender"
 description: "Name and gender selection for character creation process for {{ system.name }}"
 version: "1.0"
 
