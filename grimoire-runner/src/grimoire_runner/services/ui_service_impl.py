@@ -398,9 +398,8 @@ class GrimoireUIService(UIServiceInterface):
                             context.set_variable(f"_updated_step_result_{step.id}", updated_step_result)
                             debug_print(f"[UI_SERVICE] Stored updated step result with next_step_id: {updated_step_result.next_step_id}")
                             
-                            # Clear current_step_result so next iteration will advance the generator
-                            current_step_result = None
-                            continue
+                            # Set current_step_result to the updated result so it gets completion processing
+                            current_step_result = updated_step_result
                         else:
                             # This is a regular input step
                             session.status = ExecutionStatus.WAITING_FOR_INPUT
@@ -438,7 +437,7 @@ class GrimoireUIService(UIServiceInterface):
                             # Re-execute the step with user input available
                             debug_print(f"[UI_SERVICE] Re-executing step {current_step_result.step_id} with user input")
                             current_step_result = self.engine._execute_step(step, context, system)
-                            continue
+                            # Don't continue here - let the step complete normally and emit completion signal
                     
                     # Publish step completed event using blinker
                     # Check for action messages (like display_value, log_message) and emit as events
