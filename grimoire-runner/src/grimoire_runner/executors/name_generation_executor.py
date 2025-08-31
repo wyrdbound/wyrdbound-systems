@@ -40,11 +40,10 @@ class NameGenerationExecutor(BaseStepExecutor):
             
             # Get the new field configuration
             generator = getattr(step, "generator", "wyrdbound-rng")  # Default to wyrdbound-rng
-            output_variable = getattr(step, "output_variable", "generated_name")
             settings = getattr(step, "settings", {})
             
             # Debug output to see what we're getting from the step
-            logger.debug(f"[NAME_GEN] Step attributes: generator={generator}, output_variable={output_variable}, settings={settings}")
+            logger.debug(f"[NAME_GEN] Step attributes: generator={generator}, settings={settings}")
             logger.debug(f"[NAME_GEN] Step dir: {dir(step)}")
             
             # Resolve templates in settings values
@@ -66,15 +65,13 @@ class NameGenerationExecutor(BaseStepExecutor):
             logger.debug(f"Using name generator: {generator} with resolved settings: {resolved_settings}")
             generated_name = rng_integration.generate_name(generator, **resolved_settings)
 
-            # Store the generated name in the context using the specified output variable
+            # Store the generated name in the context as result
             context.set_variable("result", generated_name)
-            context.set_variable(output_variable, generated_name)
 
             # Execute step actions if present using the centralized ActionExecutor
             if step.actions:
                 step_data = {
                     "result": generated_name, 
-                    output_variable: generated_name,
                     "generated_name": generated_name  # For backward compatibility
                 }
                 self.action_executor.execute_actions(step.actions, context, step_data, system)
@@ -86,7 +83,6 @@ class NameGenerationExecutor(BaseStepExecutor):
                 success=True,
                 data={
                     "result": generated_name,
-                    output_variable: generated_name,
                     "generated_name": generated_name,  # For backward compatibility
                     "generator": generator,
                     "settings": resolved_settings,  # Use resolved settings in the result
@@ -119,12 +115,7 @@ class NameGenerationExecutor(BaseStepExecutor):
 
         # generator is optional - defaults to "wyrdbound-rng"
         generator = getattr(step, "generator", "wyrdbound-rng")
-        output_variable = getattr(step, "output_variable", None)
         settings = getattr(step, "settings", {})
-        
-        # Validate output_variable if provided
-        if output_variable and not isinstance(output_variable, str):
-            errors.append(f"output_variable must be a string, got {type(output_variable)}")
         
         # Validate settings is a dictionary
         if not isinstance(settings, dict):

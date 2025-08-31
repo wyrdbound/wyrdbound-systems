@@ -214,8 +214,7 @@ Generates random names using the wyrdbound-rng library.
 - id: "generate_character_name"
   type: "name_generation"
   prompt: "Generating a random name for your character..."
-  generator: "fantasy_names"
-  output_variable: "generated_name"
+  generator: "wyrdbound-rng"
   settings:
     max_length: 12
     corpus: "generic-fantasy"
@@ -223,19 +222,24 @@ Generates random names using the wyrdbound-rng library.
   actions:
     - set_value:
         path: "outputs.character.name"
-        value: "{{ generated_name }}"
+        value: "{{ result.name }}"
 ```
 
 **Configuration Options:**
 
-- **`generator`** (optional): Identifier for the name generator. Defaults to fallback if not specified.
-- **`output_variable`** (optional): Variable name to store the generated name. Defaults to `"generated_name"`.
-- **`settings`** (optional): Configuration parameters for name generation:
-  - **`max_length`** (optional): Maximum length of the generated name. Defaults to 15.
-  - **`corpus`** (optional): The name corpus/data file to use. Defaults to `"generic-fantasy"`. Must be a valid corpus available in wyrdbound-rng.
-  - **`segmenter`** (optional): The segmentation strategy to use. Defaults to `"fantasy"`.
+- **`generator`** (optional): Identifier for the name generator. Defaults to `"wyrdbound-rng"` if not specified. Currently, `"wyrdbound-rng"` is the only supported generator.
+- **`settings`** (optional): Configuration parameters for name generation. The available settings depend on the generator being used:
 
-The generated name is available in templates using the `output_variable` name (e.g., `{{ generated_name }}`) and for backward compatibility also as `{{ result }}`.
+**Settings for `wyrdbound-rng` generator:**
+
+- **`max_length`** (optional): Maximum length of the generated name. Defaults to 15.
+- **`corpus`** (optional): The name corpus/data file to use. Defaults to `"generic-fantasy"`. Must be a valid corpus available in wyrdbound-rng.
+- **`segmenter`** (optional): The segmentation strategy to use. Defaults to `"fantasy"`.
+- **`algorithm`** (optional): The generation algorithm to use. Defaults to `"bayesian"`.
+- **`min_probability`** (optional): Minimum probability threshold for generated names (for bayesian algorithm).
+- **`best_of`** (optional): Number of names to generate and select the best from (for bayesian algorithm).
+
+The generated name object is always available as `{{ result }}` in templates. To access just the name string, use `{{ result.name }}`.
 
 #### `player_input`
 

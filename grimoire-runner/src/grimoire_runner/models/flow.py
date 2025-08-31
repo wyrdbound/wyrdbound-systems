@@ -178,7 +178,6 @@ class StepDefinition:
 
     # For name_generation
     generator: str | None = None  # Name generator identifier
-    output_variable: str | None = None  # Variable name to store generated name
     settings: dict[str, Any] = field(default_factory=dict)  # Generator settings (corpus, segmenter, max_length)
     generator_file: str | None = None  # Path to name generator file (legacy)
     generator_params: dict[str, Any] = field(default_factory=dict)  # Parameters for name generation (legacy)

@@ -439,7 +439,6 @@ class SystemLoader:
             result=data.get("result"),
             # Name generation step fields
             generator=data.get("generator"),
-            output_variable=data.get("output_variable"),
             settings=data.get("settings", {}),
         )
 

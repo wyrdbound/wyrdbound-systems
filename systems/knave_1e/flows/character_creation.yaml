@@ -100,6 +100,7 @@ steps:
       - set_value:
           path: "outputs.knave.description"
           value: "{{ result }}"
+    next_step: review_character
 
   - id: review_character
     name: "Review and Confirm Character"
@@ -110,10 +111,10 @@ steps:
     choices:
       - id: accept
         label: "Accept this character"
-        next_step: "finalize_character"
+        next_step: finalize_character
       - id: reroll
         label: "Start over with a new character"
-        next_step: "roll_abilities"
+        next_step: invoke_roll_abilities
         reset_outputs: true
 
   - id: finalize_character
@@ -122,9 +123,9 @@ steps:
     prompt: "Your Knave is ready for adventure!"
     actions:
       - validate_value: "outputs.knave"
-      - set_value:
-          path: "outputs.knave.level"
-          value: 1
+      # - set_value:
+      #     path: "outputs.knave.level"
+      #     value: 1
       - log_event:
           type: "character_created"
           data: "{{ outputs.knave.name or 'Unnamed Knave' }}"
@@ -132,8 +133,8 @@ steps:
 # Flow control
 resume_points:
   [
-    "ability_swap_choice",
-    "choose_weapon",
-    "generate_traits",
+    "invoke_roll_abilities",
+    "invoke_choose_starting_weapon",
+    "invoke_determine_traits",
     "review_character",
   ]
