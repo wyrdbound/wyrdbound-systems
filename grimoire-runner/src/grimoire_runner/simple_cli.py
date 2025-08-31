@@ -85,10 +85,11 @@ class StepDisplayFormatter:
         if not step_data:
             return
         
-        # For name_generation steps, prefer generated_name over result to avoid duplication
-        if step.type == "name_generation" and "generated_name" in step_data and "result" in step_data:
-            # Remove result from the display if we have generated_name
-            filtered_data = {k: v for k, v in step_data.items() if k != "result"}
+        # For name_generation steps, suppress both result and generated_name 
+        # since display_value actions handle the output
+        if step.type == "name_generation":
+            filtered_data = {k: v for k, v in step_data.items() 
+                           if k not in ("result", "generated_name")}
         else:
             filtered_data = step_data
         
@@ -118,11 +119,7 @@ class StepDisplayFormatter:
 
     def _format_user_field(self, step, key, value):
         """Format user-facing fields with step-specific presentation."""
-        if step.type == "name_generation" and key == "generated_name":
-            print(f"   🎯 Generated name: {value}")
-        elif step.type == "name_generation" and key == "result":
-            print(f"   🎯 Generated name: {value}")
-        elif step.type == "dice_roll" and key == "result":
+        if step.type == "dice_roll" and key == "result":
             # For dice rolls, show a clean result without internal object details
             if hasattr(value, 'detail') and hasattr(value, 'total'):
                 print(f"   🎲 Roll result: {value.detail}")
@@ -140,11 +137,8 @@ class StepDisplayFormatter:
         """Format a display value based on its type and content.
         
         This is the presentation layer handling the formatting of structured data.
-        Only shows display values in debug mode to avoid duplication.
+        Display values are always shown as they are intentional flow designer content.
         """
-        # Only show display values in debug mode to avoid duplication with step data
-        if not self.debug:
-            return None
             
         from rich.console import Console
         from rich.table import Table
@@ -154,7 +148,7 @@ class StepDisplayFormatter:
         console = Console(file=StringIO(), width=100, force_terminal=True)
         
         if value is None:
-            return f"Display Value: {path}\n   (No value)"
+            return f"Display Value: {path} = (No value)"
         
         # Handle different value types generically
         if isinstance(value, dict):
@@ -184,15 +178,15 @@ class StepDisplayFormatter:
         
         elif isinstance(value, list):
             if not value:
-                return f"Display Value: {path}\n   (empty list)"
+                return f"Display Value: {path} = (empty list)"
             else:
                 # Format list with summary
                 if len(value) == 1:
-                    return f"Display Value: {path}\n   [1 item: {value[0]}]"
+                    return f"Display Value: {path} = [1 item: {value[0]}]"
                 else:
                     sample = ", ".join(str(item) for item in value[:2])
                     suffix = ", ..." if len(value) > 2 else ""
-                    return f"Display Value: {path}\n   [{len(value)} items: {sample}{suffix}]"
+                    return f"Display Value: {path} = [{len(value)} items: {sample}{suffix}]"
         
         else:
             # Simple values
@@ -201,7 +195,7 @@ class StepDisplayFormatter:
             else:
                 display_value = str(value)
             
-            return f"Display Value: {path}\n   {display_value}"
+            return f"Display Value: {path} = {display_value}"
 
 
 class SimpleEventCLI:
@@ -284,10 +278,6 @@ class SimpleEventCLI:
         print(f"\n{step_emoji} Step {step_number}: {step_display_name} ({step.type})")
         if step.description:
             print(f"   Description: {step.description}")
-        
-        # Add specific handling for name generation steps
-        if step.type == "name_generation":
-            print(f"   🎯 Generating random name...")
     
     def _handle_step_completed(self, sender=None, **kwargs):
         """Handle step completed signal."""
@@ -489,8 +479,7 @@ class SimpleEventCLI:
         data = kwargs.get('data')
         debug_print(f"[SIMPLE_CLI] Received signal: display_value")
         
-        # Format the display value based on the structured data
-        # Only show in debug mode to avoid duplication with step data
+        # Format and display the value - these are intentional flow designer content
         formatted_output = self.formatter.format_display_value(data.path, data.value)
         if formatted_output:
             print(formatted_output)

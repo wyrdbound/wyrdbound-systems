@@ -62,6 +62,7 @@ steps:
               value: "{{ result.entry }}"
           - log_message: "Rolled {{ result.roll_result.detail }}"
           - log_message: "Character is {{ result.entry }}"
+          - display_value: "outputs.character_gender"
 
     next_step: choose_name_method
 

@@ -81,7 +81,7 @@ class NameGenerationExecutor(BaseStepExecutor):
 
             logger.debug(f"Generated name: '{generated_name}' using generator: {generator} with resolved settings: {resolved_settings}")
 
-            return StepResult(
+            step_result = StepResult(
                 step_id=step.id if step else "unknown",
                 success=True,
                 data={
@@ -94,6 +94,12 @@ class NameGenerationExecutor(BaseStepExecutor):
                     "using_wyrdbound_rng": rng_integration.is_available(),
                 },
             )
+
+            # Mark that actions were already executed to prevent double execution
+            if step.actions:
+                step_result.actions_already_executed = True
+            
+            return step_result
 
         except Exception as e:
             step_id = step.id if step and hasattr(step, "id") else "unknown"
