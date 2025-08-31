@@ -127,6 +127,10 @@ class SimpleEventCLI:
         elif step.type == "table_roll":
             step_emoji = "📊"
         
+        # Show resolved message if available (for result_message templates)
+        if data.step_data and "resolved_message" in data.step_data:
+            print(f"💬 {data.step_data['resolved_message']}")
+        
         print(f"{step_emoji} Step {step_number} ({step.id}) completed")
         
         # Show any result data (excluding internal fields)

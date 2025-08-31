@@ -423,22 +423,6 @@ class GrimoireEngine:
                         logger.error(f"Error processing user input for step {step.id}: {e}")
                         result = StepResult(step_id=step.id, success=False, error=f"Input processing failed: {e}")
 
-            # Resolve result message template if present
-            if step.result_message and result.success:
-                try:
-                    # Use ExecutionContext's template resolution with step data
-                    step_data = result.data if result.data else {}
-                    resolved_message = context.resolve_template_with_step_data(
-                        step.result_message, step_data
-                    )
-                    # Add resolved message to result data
-                    if result.data:
-                        result.data["resolved_message"] = resolved_message
-                    else:
-                        result.data = {"resolved_message": resolved_message}
-                except Exception as e:
-                    logger.error(f"Failed to resolve result message template: {e}")
-
             # Handle output variable setting
             if result.success and step.output and result.data:
                 if "result" in result.data:
@@ -469,6 +453,27 @@ class GrimoireEngine:
                 self.action_executor.execute_actions(
                     post_actions, context, result.data, system
                 )
+            elif actions_already_handled:
+                debug_print(
+                    f"Skipping post-step actions for step {step.id} - already handled by executor"
+                )
+
+            # Resolve result message template AFTER actions are executed
+            # This ensures that any outputs set by actions are available in the template context
+            if step.result_message and result.success:
+                try:
+                    # Use ExecutionContext's template resolution with step data
+                    step_data = result.data if result.data else {}
+                    resolved_message = context.resolve_template_with_step_data(
+                        step.result_message, step_data
+                    )
+                    # Add resolved message to result data
+                    if result.data:
+                        result.data["resolved_message"] = resolved_message
+                    else:
+                        result.data = {"resolved_message": resolved_message}
+                except Exception as e:
+                    logger.error(f"Failed to resolve result message template: {e}")
             elif actions_already_handled:
                 debug_print(
                     f"Skipping post-step actions for step {step.id} - already handled by executor"
