@@ -25,6 +25,185 @@ from .services.event_signals import (
 from .utils.debug import debug_print, set_debug_enabled
 
 
+class StepDisplayFormatter:
+    """Handles unified formatting of step data across all step types."""
+    
+    def __init__(self, debug: bool = False):
+        self.debug = debug
+        
+        # Define comprehensive list of internal/debug fields across all step types
+        self.internal_fields = {
+            # General engine fields
+            "resolved_message", "internal_state", "execution_metadata", 
+            "step_metadata", "engine_state", "actions_already_executed",
+            
+            # Table roll executor fields  
+            "table_results", "parallel",
+            
+            # Dice roll executor fields
+            "expression", "breakdown", "individual_rolls",
+            
+            # Flow/completion executor fields
+            "completion", "message",
+            
+            # Choice executor fields
+            "results",  # internal choice results
+            
+            # Player input executor fields
+            "user_input",  # duplicate of result
+            
+            # Conditional executor fields
+            "condition_result",
+            
+            # Name generation fields (debug only)
+            "generation_metadata", "template_data", "generator", 
+            "original_settings", "using_wyrdbound_rng",
+            
+            # Dice sequence fields
+            "all_results", "sequence_items",
+            
+            # LLM generation executor fields
+            "generated_content",  # duplicate of result
+            "prompt_data", "settings", "skipped", "reason"
+        }
+        
+        # User-facing fields that should always be shown (even if they match internal names)
+        self.user_facing_fields = {
+            "generated_name",  # Name generation results
+        }
+        
+        # Step-type specific handling for "result" field
+        self.step_specific_result_handling = {
+            "dice_roll": False,  # Use log_message templates instead
+            "player_input": True,  # Show result field
+            "llm_generation": True,  # Show result field
+            "name_generation": True,  # Show result field
+        }
+    
+    def display_step_data(self, step, step_data):
+        """Unified method to display step data, filtering internal fields appropriately."""
+        if not step_data:
+            return
+        
+        # For name_generation steps, prefer generated_name over result to avoid duplication
+        if step.type == "name_generation" and "generated_name" in step_data and "result" in step_data:
+            # Remove result from the display if we have generated_name
+            filtered_data = {k: v for k, v in step_data.items() if k != "result"}
+        else:
+            filtered_data = step_data
+        
+        for key, value in filtered_data.items():
+            # Handle "result" field based on step type
+            if key == "result":
+                should_show_result = self.step_specific_result_handling.get(step.type, True)
+                if should_show_result:
+                    self._format_user_field(step, key, value)
+                continue
+            
+            # Always show other user-facing fields
+            if key in self.user_facing_fields:
+                self._format_user_field(step, key, value)
+                continue
+                
+            # Skip internal fields unless in debug mode
+            if key in self.internal_fields and not self.debug:
+                continue
+                
+            # In debug mode, show internal fields with clear labeling
+            if self.debug and key in self.internal_fields:
+                print(f"   [DEBUG] {key}: {value}")
+            else:
+                # Show other fields normally (user-defined outputs, etc.)
+                print(f"   {key}: {value}")
+
+    def _format_user_field(self, step, key, value):
+        """Format user-facing fields with step-specific presentation."""
+        if step.type == "name_generation" and key == "generated_name":
+            print(f"   🎯 Generated name: {value}")
+        elif step.type == "name_generation" and key == "result":
+            print(f"   🎯 Generated name: {value}")
+        elif step.type == "dice_roll" and key == "result":
+            # For dice rolls, show a clean result without internal object details
+            if hasattr(value, 'detail') and hasattr(value, 'total'):
+                print(f"   🎲 Roll result: {value.detail}")
+            else:
+                print(f"   🎲 Roll result: {value}")
+        elif step.type == "player_input" and key == "result":
+            print(f"   💬 Input received: {value}")
+        elif step.type == "llm_generation" and key == "result":
+            print(f"   🤖 Generated: {value}")
+        else:
+            # Default formatting for other user fields
+            print(f"   {key}: {value}")
+    
+    def format_display_value(self, path: str, value: Any) -> str:
+        """Format a display value based on its type and content.
+        
+        This is the presentation layer handling the formatting of structured data.
+        Only shows display values in debug mode to avoid duplication.
+        """
+        # Only show display values in debug mode to avoid duplication with step data
+        if not self.debug:
+            return None
+            
+        from rich.console import Console
+        from rich.table import Table
+        from io import StringIO
+        
+        # Create a console for formatting
+        console = Console(file=StringIO(), width=100, force_terminal=True)
+        
+        if value is None:
+            return f"Display Value: {path}\n   (No value)"
+        
+        # Handle different value types generically
+        if isinstance(value, dict):
+            console.print(f"Display Value: {path}")
+            
+            if value:
+                # Create a vertical table: key-value pairs as rows
+                table = Table(show_header=True, header_style="bold magenta")
+                table.add_column("Property", style="cyan")
+                table.add_column("Value", style="white")
+                
+                # Add each key-value pair as a row
+                for key, val in value.items():
+                    # Format key to be more readable
+                    formatted_key = key.replace('_', ' ').title()
+                    formatted_val = str(val) if val is not None else "(none)"
+                    table.add_row(formatted_key, formatted_val)
+                
+                console.print(table)
+            else:
+                console.print("   (empty)")
+            
+            # Get the formatted output
+            output = console.file.getvalue()
+            console.file.close()
+            return output.strip()
+        
+        elif isinstance(value, list):
+            if not value:
+                return f"Display Value: {path}\n   (empty list)"
+            else:
+                # Format list with summary
+                if len(value) == 1:
+                    return f"Display Value: {path}\n   [1 item: {value[0]}]"
+                else:
+                    sample = ", ".join(str(item) for item in value[:2])
+                    suffix = ", ..." if len(value) > 2 else ""
+                    return f"Display Value: {path}\n   [{len(value)} items: {sample}{suffix}]"
+        
+        else:
+            # Simple values
+            if isinstance(value, str):
+                display_value = f'"{value}"' if len(str(value)) < 50 else f'"{str(value)[:47]}..."'
+            else:
+                display_value = str(value)
+            
+            return f"Display Value: {path}\n   {display_value}"
+
+
 class SimpleEventCLI:
     """Minimal CLI that uses blinker signals for event handling."""
     
@@ -36,6 +215,9 @@ class SimpleEventCLI:
         self.waiting_for_choice = False
         self.execution_complete = False
         self.execution_successful = False
+        
+        # Create the unified display formatter
+        self.formatter = StepDisplayFormatter(debug=debug)
         
         # Connect to blinker signals instead of subscribing to events
         self._connect_signals()
@@ -132,104 +314,18 @@ class SimpleEventCLI:
             print(f"💬 {data.step_data['resolved_message']}")
         
         # Display step data using unified formatting (before "completed" message)
-        self._display_step_data(step, data.step_data)
+        self.formatter.display_step_data(step, data.step_data)
         
         print(f"{step_emoji} Step {step_number} ({step.id}) completed")
 
-    def _display_step_data(self, step, step_data):
-        """Unified method to display step data, filtering internal fields appropriately."""
-        if not step_data:
-            return
+    def _handle_log_message(self, sender=None, **kwargs):
+        """Handle log message signal."""
+        data = kwargs.get('data')
+        debug_print(f"[SIMPLE_CLI] Received signal: log_message")
         
-        # Define comprehensive list of internal/debug fields across all step types
-        internal_fields = {
-            # General engine fields
-            "resolved_message", "internal_state", "execution_metadata", 
-            "step_metadata", "engine_state", "actions_already_executed",
-            
-            # Table roll executor fields  
-            "table_results", "parallel",
-            
-            # Dice roll executor fields
-            "expression", "breakdown", "individual_rolls",
-            
-            # Flow/completion executor fields
-            "completion", "message",
-            
-            # Choice executor fields
-            "results",  # internal choice results
-            
-            # Player input executor fields
-            "user_input",  # duplicate of result
-            
-            # Conditional executor fields
-            "condition_result",
-            
-            # Name generation fields (if any internal ones exist)
-            "generation_metadata", "template_data",
-            
-            # Dice sequence fields
-            "all_results", "sequence_items",
-            
-            # LLM generation executor fields
-            "generated_content",  # duplicate of result
-            "prompt_data", "settings", "skipped", "reason"
-        }
-        
-        # User-facing fields that should always be shown (even if they match internal names)
-        user_facing_fields = {
-            "generated_name",  # Name generation results
-        }
-        
-        # Step-type specific handling for "result" field
-        step_specific_result_handling = {
-            "dice_roll": False,  # Use log_message templates instead
-            "player_input": True,  # Show result field
-            "llm_generation": True,  # Show result field
-        }
-        
-        for key, value in step_data.items():
-            # Handle "result" field based on step type
-            if key == "result":
-                should_show_result = step_specific_result_handling.get(step.type, True)
-                if should_show_result:
-                    self._format_user_field(step, key, value)
-                continue
-            
-            # Always show other user-facing fields
-            if key in user_facing_fields:
-                self._format_user_field(step, key, value)
-                continue
-                
-            # Skip internal fields unless in debug mode
-            if key in internal_fields and not self.debug:
-                continue
-                
-            # In debug mode, show internal fields with clear labeling
-            if self.debug and key in internal_fields:
-                print(f"   [DEBUG] {key}: {value}")
-            else:
-                # Show other fields normally (user-defined outputs, etc.)
-                print(f"   {key}: {value}")
-
-    def _format_user_field(self, step, key, value):
-        """Format user-facing fields with step-specific presentation."""
-        if step.type == "name_generation" and key == "generated_name":
-            print(f"   🎯 Generated name: {value}")
-        elif step.type == "dice_roll" and key == "result":
-            # For dice rolls, show a clean result without internal object details
-            if hasattr(value, 'detail') and hasattr(value, 'total'):
-                print(f"   🎲 Roll result: {value.detail}")
-            else:
-                print(f"   🎲 Roll result: {value}")
-        elif step.type == "player_input" and key == "result":
-            print(f"   💬 Input received: {value}")
-        elif step.type == "llm_generation" and key == "result":
-            print(f"   🤖 Generated: {value}")
-        else:
-            # Default formatting for other user fields
-            print(f"   {key}: {value}")
-
+        # Print the log message
+        print(f"📝 {data.resolved_message}")
+    
     def _handle_input_required(self, sender=None, **kwargs):
         """Handle input required signal."""
         data = kwargs.get('data')
@@ -394,8 +490,10 @@ class SimpleEventCLI:
         debug_print(f"[SIMPLE_CLI] Received signal: display_value")
         
         # Format the display value based on the structured data
-        formatted_output = self._format_display_value(data.path, data.value)
-        print(formatted_output)
+        # Only show in debug mode to avoid duplication with step data
+        formatted_output = self.formatter.format_display_value(data.path, data.value)
+        if formatted_output:
+            print(formatted_output)
 
     def _format_display_value(self, path: str, value: Any) -> str:
         """Format a display value based on its type and content.
