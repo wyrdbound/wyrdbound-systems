@@ -284,6 +284,22 @@ class GrimoireEngine:
             for variable in flow.variables:
                 context.set_variable(variable.id, variable.default)
 
+        # Initialize complete model instances for declared outputs
+        context.initialize_output_models(flow.outputs, system)
+
+        # Initialize observable derived fields from output models
+        for output_def in flow.outputs:
+            if output_def.type in system.models:
+                model = system.models[output_def.type]
+                from ..utils.debug import debug_print
+                debug_print(
+                    f"Initializing model observables for {output_def.type} ({output_def.id})"
+                )
+                # Create a generic model resolver function
+                def model_resolver(model_type):
+                    return system.models.get(model_type)
+                context.initialize_model_observables(model, output_def.id, model_resolver)
+
         current_step_id = flow.steps[0].id if flow.steps else None
 
         while current_step_id:
