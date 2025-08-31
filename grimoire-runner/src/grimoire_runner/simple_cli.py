@@ -47,6 +47,7 @@ class StepDisplayFormatter:
             "completion", "message",
             
             # Choice executor fields
+            "choice_id", "choice_label",  # internal choice details
             "results",  # internal choice results
             
             # Player input executor fields
@@ -78,6 +79,7 @@ class StepDisplayFormatter:
             "player_input": True,  # Show result field
             "llm_generation": True,  # Show result field
             "name_generation": True,  # Show result field
+            "player_choice": False,  # Raw result objects, use display_value actions instead
         }
     
     def display_step_data(self, step, step_data):
