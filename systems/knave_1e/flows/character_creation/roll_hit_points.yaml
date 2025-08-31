@@ -27,7 +27,7 @@ steps:
               value: "1d8"
         next_step: "roll_hit_points"
       - id: house_rule
-        label: "House rule: reroll results below 5"
+        label: "House rule: Reroll results below 5"
         actions:
           - set_value:
               path: "variables.hp_dice_roll"
@@ -43,10 +43,5 @@ steps:
       - set_value:
           path: "outputs.hit_points"
           value: "{{ result.total }}"
-    result_message: "Hit points rolled: {{ result.detail }}"
-    next_step: complete_roll_hit_points
-
-  - id: complete_roll_hit_points
-    name: "Complete Roll Hit Points"
-    type: completion
-    prompt: "Hit points have been rolled for your character."
+      - log_message: "Rolled {{ result.detail }}"
+      - log_message: "Hit Points are {{ result.total }}"

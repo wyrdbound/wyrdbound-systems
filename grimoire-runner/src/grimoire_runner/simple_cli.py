@@ -131,17 +131,104 @@ class SimpleEventCLI:
         if data.step_data and "resolved_message" in data.step_data:
             print(f"💬 {data.step_data['resolved_message']}")
         
-        print(f"{step_emoji} Step {step_number} ({step.id}) completed")
+        # Display step data using unified formatting (before "completed" message)
+        self._display_step_data(step, data.step_data)
         
-        # Show any result data (excluding internal fields)
-        if data.step_data:
-            for key, value in data.step_data.items():
-                if key not in ["resolved_message", "internal_state"]:
-                    # Special formatting for name generation results
-                    if step.type == "name_generation" and key == "generated_name":
-                        print(f"   🎯 Generated name: {value}")
-                    else:
-                        print(f"   {key}: {value}")
+        print(f"{step_emoji} Step {step_number} ({step.id}) completed")
+
+    def _display_step_data(self, step, step_data):
+        """Unified method to display step data, filtering internal fields appropriately."""
+        if not step_data:
+            return
+        
+        # Define comprehensive list of internal/debug fields across all step types
+        internal_fields = {
+            # General engine fields
+            "resolved_message", "internal_state", "execution_metadata", 
+            "step_metadata", "engine_state", "actions_already_executed",
+            
+            # Table roll executor fields  
+            "table_results", "parallel",
+            
+            # Dice roll executor fields
+            "expression", "breakdown", "individual_rolls",
+            
+            # Flow/completion executor fields
+            "completion", "message",
+            
+            # Choice executor fields
+            "results",  # internal choice results
+            
+            # Player input executor fields
+            "user_input",  # duplicate of result
+            
+            # Conditional executor fields
+            "condition_result",
+            
+            # Name generation fields (if any internal ones exist)
+            "generation_metadata", "template_data",
+            
+            # Dice sequence fields
+            "all_results", "sequence_items",
+            
+            # LLM generation executor fields
+            "generated_content",  # duplicate of result
+            "prompt_data", "settings", "skipped", "reason"
+        }
+        
+        # User-facing fields that should always be shown (even if they match internal names)
+        user_facing_fields = {
+            "generated_name",  # Name generation results
+        }
+        
+        # Step-type specific handling for "result" field
+        step_specific_result_handling = {
+            "dice_roll": False,  # Use log_message templates instead
+            "player_input": True,  # Show result field
+            "llm_generation": True,  # Show result field
+        }
+        
+        for key, value in step_data.items():
+            # Handle "result" field based on step type
+            if key == "result":
+                should_show_result = step_specific_result_handling.get(step.type, True)
+                if should_show_result:
+                    self._format_user_field(step, key, value)
+                continue
+            
+            # Always show other user-facing fields
+            if key in user_facing_fields:
+                self._format_user_field(step, key, value)
+                continue
+                
+            # Skip internal fields unless in debug mode
+            if key in internal_fields and not self.debug:
+                continue
+                
+            # In debug mode, show internal fields with clear labeling
+            if self.debug and key in internal_fields:
+                print(f"   [DEBUG] {key}: {value}")
+            else:
+                # Show other fields normally (user-defined outputs, etc.)
+                print(f"   {key}: {value}")
+
+    def _format_user_field(self, step, key, value):
+        """Format user-facing fields with step-specific presentation."""
+        if step.type == "name_generation" and key == "generated_name":
+            print(f"   🎯 Generated name: {value}")
+        elif step.type == "dice_roll" and key == "result":
+            # For dice rolls, show a clean result without internal object details
+            if hasattr(value, 'detail') and hasattr(value, 'total'):
+                print(f"   🎲 Roll result: {value.detail}")
+            else:
+                print(f"   🎲 Roll result: {value}")
+        elif step.type == "player_input" and key == "result":
+            print(f"   💬 Input received: {value}")
+        elif step.type == "llm_generation" and key == "result":
+            print(f"   🤖 Generated: {value}")
+        else:
+            # Default formatting for other user fields
+            print(f"   {key}: {value}")
 
     def _handle_input_required(self, sender=None, **kwargs):
         """Handle input required signal."""
