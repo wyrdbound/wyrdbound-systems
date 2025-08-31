@@ -128,24 +128,31 @@ class ModelAwareDict:
         return result if result is not None else default
 
     def keys(self):
-        """Support dict.keys() method - returns only root-level keys."""
+        """Support dict.keys() method - returns only root-level keys in model definition order."""
         if self._model_def:
             # Get all attributes (including nested ones like 'hit_points.max')
             all_attrs = self._model_def.get_all_attributes()
             
-            # Extract root-level keys from potentially dotted attribute names
-            root_model_keys = set()
+            # Extract root-level keys from potentially dotted attribute names in definition order
+            ordered_model_keys = []
+            seen_keys = set()
             for key in all_attrs.keys():
                 if '.' in key:
                     # For nested keys like 'hit_points.max', take the root part 'hit_points'
                     root_key = key.split('.')[0]
-                    root_model_keys.add(root_key)
+                    if root_key not in seen_keys:
+                        ordered_model_keys.append(root_key)
+                        seen_keys.add(root_key)
                 else:
                     # For non-nested keys, use as-is
-                    root_model_keys.add(key)
+                    if key not in seen_keys:
+                        ordered_model_keys.append(key)
+                        seen_keys.add(key)
             
-            data_keys = set(self._data.keys())
-            return list(root_model_keys | data_keys)
+            # Add any data keys that aren't in the model (preserve them at the end)
+            data_keys = [key for key in self._data.keys() if key not in seen_keys]
+            
+            return ordered_model_keys + data_keys
         return list(self._data.keys())
 
     def values(self):

@@ -449,20 +449,20 @@ class DisplayValueActionStrategy(ActionStrategy):
         """Print a table representation of a dictionary directly to console."""
         from rich.table import Table
 
-        # Debug the object type and keys
-        if hasattr(data, '_model_def'):
-            if data._model_def:
-                all_attrs = data._model_def.get_all_attributes()
-
         # Create table with styling and left-justified title for accessibility
         table = Table(show_header=True, header_style="bold blue", show_lines=True, title_justify="left")
         table.add_column("Property", style="cyan", width=18, no_wrap=True)
         table.add_column("Value", style="white", width=60)
 
-        # Add rows for each key-value pair
-        for key, value in data.items():
-            formatted_value = self._format_value_for_table(value, f"{path}.{key}")
-            table.add_row(str(key), formatted_value)
+        # Get ordered keys - prefer model definition order if available
+        ordered_keys = self._get_ordered_keys(data)
+
+        # Add rows for each key-value pair in the correct order
+        for key in ordered_keys:
+            if key in data:  # Only show keys that have values
+                value = data[key]
+                formatted_value = self._format_value_for_table(value, f"{path}.{key}")
+                table.add_row(str(key), formatted_value)
 
         # Print table directly to console
         console.print(table)
@@ -482,10 +482,15 @@ class DisplayValueActionStrategy(ActionStrategy):
         table.add_column("Property", style="cyan", width=18, no_wrap=True)
         table.add_column("Value", style="white", width=60)
 
-        # Add rows for each key-value pair
-        for key, value in data.items():
-            formatted_value = self._format_value_for_table(value, f"{path}.{key}")
-            table.add_row(str(key), formatted_value)
+        # Get ordered keys - prefer model definition order if available
+        ordered_keys = self._get_ordered_keys(data)
+
+        # Add rows for each key-value pair in the correct order
+        for key in ordered_keys:
+            if key in data:  # Only show keys that have values
+                value = data[key]
+                formatted_value = self._format_value_for_table(value, f"{path}.{key}")
+                table.add_row(str(key), formatted_value)
 
         # Render table to string
         console.print(table)
@@ -493,6 +498,47 @@ class DisplayValueActionStrategy(ActionStrategy):
         console.file.close()
 
         return output.strip()
+
+    def _get_ordered_keys(self, data: dict) -> list[str]:
+        """Get keys in the order defined by the model, falling back to insertion order."""
+        # If data is a ModelAwareDict with a model definition, use model order
+        if hasattr(data, '_model_def') and data._model_def:
+            # Get all attributes from the model definition
+            all_attrs = data._model_def.get_all_attributes()
+            
+            # Debug: print the model attributes order
+            from ..utils.logging import debug_print
+            debug_print(f"Model attributes order: {list(all_attrs.keys())}")
+            
+            # Extract root-level keys from potentially dotted attribute names in definition order
+            model_keys = []
+            seen_keys = set()
+            for attr_key in all_attrs.keys():
+                if '.' in attr_key:
+                    # For nested keys like 'hit_points.max', take the root part 'hit_points'
+                    root_key = attr_key.split('.')[0]
+                    if root_key not in seen_keys:
+                        model_keys.append(root_key)
+                        seen_keys.add(root_key)
+                else:
+                    # For non-nested keys, use as-is
+                    if attr_key not in seen_keys:
+                        model_keys.append(attr_key)
+                        seen_keys.add(attr_key)
+            
+            # Debug: print the ordered keys we extracted
+            debug_print(f"Extracted model keys order: {model_keys}")
+            debug_print(f"Data keys: {list(data.keys())}")
+            
+            # Add any data keys that aren't in the model (preserve them at the end)
+            data_keys = [key for key in data.keys() if key not in seen_keys]
+            
+            result = model_keys + data_keys
+            debug_print(f"Final ordered keys: {result}")
+            return result
+        
+        # Fallback to data's natural order (insertion order for modern Python dicts)
+        return list(data.keys())
 
     def _format_value_for_table(self, value: Any, path: str) -> str:
         """Format a value specifically for table display with Rich markup."""
