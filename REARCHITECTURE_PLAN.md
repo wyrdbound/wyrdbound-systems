@@ -18,9 +18,7 @@ Always remember the following points as you are working on this code base:
 
 5. Remember GRIMOIRE aims to define Table-Top RPG (TTRPG) systems in YAML and keep the engine code generic. Avoid adding special-cases for TTRPG system-specific information (model names, model attributes, table values, system-specific information, etc) into the engine.
 
-6. In the engine, use debug_print() liberally with --debug option to the grimoire-runner CLI tool to capture the flow of data and decisions within the code. Do not use logging, since Rich appears to silence it somehow.
-
-7. Do NOT make bandaid fixes that break the rearchitecture goals of separating out the UI client (presentation and user input layer) from the core GRIMOIRE engine (flow orchestration, context management, and template resolution layer). Always respect the architectural boundaries.
+6. Do NOT make bandaid fixes that break the rearchitecture goals of separating out the UI client (presentation and user input layer) from the core GRIMOIRE engine (flow orchestration, context management, and template resolution layer). Always respect the architectural boundaries.
 
 ## Current Architectural Problems
 
