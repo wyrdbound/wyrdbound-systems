@@ -13,7 +13,6 @@ from rich.progress import (
 from rich.table import Table
 
 from ..core.engine import GrimoireEngine
-from ..utils.debug import set_debug_enabled
 from .rich_browser import run_rich_browser
 from .rich_tui import run_rich_tui_executor
 
@@ -132,9 +131,6 @@ def execute(
     # TODO: Implement interactive mode functionality
     _ = interactive  # Currently unused - planned for future implementation
 
-    # Set global debug flag
-    set_debug_enabled(debug)
-
     # Configure logging based on verbose flag
     if verbose:
         logging.basicConfig(
@@ -144,6 +140,8 @@ def execute(
         logging.basicConfig(
             level=logging.WARNING, format="%(levelname)s:%(name)s:%(message)s"
         )
+    
+
 
     try:
         # Load inputs from YAML file if provided

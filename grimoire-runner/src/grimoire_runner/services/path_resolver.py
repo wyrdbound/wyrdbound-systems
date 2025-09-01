@@ -4,12 +4,14 @@ import logging
 from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING, Any, Optional
 
-from ..utils.debug import debug_print
+from ..utils.logging import get_logger
 
 if TYPE_CHECKING:
     from ..models.context_data import ExecutionContext
 
 logger = logging.getLogger(__name__)
+# Get the global engine logger for debug messages
+engine_logger = get_logger("grimoire_engine")
 
 
 class PathResolutionError(Exception):
@@ -96,23 +98,19 @@ class OutputsPathHandler(PathResolverHandler):
         # Remove 'outputs.' prefix and set in outputs dict
         output_path = path[8:]  # len("outputs.") = 8
         
-        debug_print(f"OutputsPathHandler._handle_set: path={path}, output_path={output_path}")
-        debug_print(f"OutputsPathHandler._handle_set: has derived field manager: {hasattr(context, '_derived_field_manager') and context._derived_field_manager}")
+        engine_logger.debug(f"PathResolver: Setting output path={output_path}")
 
         # Use the derived field manager if available for observable updates
         if (
             hasattr(context, "_derived_field_manager")
             and context._derived_field_manager
         ):
-            debug_print(f"OutputsPathHandler._handle_set: Using derived field manager")
             try:
                 context._derived_field_manager.set_field_value(output_path, value)
-                debug_print(f"OutputsPathHandler._handle_set: Derived field manager succeeded")
             except Exception as e:
-                debug_print(f"OutputsPathHandler._handle_set: Derived field manager failed: {e}")
+                engine_logger.debug(f"PathResolver: Derived field manager failed: {e}")
                 raise e
         else:
-            debug_print(f"OutputsPathHandler._handle_set: Using _set_nested_value")
             self._set_nested_value(context.outputs, output_path, value)
 
         return True
@@ -137,46 +135,32 @@ class OutputsPathHandler(PathResolverHandler):
         """Set a nested value by dot-separated path, creating intermediate dicts as needed."""
         if not path:
             raise ValueError("Path cannot be empty")
-        
-        debug_print(f"_set_nested_value: path={path}, value type={type(value)}")
 
         parts = path.split(".")
         current = obj
-        
-        debug_print(f"_set_nested_value: parts={parts}")
 
         # Navigate to parent of target
         for i, part in enumerate(parts[:-1]):
-            debug_print(f"_set_nested_value: Navigating part {i}: '{part}', current type: {type(current)}")
             if part not in current:
                 current[part] = {}
-                debug_print(f"_set_nested_value: Created new dict for '{part}'")
             elif not (isinstance(current[part], dict) or hasattr(current[part], '__getitem__')):
-                debug_print(f"_set_nested_value: ERROR - '{part}' is not dict-like, type: {type(current[part])}")
+                engine_logger.warning(f"PathResolver: Cannot set nested value: '{part}' is not a dict-like object")
                 raise ValueError(f"Cannot set nested value: '{part}' is not a dict-like object")
             current = current[part]
-            debug_print(f"_set_nested_value: Moved to '{part}', current type: {type(current)}")
 
         # Set the final value
         final_key = parts[-1]
-        debug_print(f"_set_nested_value: Setting final key '{final_key}', current type: {type(current)}")
         
         if hasattr(current, '__setitem__'):
-            debug_print(f"_set_nested_value: Using __setitem__ for {type(current)}")
             current[final_key] = value
         elif isinstance(current, dict):
-            debug_print(f"_set_nested_value: Using dict assignment for {type(current)}")
             current[final_key] = value
         else:
             # For ModelAwareDict and similar objects, try to set the underlying data
             if hasattr(current, '_data'):
-                debug_print(f"_set_nested_value: Using _data for {type(current)}")
                 current._data[final_key] = value
             else:
-                debug_print(f"_set_nested_value: Using setattr for {type(current)}")
                 setattr(current, final_key, value)
-                
-        debug_print(f"_set_nested_value: Successfully set '{final_key}' = {type(value)}")
 class VariablesPathHandler(PathResolverHandler):
     """Handler for paths starting with 'variables.'"""
 
@@ -387,26 +371,21 @@ class PathResolver:
         self, context: "ExecutionContext", path: str, default: Any = None
     ) -> Any:
         """Get a value at the specified path."""
-        debug_print(f"PathResolver.get_value called with path: {path}")
+        engine_logger.debug(f"PathResolver: get_value called with path: {path}")
         try:
             result = self.handler_chain.handle_get(context, path)
-            debug_print(f"PathResolver.get_value result type: {type(result)}")
-            debug_print(f"PathResolver.get_value result preview: {str(result)[:100]}...")
             return result
         except PathResolutionError:
-            debug_print(f"PathResolver.get_value returning default for path: {path}")
+            engine_logger.debug(f"PathResolver: returning default for path: {path}")
             return default
 
     def set_value(self, context: "ExecutionContext", path: str, value: Any) -> None:
         """Set a value at the specified path."""
-        debug_print(f"PathResolver.set_value called with path: {path}")
-        debug_print(f"PathResolver.set_value value type: {type(value)}")
-        debug_print(f"PathResolver.set_value value preview: {str(value)[:100]}...")
+        engine_logger.debug(f"PathResolver: set_value called with path: {path}")
         try:
             self.handler_chain.handle_set(context, path, value)
-            debug_print(f"PathResolver.set_value completed successfully for path: {path}")
         except PathResolutionError as e:
-            debug_print(f"PathResolver.set_value failed for path: {path} with error: {e}")
+            engine_logger.error(f"PathResolver: Failed to set path: {path} - {e}")
             raise ValueError(str(e)) from e
 
     def has_value(self, context: "ExecutionContext", path: str) -> bool:

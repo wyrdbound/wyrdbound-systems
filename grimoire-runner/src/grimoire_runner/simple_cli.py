@@ -12,17 +12,18 @@ Phase 1, Step 4: Enhanced to use blinker signal-based event system.
 import argparse
 import sys
 import time
+import logging
 from pathlib import Path
 from typing import Any, Dict
 
 from .services.ui_service import GrimoireUIService, InputType
 from .services import event_signals
+from .utils.logging import setup_logging, get_logger
 from .services.event_signals import (
     SystemLoadedData, SessionCreatedData, FlowStartedData, StepStartedData,
     StepCompletedData, InputRequiredData, ChoiceRequiredData, FlowCompletedData,
     ErrorOccurredData, FlowCancelledData, DisplayValueData, LogMessageData
 )
-from .utils.debug import debug_print, set_debug_enabled
 
 
 class StepDisplayFormatter:
@@ -211,6 +212,7 @@ class SimpleEventCLI:
         self.waiting_for_choice = False
         self.execution_complete = False
         self.execution_successful = False
+        self.logger = logging.getLogger("grimoire_simple_cli")
         
         # Create the unified display formatter
         self.formatter = StepDisplayFormatter(debug=debug)
@@ -218,7 +220,7 @@ class SimpleEventCLI:
         # Connect to blinker signals instead of subscribing to events
         self._connect_signals()
         
-        debug_print(f"[SIMPLE_CLI] SimpleEventCLI initialized (debug={debug})")
+        self.logger.debug(f"SimpleEventCLI initialized (debug={debug})")
     
     def _connect_signals(self):
         """Connect to all blinker signals."""
@@ -238,27 +240,27 @@ class SimpleEventCLI:
     def _handle_system_loaded(self, sender, **kwargs):
         """Handle system loaded event."""
         data = kwargs.get('data')
-        debug_print(f"System loaded: {data.system_name} ({data.system_id})")
-        debug_print(f"  Path: {data.system_path}")
-        debug_print(f"  Flows: {data.flow_count}, Models: {data.model_count}")
+        self.logger.debug(f"System loaded: {data.system_name} ({data.system_id})")
+        self.logger.debug(f"  Path: {data.system_path}")
+        self.logger.debug(f"  Flows: {data.flow_count}, Models: {data.model_count}")
         print(f"Loaded system: {data.system_name}")
     
     def _handle_session_created(self, sender, **kwargs):
         """Handle session created event."""
         data = kwargs.get('data')
         self.session_id = data.session_id
-        debug_print(f"Session created: {data.session_id} for flow {data.flow_id}")
+        self.logger.debug(f"Session created: {data.session_id} for flow {data.flow_id}")
     
     def _handle_flow_started(self, sender, **kwargs):
         """Handle flow started event."""
         data = kwargs.get('data')
-        debug_print(f"Flow started: {data.flow_id} with inputs: {data.inputs}")
+        self.logger.debug(f"Flow started: {data.flow_id} with inputs: {data.inputs}")
         print(f"Starting Flow: {data.flow_name}")
     
     def _handle_step_started(self, sender=None, **kwargs):
         """Handle step started signal."""
         data = kwargs.get('data')
-        debug_print(f"[SIMPLE_CLI] Received signal: step_started")
+        self.logger.debug(f"Received signal: step_started")
         step = data.step_info
         step_number = data.step_number
         
@@ -284,7 +286,7 @@ class SimpleEventCLI:
     def _handle_step_completed(self, sender=None, **kwargs):
         """Handle step completed signal."""
         data = kwargs.get('data')
-        debug_print(f"[SIMPLE_CLI] Received signal: step_completed")
+        self.logger.debug(f"Received signal: step_completed")
         step = data.step_info
         step_number = data.step_number
         
@@ -313,7 +315,7 @@ class SimpleEventCLI:
     def _handle_log_message(self, sender=None, **kwargs):
         """Handle log message signal."""
         data = kwargs.get('data')
-        debug_print(f"[SIMPLE_CLI] Received signal: log_message")
+        self.logger.debug(f"Received signal: log_message")
         
         # Print the log message
         print(f"📝 {data.resolved_message}")
@@ -321,7 +323,7 @@ class SimpleEventCLI:
     def _handle_input_required(self, sender=None, **kwargs):
         """Handle input required signal."""
         data = kwargs.get('data')
-        debug_print(f"[SIMPLE_CLI] Received signal: input_required")
+        self.logger.debug(f"Received signal: input_required")
         self.waiting_for_input = True
         print(f"\n💬 {data.prompt}")
         
@@ -340,7 +342,7 @@ class SimpleEventCLI:
     def _handle_choice_required(self, sender=None, **kwargs):
         """Handle choice required signal."""
         data = kwargs.get('data')
-        debug_print(f"[SIMPLE_CLI] Received signal: choice_required")
+        self.logger.debug(f"Received signal: choice_required")
         self.waiting_for_choice = True
         print(f"\n📋 {data.prompt}")
         
@@ -435,7 +437,7 @@ class SimpleEventCLI:
     def _handle_flow_completed(self, sender=None, **kwargs):
         """Handle flow completed signal."""
         data = kwargs.get('data')
-        debug_print(f"[SIMPLE_CLI] Received signal: flow_completed")
+        self.logger.debug(f"Received signal: flow_completed")
         self.execution_complete = True
         self.execution_successful = True
         
@@ -457,7 +459,7 @@ class SimpleEventCLI:
     def _handle_error_occurred(self, sender=None, **kwargs):
         """Handle error occurred signal."""
         data = kwargs.get('data')
-        debug_print(f"[SIMPLE_CLI] Received signal: error_occurred")
+        self.logger.debug(f"Received signal: error_occurred")
         self.execution_complete = True
         self.execution_successful = False
         
@@ -470,7 +472,7 @@ class SimpleEventCLI:
     def _handle_flow_cancelled(self, sender=None, **kwargs):
         """Handle flow cancelled signal."""
         data = kwargs.get('data')
-        debug_print(f"[SIMPLE_CLI] Received signal: flow_cancelled")
+        self.logger.debug(f"Received signal: flow_cancelled")
         self.execution_complete = True
         self.execution_successful = False
         
@@ -479,7 +481,7 @@ class SimpleEventCLI:
     def _handle_display_value(self, sender=None, **kwargs):
         """Handle display value signal with structured data formatting."""
         data = kwargs.get('data')
-        debug_print(f"[SIMPLE_CLI] Received signal: display_value")
+        self.logger.debug(f"Received signal: display_value")
         
         # Format and display the value - these are intentional flow designer content
         formatted_output = self.formatter.format_display_value(data.path, data.value)
@@ -552,7 +554,7 @@ class SimpleEventCLI:
     def _handle_log_message(self, sender=None, **kwargs):
         """Handle log message signal."""
         data = kwargs.get('data')
-        debug_print(f"[SIMPLE_CLI] Received signal: log_message")
+        self.logger.debug(f"Received signal: log_message")
         
         # Print the log message
         print(f"📝 {data.resolved_message}")
@@ -680,13 +682,15 @@ Examples:
     
     args = parser.parse_args()
     
-    # Set debug mode
+    # Set up logging with file output in debug mode
     if args.debug:
-        set_debug_enabled(True)
-        print("🐛 Debug mode enabled")
+        setup_logging(level="DEBUG", log_file="./grimoire.log", use_rich=False)
+        print("🐛 Debug mode enabled - detailed logs will be written to ./grimoire.log")
+    else:
+        setup_logging(level="INFO", use_rich=False)
     
     try:
-        # Create the CLI interface
+        # Create the CLI interface - no need to pass logger, it's global now
         cli = SimpleEventCLI(debug=args.debug)
         
         # Load the system

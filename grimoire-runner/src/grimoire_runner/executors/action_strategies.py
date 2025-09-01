@@ -507,8 +507,7 @@ class DisplayValueActionStrategy(ActionStrategy):
             all_attrs = data._model_def.get_all_attributes()
             
             # Debug: print the model attributes order
-            from ..utils.logging import debug_print
-            debug_print(f"Model attributes order: {list(all_attrs.keys())}")
+            logger.debug(f"Model attributes order: {list(all_attrs.keys())}")
             
             # Extract root-level keys from potentially dotted attribute names in definition order
             model_keys = []
@@ -527,14 +526,14 @@ class DisplayValueActionStrategy(ActionStrategy):
                         seen_keys.add(attr_key)
             
             # Debug: print the ordered keys we extracted
-            debug_print(f"Extracted model keys order: {model_keys}")
-            debug_print(f"Data keys: {list(data.keys())}")
+            logger.debug(f"Extracted model keys order: {model_keys}")
+            logger.debug(f"Data keys: {list(data.keys())}")
             
             # Add any data keys that aren't in the model (preserve them at the end)
             data_keys = [key for key in data.keys() if key not in seen_keys]
             
             result = model_keys + data_keys
-            debug_print(f"Final ordered keys: {result}")
+            logger.debug(f"Final ordered keys: {result}")
             return result
         
         # Fallback to data's natural order (insertion order for modern Python dicts)

@@ -9,12 +9,12 @@ letting the engine handle all flow control while the UI service only handles:
 """
 import uuid
 import time
+import logging
 import threading
 from pathlib import Path
 from typing import Dict, Any, List, Optional
 
 from ..core.engine import GrimoireEngine
-from ..utils.debug import debug_print
 from .ui_service import (
     UIServiceInterface,
     SystemInfo,
@@ -39,10 +39,11 @@ class GrimoireUIService(UIServiceInterface):
         self.active_sessions: Dict[str, ExecutionSession] = {}
         self._session_lock = threading.Lock()
         self.loaded_systems: Dict[str, System] = {}
+        self.logger = logging.getLogger("grimoire_ui_service")
     
     def load_system(self, system_path) -> SystemInfo:
         """Load a GRIMOIRE system and return system information."""
-        debug_print(f"[UI_SERVICE] Loading system from {system_path}")
+        self.logger.debug(f"Loading system from {system_path}")
         
         # Use the engine to load the system
         system = self.engine.load_system(system_path)
@@ -64,7 +65,7 @@ class GrimoireUIService(UIServiceInterface):
     
     def list_flows(self, system_id: str) -> List[FlowInfo]:
         """List all flows available in a system."""
-        debug_print(f"[UI_SERVICE] Listing flows for system {system_id}")
+        self.logger.debug(f"Listing flows for system {system_id}")
         
         if system_id not in self.loaded_systems:
             raise ValueError(f"System '{system_id}' not found")
@@ -92,7 +93,7 @@ class GrimoireUIService(UIServiceInterface):
         inputs: Optional[Dict[str, Any]] = None
     ) -> ExecutionSession:
         """Start executing a flow and return the session."""
-        debug_print(f"[UI_SERVICE] Starting flow execution: {system_id}/{flow_id}")
+        self.logger.debug(f"Starting flow execution: {system_id}/{flow_id}")
         
         if system_id not in self.loaded_systems:
             raise ValueError(f"System '{system_id}' not found")
@@ -119,7 +120,7 @@ class GrimoireUIService(UIServiceInterface):
         inputs: Optional[Dict[str, Any]] = None
     ) -> ExecutionSession:
         """Start a new flow execution session."""
-        debug_print(f"[UI_SERVICE] Starting execution for flow {flow_id}")
+        self.logger.debug(f"Starting execution for flow {flow_id}")
         
         session_id = str(uuid.uuid4())
         session = ExecutionSession(
@@ -157,7 +158,7 @@ class GrimoireUIService(UIServiceInterface):
     
     def make_choice(self, session_id: str, choice_id: str) -> ExecutionSession:
         """Make a choice to continue execution."""
-        debug_print(f"[UI_SERVICE] Making choice for session {session_id}: {choice_id}")
+        self.logger.debug(f"Making choice for session {session_id}: {choice_id}")
         
         with self._session_lock:
             if session_id not in self.active_sessions:
@@ -180,7 +181,7 @@ class GrimoireUIService(UIServiceInterface):
             session.choices = []
             session.status = ExecutionStatus.RUNNING
             
-            debug_print(f"[UI_SERVICE] Choice made for session {session_id}: {choice_id}")
+            self.logger.debug(f"Choice made for session {session_id}: {choice_id}")
             return session
     
     def make_multiple_choices(
@@ -189,7 +190,7 @@ class GrimoireUIService(UIServiceInterface):
         choice_ids: List[str]
     ) -> ExecutionSession:
         """Make multiple choices to continue execution."""
-        debug_print(f"[UI_SERVICE] Making multiple choices for session {session_id}: {choice_ids}")
+        self.logger.debug(f"Making multiple choices for session {session_id}: {choice_ids}")
         
         with self._session_lock:
             if session_id not in self.active_sessions:
@@ -213,12 +214,12 @@ class GrimoireUIService(UIServiceInterface):
             session.choices = []
             session.status = ExecutionStatus.RUNNING
             
-            debug_print(f"[UI_SERVICE] Multiple choices made for session {session_id}: {choice_ids}")
+            self.logger.debug(f"Multiple choices made for session {session_id}: {choice_ids}")
             return session
     
     def provide_input(self, session_id: str, input_value: str) -> ExecutionSession:
         """Provide input to continue execution."""
-        debug_print(f"[UI_SERVICE] Providing input for session {session_id}: {input_value}")
+        self.logger.debug(f"Providing input for session {session_id}: {input_value}")
         
         with self._session_lock:
             if session_id not in self.active_sessions:
@@ -235,12 +236,12 @@ class GrimoireUIService(UIServiceInterface):
             session.input_prompt = None
             session.status = ExecutionStatus.RUNNING
             
-            debug_print(f"[UI_SERVICE] Input provided for session {session_id}: {input_value}")
+            self.logger.debug(f"Input provided for session {session_id}: {input_value}")
             return session
     
     def cancel_execution(self, session_id: str) -> None:
         """Cancel an active execution session."""
-        debug_print(f"[UI_SERVICE] Cancelling session {session_id}")
+        self.logger.debug(f"Cancelling session {session_id}")
         
         with self._session_lock:
             if session_id not in self.active_sessions:
@@ -258,7 +259,7 @@ class GrimoireUIService(UIServiceInterface):
     
     def cleanup_session(self, session_id: str) -> None:
         """Remove a completed or cancelled session."""
-        debug_print(f"[UI_SERVICE] Cleaning up session {session_id}")
+        self.logger.debug(f"Cleaning up session {session_id}")
         
         with self._session_lock:
             if session_id in self.active_sessions:
@@ -266,12 +267,12 @@ class GrimoireUIService(UIServiceInterface):
     
     def subscribe_to_events(self, callback) -> None:
         """Subscribe to execution events (legacy - blinker signals are used instead)."""
-        debug_print(f"[UI_SERVICE] Legacy event subscription - use blinker signals directly")
+        self.logger.debug(f"Legacy event subscription - use blinker signals directly")
         pass
     
     def unsubscribe_from_events(self, callback) -> None:
         """Unsubscribe from execution events (legacy - blinker signals are used instead)."""
-        debug_print(f"[UI_SERVICE] Legacy event unsubscription - use blinker signals directly")
+        self.logger.debug(f"Legacy event unsubscription - use blinker signals directly")
         pass
     
     def _execute_flow_async(
@@ -282,7 +283,7 @@ class GrimoireUIService(UIServiceInterface):
         inputs: Dict[str, Any]
     ) -> None:
         """Execute a flow asynchronously, updating session state and publishing events."""
-        debug_print(f"[UI_SERVICE] Starting async execution for session {session.session_id}")
+        self.logger.debug(f"Starting async execution for session {session.session_id}")
         
         try:
             session.status = ExecutionStatus.RUNNING
@@ -342,7 +343,7 @@ class GrimoireUIService(UIServiceInterface):
                     
                     # Check if step requires user input
                     if current_step_result.requires_input:
-                        debug_print(f"[UI_SERVICE] Step {current_step_result.step_id} requires user input")
+                        self.logger.debug(f"Step {current_step_result.step_id} requires user input")
                         
                         # Handle choice input
                         if hasattr(current_step_result, 'choices') and current_step_result.choices:
@@ -391,12 +392,12 @@ class GrimoireUIService(UIServiceInterface):
                                 delattr(session, '_user_choice_ids')
                             
                             # Re-execute the step with user input available
-                            debug_print(f"[UI_SERVICE] Re-executing step {current_step_result.step_id} with user input")
+                            self.logger.debug(f"Re-executing step {current_step_result.step_id} with user input")
                             updated_step_result = self.engine._execute_step(step, context, system)
                             
                             # Store the updated result for the engine to use
                             context.set_variable(f"_updated_step_result_{step.id}", updated_step_result)
-                            debug_print(f"[UI_SERVICE] Stored updated step result with next_step_id: {updated_step_result.next_step_id}")
+                            self.logger.debug(f"Stored updated step result with next_step_id: {updated_step_result.next_step_id}")
                             
                             # Set current_step_result to the updated result so it gets completion processing
                             current_step_result = updated_step_result
@@ -432,10 +433,10 @@ class GrimoireUIService(UIServiceInterface):
                             # Put the user input in the context for the engine to process
                             if 'user_input' in session.variables:
                                 context.set_variable('user_input', session.variables['user_input'])
-                                debug_print(f"[UI_SERVICE] Set user_input in context: {session.variables['user_input']}")
+                                self.logger.debug(f"Set user_input in context: {session.variables['user_input']}")
                             
                             # Re-execute the step with user input available
-                            debug_print(f"[UI_SERVICE] Re-executing step {current_step_result.step_id} with user input")
+                            self.logger.debug(f"Re-executing step {current_step_result.step_id} with user input")
                             current_step_result = self.engine._execute_step(step, context, system)
                             # Don't continue here - let the step complete normally and emit completion signal
                     
@@ -506,10 +507,10 @@ class GrimoireUIService(UIServiceInterface):
                 step_count=step_count
             )
             
-            debug_print(f"[UI_SERVICE] Flow execution completed for session {session.session_id}")
+            self.logger.debug(f"Flow execution completed for session {session.session_id}")
             
         except Exception as e:
-            debug_print(f"[UI_SERVICE] Error in flow execution: {e}")
+            self.logger.debug(f"Error in flow execution: {e}")
             session.status = ExecutionStatus.FAILED
             session.error = str(e)
             

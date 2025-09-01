@@ -14,7 +14,6 @@ from ..services.flow_execution_context_manager import (
 )
 from ..services.path_resolver import PathResolver
 from .flow_namespace import FlowNamespaceManager
-from ..utils.debug import debug_print
 from .template_resolver import TemplateResolver
 from ..services import event_signals
 
@@ -113,7 +112,7 @@ class ExecutionContext:
             context_id=getattr(self, 'execution_id', self.id)
         )
         
-        debug_print(f"[CONTEXT] Variable set: variables.{path} = {value}")
+        logger.debug(f"Variable set: variables.{path} = {value}")
 
     def get_variable(self, path: str, default: Any = None) -> Any:
         """Get a variable at the specified path."""
@@ -139,7 +138,7 @@ class ExecutionContext:
             context_id=getattr(self, 'execution_id', self.id)
         )
         
-        debug_print(f"[CONTEXT] Output set: outputs.{path} = {value}")
+        logger.debug(f"Output set: outputs.{path} = {value}")
 
     def set_output_with_observables(self, path: str, value: Any) -> None:
         """Set an output and trigger observable updates."""
@@ -315,10 +314,10 @@ class ExecutionContext:
 
     def resolve_path_value(self, path: str) -> Any:
         """Resolve a value at the given path."""
-        debug_print(f"resolve_path_value called with path: {path}")
+        logger.debug(f"resolve_path_value called with path: {path}")
         result = self.path_resolver.get_value(self, path)
-        debug_print(f"resolve_path_value result type: {type(result)}")
-        debug_print(f"resolve_path_value result preview: {str(result)[:100]}...")
+        logger.debug(f"resolve_path_value result type: {type(result)}")
+        logger.debug(f"resolve_path_value result preview: {str(result)[:100]}...")
         return result
 
     # Flow Namespace Management (delegated to namespace manager)

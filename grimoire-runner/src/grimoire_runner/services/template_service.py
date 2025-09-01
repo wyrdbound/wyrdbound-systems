@@ -44,16 +44,15 @@ class ModelAwareDict:
         # This makes it system-agnostic by checking actual model definitions
         # rather than hardcoded assumptions about specific field names
 
-        from ..utils.debug import debug_print
-        debug_print(f"[ModelAwareDict] _infer_model_type called, _models has {len(self._models)} entries")
+        logger.debug(f"_infer_model_type called, _models has {len(self._models)} entries")
 
         best_match = None
         best_score = 0
 
         for _model_name, model_def in self._models.items():
-            debug_print(f"[ModelAwareDict] checking model {_model_name}: {model_def}")
+            logger.debug(f"checking model {_model_name}: {model_def}")
             if model_def is None:
-                debug_print(f"[ModelAwareDict] skipping {_model_name} - model_def is None")
+                logger.debug(f"skipping {_model_name} - model_def is None")
                 continue
 
             # Calculate match score based on how many model fields are present in data
@@ -390,29 +389,27 @@ class RuntimeTemplateStrategy(TemplateResolutionStrategy):
                     if self._is_model_instance_dict(obj, enhanced_context):
                         # Get models from system context (always a dictionary in template context)
                         system_dict = enhanced_context.get("system", {})
-                        from ..utils.debug import debug_print
-                        debug_print(f"[TEMPLATE_SERVICE] system_dict type: {type(system_dict)}, keys: {list(system_dict.keys()) if system_dict else 'None'}")
-                        debug_print(f"[TEMPLATE_SERVICE] full system_dict content: {system_dict}")
+                        logger.debug(f"system_dict type: {type(system_dict)}, keys: {list(system_dict.keys()) if system_dict else 'None'}")
+                        logger.debug(f"full system_dict content: {system_dict}")
                         models = system_dict.get("models", {})
-                        debug_print(f"[TEMPLATE_SERVICE] models type: {type(models)}, keys: {list(models.keys()) if models else 'None'}")
+                        logger.debug(f"models type: {type(models)}, keys: {list(models.keys()) if models else 'None'}")
                         
                         # Check what's actually in the models dict
                         if models:
                             for name, model_def in models.items():
-                                debug_print(f"[TEMPLATE_SERVICE] model '{name}' type: {type(model_def)}, has get_all_attributes: {hasattr(model_def, 'get_all_attributes')}")
+                                logger.debug(f"model '{name}' type: {type(model_def)}, has get_all_attributes: {hasattr(model_def, 'get_all_attributes')}")
                                 if hasattr(model_def, 'get_all_attributes'):
                                     try:
                                         attrs = model_def.get_all_attributes()
-                                        debug_print(f"[TEMPLATE_SERVICE] model '{name}' attributes: {list(attrs.keys())}")
+                                        logger.debug(f"model '{name}' attributes: {list(attrs.keys())}")
                                     except Exception as e:
-                                        debug_print(f"[TEMPLATE_SERVICE] model '{name}' get_all_attributes() failed: {e}")
+                                        logger.debug(f"model '{name}' get_all_attributes() failed: {e}")
                         else:
-                            debug_print(f"[TEMPLATE_SERVICE] models dict is empty!")
+                            logger.debug(f"models dict is empty!")
                         
                         # Ensure models has dictionary-like interface for ModelAwareDict
                         if not hasattr(models, 'keys') or not hasattr(models, 'get'):
-                            from ..utils.debug import debug_print
-                            debug_print(f"[TEMPLATE_SERVICE] models is not dict-like (type: {type(models)}), using empty dict")
+                            logger.debug(f"models is not dict-like (type: {type(models)}), using empty dict")
                             models = {}
                         
                         # Check if we can determine model type from context structure

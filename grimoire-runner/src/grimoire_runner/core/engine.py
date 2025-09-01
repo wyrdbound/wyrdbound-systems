@@ -12,6 +12,7 @@ from ..models.flow import FlowDefinition, FlowResult, StepResult
 from ..models.system import System
 from .loader import SystemLoader
 from ..services import event_signals
+from ..utils.logging import get_logger
 
 logger = logging.getLogger(__name__)
 
@@ -19,14 +20,48 @@ logger = logging.getLogger(__name__)
 class GrimoireEngine:
     """Main orchestrator for GRIMOIRE system execution."""
 
-    def __init__(self, executor_registry: ExecutorRegistry = None):
+    def __init__(self, executor_registry: ExecutorRegistry = None, logger_instance: logging.Logger = None):
         self.loader = SystemLoader()
         self.executor_registry = executor_registry or ExecutorRegistry()
         self.executors: dict[str, StepExecutorInterface] = {}
         self.action_executor = self.executor_registry.create_action_executor()
+        
+        # Use injected logger or set up default file logging
+        if logger_instance:
+            self.logger = logger_instance
+        else:
+            self.logger = self._setup_default_file_logger()
 
         # Initialize default executors
         self._initialize_executors()
+
+    def _setup_default_file_logger(self) -> logging.Logger:
+        """Set up default file logger for engine when no logger is injected."""
+        import os
+        os.makedirs("tmp", exist_ok=True)
+        
+        engine_logger = logging.getLogger("grimoire_engine")
+        engine_logger.setLevel(logging.DEBUG)
+        
+        # Remove any existing handlers to avoid duplicates
+        for handler in engine_logger.handlers[:]:
+            engine_logger.removeHandler(handler)
+        
+        # Create file handler
+        file_handler = logging.FileHandler("grimoire.log", mode='w')
+        file_handler.setLevel(logging.DEBUG)
+        
+        # Create formatter
+        formatter = logging.Formatter(
+            '%(asctime)s - %(levelname)s - %(name)s - %(message)s',
+            datefmt='%Y-%m-%d %H:%M:%S'
+        )
+        file_handler.setFormatter(formatter)
+        
+        # Add handler to logger
+        engine_logger.addHandler(file_handler)
+        
+        return engine_logger
 
     def _initialize_executors(self) -> None:
         """Initialize the default step executors using the registry."""
@@ -35,16 +70,16 @@ class GrimoireEngine:
             try:
                 executor = self.executor_registry.create_step_executor(step_type, self)
                 self.executors[step_type] = executor
-                logger.debug(f"Initialized executor for step type: {step_type}")
+                self.logger.debug(f"Initialized executor for step type: {step_type}")
             except Exception as e:
-                logger.warning(f"Failed to create executor for {step_type}: {e}")
+                self.logger.warning(f"Failed to create executor for {step_type}: {e}")
 
     def register_executor(
         self, step_type: str, executor: StepExecutorInterface
     ) -> None:
         """Register a custom step executor."""
         self.executors[step_type] = executor
-        logger.debug(f"Registered executor for step type: {step_type}")
+        self.logger.debug(f"Registered executor for step type: {step_type}")
 
     def set_executor_registry(self, registry: ExecutorRegistry) -> None:
         """Set a custom executor registry and reinitialize executors."""
@@ -65,14 +100,13 @@ class GrimoireEngine:
 
     def create_execution_context(self, system: System = None, **kwargs) -> ExecutionContext:
         """Create a new execution context with optional initial data."""
-        from ..utils.debug import debug_print
-        debug_print(f"[ENGINE] create_execution_context called with system: {system is not None}")
+        self.logger.debug(f"[ENGINE] create_execution_context called with system: {system is not None}")
         
         context = ExecutionContext()
 
         # Populate system metadata if system is provided
         if system:
-            debug_print(f"[ENGINE] Populating system_metadata with models: {list(system.models.keys())}")
+            self.logger.debug(f"[ENGINE] Populating system_metadata with models: {list(system.models.keys())}")
             context.system_metadata = {
                 "id": system.id,
                 "name": system.name,
@@ -81,7 +115,7 @@ class GrimoireEngine:
                 "models": system.models,  # Add models for ModelAwareDict
             }
         else:
-            debug_print(f"[ENGINE] No system provided, system_metadata will be empty")
+            self.logger.debug(f"[ENGINE] No system provided, system_metadata will be empty")
 
         # Set any provided initial data
         for key, value in kwargs.items():
@@ -100,7 +134,6 @@ class GrimoireEngine:
         self, flow_id: str, context: ExecutionContext, system: System | None = None
     ) -> FlowResult:
         """Execute a complete flow and return the result."""
-        from ..utils.debug import debug_print
         
         if system is None:
             # Try to find the system from loaded systems
@@ -113,7 +146,7 @@ class GrimoireEngine:
         if not flow:
             raise ValueError(f"Flow '{flow_id}' not found in system")
 
-        debug_print(f"[ENGINE] Executing flow: {flow.name} ({flow_id})")
+        self.logger.debug(f"[ENGINE] Executing flow: {flow.name} ({flow_id})")
 
         # Create unique execution namespace for this flow
         import uuid
@@ -152,7 +185,7 @@ class GrimoireEngine:
             for output_def in flow.outputs:
                 if output_def.type in system.models:
                     model = system.models[output_def.type]
-                    debug_print(
+                    self.logger.debug(
                         f"Initializing model observables for {output_def.type} ({output_def.id})"
                     )
                     # Create a generic model resolver function
@@ -192,7 +225,7 @@ class GrimoireEngine:
                     if step_result.requires_input:
                         # In automatic execution, we can't handle user input
                         # This should be handled by interactive execution
-                        logger.warning(
+                        self.logger.warning(
                             f"Step {current_step_id} requires user input but we're in automatic mode"
                         )
                         break
@@ -207,7 +240,7 @@ class GrimoireEngine:
                     # Re-raise ValueError exceptions (like missing executors) as they indicate configuration issues
                     raise
                 except Exception as e:
-                    logger.error(f"Error executing step {current_step_id}: {e}")
+                    self.logger.error(f"Error executing step {current_step_id}: {e}")
                     
                     flow_result = FlowResult(
                         flow_id=flow_id,
@@ -220,7 +253,7 @@ class GrimoireEngine:
                     return flow_result
 
             # Compute all derived fields before extracting outputs
-            debug_print("Computing derived fields after flow execution")
+            self.logger.debug("Computing derived fields after flow execution")
             context.compute_derived_fields()
 
             # Copy flow outputs from namespace to root level for result
@@ -237,7 +270,7 @@ class GrimoireEngine:
                 flow_namespace_data["variables"].copy() if flow_namespace_data else {}
             )
 
-            debug_print(
+            self.logger.debug(
                 f"Flow execution completed: {flow_id} (namespace: {namespace_id})"
             )
             
@@ -254,7 +287,7 @@ class GrimoireEngine:
         finally:
             # Clean up the flow namespace
             context.pop_flow_namespace()
-            debug_print(f"Cleaned up flow namespace: {namespace_id}")
+            self.logger.debug(f"Cleaned up flow namespace: {namespace_id}")
 
     def step_through_flow(
         self, flow_id: str, context: ExecutionContext, system: System | None = None
@@ -291,8 +324,7 @@ class GrimoireEngine:
         for output_def in flow.outputs:
             if output_def.type in system.models:
                 model = system.models[output_def.type]
-                from ..utils.debug import debug_print
-                debug_print(
+                self.logger.debug(
                     f"Initializing model observables for {output_def.type} ({output_def.id})"
                 )
                 # Create a generic model resolver function
@@ -312,7 +344,6 @@ class GrimoireEngine:
 
             # Execute the step
             try:
-                from ..utils.debug import debug_print
                 
                 step_result = self._execute_step(step, context, system)
                 
@@ -327,22 +358,22 @@ class GrimoireEngine:
                 # Check if the step result was updated by UI service after user input
                 updated_result = context.get_variable(f"_updated_step_result_{step.id}")
                 if updated_result:
-                    debug_print(f"[ENGINE] Using updated step result for {step.id}")
+                    self.logger.debug(f"[ENGINE] Using updated step result for {step.id}")
                     step_result = updated_result
                     # Clean up the updated result
                     context.set_variable(f"_updated_step_result_{step.id}", None)
 
                 # Determine next step
                 if step_result.next_step_id:
-                    debug_print(f"[ENGINE] Step {current_step_id} result has next_step_id: {step_result.next_step_id}")
+                    self.logger.debug(f"[ENGINE] Step {current_step_id} result has next_step_id: {step_result.next_step_id}")
                     current_step_id = step_result.next_step_id
                 else:
                     next_step_from_flow = flow.get_next_step_id(current_step_id)
-                    debug_print(f"[ENGINE] Step {current_step_id} using sequential next step: {next_step_from_flow}")
+                    self.logger.debug(f"[ENGINE] Step {current_step_id} using sequential next step: {next_step_from_flow}")
                     current_step_id = next_step_from_flow
 
             except Exception as e:
-                logger.error(f"Error executing step {current_step_id}: {e}")
+                self.logger.error(f"Error executing step {current_step_id}: {e}")
                 yield StepResult(step_id=current_step_id, success=False, error=str(e))
                 break
 
@@ -350,17 +381,16 @@ class GrimoireEngine:
         self, step, context: ExecutionContext, system: System
     ) -> StepResult:
         """Execute a single step."""
-        from ..utils.debug import debug_print
         
         step_type = step.type.value if hasattr(step.type, "value") else str(step.type)
         
-        debug_print(f"[ENGINE] Executing step {step.id} (type: {step_type})")
+        self.logger.debug(f"[ENGINE] Executing step {step.id} (type: {step_type})")
         # Check step condition
         if step.condition:
             try:
                 condition_result = context.resolve_template(step.condition)
                 if not condition_result:
-                    debug_print(
+                    self.logger.debug(
                         f"Step {step.id} skipped due to condition: {step.condition}"
                     )
                     
@@ -380,7 +410,7 @@ class GrimoireEngine:
                     
                     return result
             except Exception as e:
-                logger.error(f"Error evaluating condition for step {step.id}: {e}")
+                self.logger.error(f"Error evaluating condition for step {step.id}: {e}")
                 
                 error_result = StepResult(
                     step_id=step.id,
@@ -402,12 +432,12 @@ class GrimoireEngine:
         executor = self.executors.get(step_type)
         if not executor:
             error_msg = f"No executor found for step type: {step_type}"
-            logger.error(error_msg)
+            self.logger.error(error_msg)
             raise ValueError(error_msg)
 
         # Execute pre-actions before the step's main logic
         if step.pre_actions:
-            debug_print(f"Engine executing {len(step.pre_actions)} pre-actions for step {step.id}")
+            self.logger.debug(f"Engine executing {len(step.pre_actions)} pre-actions for step {step.id}")
             self.action_executor.execute_actions(
                 step.pre_actions, context, {}, system
             )
@@ -416,7 +446,7 @@ class GrimoireEngine:
         try:
             result = executor.execute(step, context, system)
             
-            debug_print(f"[ENGINE] Step {step.id} executed with success: {result.success}")
+            self.logger.debug(f"[ENGINE] Step {step.id} executed with success: {result.success}")
 
             # Special handling for player_input steps when user input is available
             if (step_type == "player_input" and 
@@ -424,19 +454,19 @@ class GrimoireEngine:
                 hasattr(context, 'get_variable') and 
                 context.get_variable('user_input') is not None):
                 
-                debug_print(f"[ENGINE] User input available for player_input step {step.id}, processing input")
+                self.logger.debug(f"[ENGINE] User input available for player_input step {step.id}, processing input")
                 
                 # Call the process_input method to handle the user input
                 user_input = context.get_variable('user_input')
                 if hasattr(executor, 'process_input'):
                     try:
                         result = executor.process_input(user_input, step, context, system)
-                        debug_print(f"[ENGINE] User input processed with success: {result.success}")
+                        self.logger.debug(f"[ENGINE] User input processed with success: {result.success}")
                         
                         # Clear the user_input variable after processing
                         context.set_variable('user_input', None)
                     except Exception as e:
-                        logger.error(f"Error processing user input for step {step.id}: {e}")
+                        self.logger.error(f"Error processing user input for step {step.id}: {e}")
                         result = StepResult(step_id=step.id, success=False, error=f"Input processing failed: {e}")
 
             # Handle output variable setting
@@ -463,14 +493,14 @@ class GrimoireEngine:
                 and not result.requires_input
                 and not actions_already_handled
             ):
-                debug_print(
+                self.logger.debug(
                     f"Engine executing {len(post_actions)} post-step actions for step {step.id}"
                 )
                 self.action_executor.execute_actions(
                     post_actions, context, result.data, system
                 )
             elif actions_already_handled:
-                debug_print(
+                self.logger.debug(
                     f"Skipping post-step actions for step {step.id} - already handled by executor"
                 )
 
@@ -489,9 +519,9 @@ class GrimoireEngine:
                     else:
                         result.data = {"resolved_message": resolved_message}
                 except Exception as e:
-                    logger.error(f"Failed to resolve result message template: {e}")
+                    self.logger.error(f"Failed to resolve result message template: {e}")
             elif actions_already_handled:
-                debug_print(
+                self.logger.debug(
                     f"Skipping post-step actions for step {step.id} - already handled by executor"
                 )
 
@@ -506,7 +536,7 @@ class GrimoireEngine:
             return result
 
         except Exception as e:
-            logger.error(f"Error executing step {step.id}: {e}")
+            self.logger.error(f"Error executing step {step.id}: {e}")
             
             error_result = StepResult(step_id=step.id, success=False, error=str(e))
             
