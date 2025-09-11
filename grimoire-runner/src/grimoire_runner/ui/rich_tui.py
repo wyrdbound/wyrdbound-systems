@@ -218,32 +218,46 @@ class RichTUI:
             for input_name, input_value in self.input_values.items():
                 # Initialize reactive system for input models by copying them to outputs
                 for input_def in self.flow_obj.inputs:
-                    if input_def.id == input_name and input_def.type in self.system.models:
+                    if (
+                        input_def.id == input_name
+                        and input_def.type in self.system.models
+                    ):
                         model = self.system.models[input_def.type]
-                        logger.debug(f"Setting up reactive output for input {input_name} of type {input_def.type}")
-                        
+                        logger.debug(
+                            f"Setting up reactive output for input {input_name} of type {input_def.type}"
+                        )
+
                         # Check if we already have a complete output model instance
                         existing_output = self.context.get_output(input_name)
-                        if existing_output and isinstance(existing_output, dict) and isinstance(input_value, dict):
+                        if (
+                            existing_output
+                            and isinstance(existing_output, dict)
+                            and isinstance(input_value, dict)
+                        ):
                             # Merge input data with existing complete model
                             existing_output.update(input_value)
                             merged_value = existing_output
                         else:
                             # No existing complete model, use input value
                             merged_value = input_value
-                        
+
                         # Set the merged value as output
                         self.context.set_output(input_name, merged_value)
-                        
+
                         # Initialize reactive system on the output copy
                         def model_resolver(model_type):
                             return self.system.models.get(model_type)
-                        self.context.initialize_model_observables(model, input_name, model_resolver)
+
+                        self.context.initialize_model_observables(
+                            model, input_name, model_resolver
+                        )
                         # Trigger computation of derived fields
                         self.context.compute_derived_fields()
                         # Now copy the computed results back to inputs
                         computed_output = self.context.get_output(input_name)
-                        logger.debug(f"Copying computed results back to input {input_name}")
+                        logger.debug(
+                            f"Copying computed results back to input {input_name}"
+                        )
                         self.context.set_input(input_name, computed_output)
                         break
 
@@ -254,10 +268,14 @@ class RichTUI:
                 logger.debug(
                     f"Rich TUI: Initializing model observables for {output_def.type} ({output_def.id})"
                 )
+
                 # Create a generic model resolver function
                 def model_resolver(model_type):
                     return self.system.models.get(model_type)
-                self.context.initialize_model_observables(model, output_def.id, model_resolver)
+
+                self.context.initialize_model_observables(
+                    model, output_def.id, model_resolver
+                )
 
         # Show flow info
         self._show_flow_info()
@@ -638,7 +656,9 @@ class RichTUI:
             # Check if step has a custom result message
             if step.result_message:
                 # Use resolved message if available, otherwise fall back to original
-                resolved_message = step_result.data.get("resolved_message", step.result_message)
+                resolved_message = step_result.data.get(
+                    "resolved_message", step.result_message
+                )
                 success_message = get_step_success_message(step.type, resolved_message)
             else:
                 success_message = get_step_success_message(step.type)
@@ -715,10 +735,14 @@ class RichTUI:
             for output_def in target_flow.outputs:
                 if output_def.type in self.system.models:
                     model = self.system.models[output_def.type]
+
                     # Create a generic model resolver function
                     def model_resolver(model_type):
                         return self.system.models.get(model_type)
-                    sub_context.initialize_model_observables(model, output_def.id, model_resolver)
+
+                    sub_context.initialize_model_observables(
+                        model, output_def.id, model_resolver
+                    )
 
             # Create nested TUI for sub-flow execution
             nested_tui = RichTUI(
@@ -830,7 +854,9 @@ class RichTUI:
         has_descriptions = any(getattr(choice, "description", "") for choice in choices)
 
         # Display choices in a table for better accessibility
-        choices_table = Table(title="Available Choices", show_header=True, title_justify="left")
+        choices_table = Table(
+            title="Available Choices", show_header=True, title_justify="left"
+        )
         choices_table.add_column("Option", style="cyan", justify="right")
         choices_table.add_column("Choice", style="green")
 

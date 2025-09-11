@@ -213,77 +213,77 @@ class TestOutputValidation:
 # class TestVariableUpdates:
 #     """Test that variables are updated correctly during execution."""
 
-    # def test_dice_result_variable_update(self, engine, test_system):
-    #     """Test that variables.dice_result is set correctly after dice-flow execution."""
-    #     context = engine.create_execution_context()
+# def test_dice_result_variable_update(self, engine, test_system):
+#     """Test that variables.dice_result is set correctly after dice-flow execution."""
+#     context = engine.create_execution_context()
 
-    #     result = engine.execute_flow("dice-flow", context, test_system)
+#     result = engine.execute_flow("dice-flow", context, test_system)
 
-    #     assert result.success is True
+#     assert result.success is True
 
-    #     # Verify dice_result variable was set
-    #     assert "dice_result" in result.variables
-    #     dice_result = result.variables["dice_result"]
+#     # Verify dice_result variable was set
+#     assert "dice_result" in result.variables
+#     dice_result = result.variables["dice_result"]
 
-    #     # Should be an integer from 1d6 roll
-    #     assert isinstance(dice_result, int)
-    #     assert 1 <= dice_result <= 6
+#     # Should be an integer from 1d6 roll
+#     assert isinstance(dice_result, int)
+#     assert 1 <= dice_result <= 6
 
-    # def test_ability_scores_variable_update(self, engine, test_system):
-    #     """Test that variables.ability_scores are populated correctly after dice sequence."""
-    #     context = engine.create_execution_context()
+# def test_ability_scores_variable_update(self, engine, test_system):
+#     """Test that variables.ability_scores are populated correctly after dice sequence."""
+#     context = engine.create_execution_context()
 
-    #     result = engine.execute_flow("dice-flow", context, test_system)
+#     result = engine.execute_flow("dice-flow", context, test_system)
 
-    #     assert result.success is True
+#     assert result.success is True
 
-    #     # Verify ability_scores variable was populated
-    #     assert "ability_scores" in result.variables
-    #     ability_scores = result.variables["ability_scores"]
+#     # Verify ability_scores variable was populated
+#     assert "ability_scores" in result.variables
+#     ability_scores = result.variables["ability_scores"]
 
-    #     assert isinstance(ability_scores, dict)
+#     assert isinstance(ability_scores, dict)
 
-    #     # Should have all 6 standard D&D ability scores
-    #     expected_abilities = ["STR", "DEX", "CON", "INT", "WIS", "CHA"]
-    #     assert len(ability_scores) == len(expected_abilities)
+#     # Should have all 6 standard D&D ability scores
+#     expected_abilities = ["STR", "DEX", "CON", "INT", "WIS", "CHA"]
+#     assert len(ability_scores) == len(expected_abilities)
 
-    #     for ability in expected_abilities:
-    #         assert ability in ability_scores
-    #         score = ability_scores[ability]
-    #         assert isinstance(score, int)
-    #         assert 3 <= score <= 18  # 3d6 range
+#     for ability in expected_abilities:
+#         assert ability in ability_scores
+#         score = ability_scores[ability]
+#         assert isinstance(score, int)
+#         assert 3 <= score <= 18  # 3d6 range
 
-    # def test_variables_persist_across_steps(self, engine, test_system):
-    #     """Test that variables persist across multiple steps in a flow."""
-    #     context = engine.create_execution_context()
+# def test_variables_persist_across_steps(self, engine, test_system):
+#     """Test that variables persist across multiple steps in a flow."""
+#     context = engine.create_execution_context()
 
-    #     result = engine.execute_flow("dice-flow", context, test_system)
+#     result = engine.execute_flow("dice-flow", context, test_system)
 
-    #     assert result.success is True
+#     assert result.success is True
 
-    #     # Both variables from different steps should be present
-    #     assert "dice_result" in result.variables
-    #     assert "ability_scores" in result.variables
+#     # Both variables from different steps should be present
+#     assert "dice_result" in result.variables
+#     assert "ability_scores" in result.variables
 
-    #     # Both should have valid values
-    #     assert result.variables["dice_result"] > 0
-    #     assert len(result.variables["ability_scores"]) > 0
+#     # Both should have valid values
+#     assert result.variables["dice_result"] > 0
+#     assert len(result.variables["ability_scores"]) > 0
 
-    #     # Variables should maintain their values throughout execution
-    #     dice_result = result.variables["dice_result"]
-    #     ability_scores = result.variables["ability_scores"]
+#     # Variables should maintain their values throughout execution
+#     dice_result = result.variables["dice_result"]
+#     ability_scores = result.variables["ability_scores"]
 
-    #     # Re-execute and verify consistency in variable handling
-    #     context2 = engine.create_execution_context()
-    #     result2 = engine.execute_flow("dice-flow", context2, test_system)
+#     # Re-execute and verify consistency in variable handling
+#     context2 = engine.create_execution_context()
+#     result2 = engine.execute_flow("dice-flow", context2, test_system)
 
-    #     assert result2.success is True
-    #     assert "dice_result" in result2.variables
-    #     assert "ability_scores" in result2.variables
+#     assert result2.success is True
+#     assert "dice_result" in result2.variables
+#     assert "ability_scores" in result2.variables
 
-    #     # Values will be different (random) but structure should be same
-    #     assert isinstance(result2.variables["dice_result"], type(dice_result))
-    #     assert isinstance(result2.variables["ability_scores"], type(ability_scores))
+#     # Values will be different (random) but structure should be same
+#     assert isinstance(result2.variables["dice_result"], type(dice_result))
+#     assert isinstance(result2.variables["ability_scores"], type(ability_scores))
 
 
 class TestActionExecution:
@@ -374,64 +374,64 @@ class TestActionExecution:
 # class TestStepIntegration:
 #     """Test that steps work correctly with system components."""
 
-    # def test_table_roll_steps_select_entries(self, engine, test_system):
-    #     """Test that table roll steps actually select entries from loaded tables."""
-    #     context = engine.create_execution_context()
+# def test_table_roll_steps_select_entries(self, engine, test_system):
+#     """Test that table roll steps actually select entries from loaded tables."""
+#     context = engine.create_execution_context()
 
-    #     result = engine.execute_flow("table-flow", context, test_system)
+#     result = engine.execute_flow("table-flow", context, test_system)
 
-    #     assert result.success is True
+#     assert result.success is True
 
-    #     # Should have selected a name from the simple-names table
-    #     character = result.outputs.get("character", {})
-    #     selected_name = character.get("name")
+#     # Should have selected a name from the simple-names table
+#     character = result.outputs.get("character", {})
+#     selected_name = character.get("name")
 
-    #     assert selected_name is not None
-    #     assert isinstance(selected_name, str)
+#     assert selected_name is not None
+#     assert isinstance(selected_name, str)
 
-    #     # Should be one of the entries from the simple-names table
-    #     table = test_system.tables["simple-names"]
-    #     valid_names = list(table.entries.values())  # Get the actual names, not the keys
-    #     assert selected_name in valid_names
+#     # Should be one of the entries from the simple-names table
+#     table = test_system.tables["simple-names"]
+#     valid_names = list(table.entries.values())  # Get the actual names, not the keys
+#     assert selected_name in valid_names
 
-    # def test_results_match_table_entry_types(self, engine, test_system):
-    #     """Test that results match expected table entry types and formats."""
-    #     context = engine.create_execution_context()
+# def test_results_match_table_entry_types(self, engine, test_system):
+#     """Test that results match expected table entry types and formats."""
+#     context = engine.create_execution_context()
 
-    #     result = engine.execute_flow("table-flow", context, test_system)
+#     result = engine.execute_flow("table-flow", context, test_system)
 
-    #     assert result.success is True
+#     assert result.success is True
 
-    #     # The simple-names table contains string entries
-    #     character = result.outputs.get("character", {})
-    #     selected_name = character.get("name")
+#     # The simple-names table contains string entries
+#     character = result.outputs.get("character", {})
+#     selected_name = character.get("name")
 
-    #     # Should be a string (matching table entry type)
-    #     assert isinstance(selected_name, str)
-    #     assert len(selected_name) > 0
+#     # Should be a string (matching table entry type)
+#     assert isinstance(selected_name, str)
+#     assert len(selected_name) > 0
 
-    #     # Should not be a complex object or other type
-    #     assert not isinstance(selected_name, dict)
-    #     assert not isinstance(selected_name, list)
+#     # Should not be a complex object or other type
+#     assert not isinstance(selected_name, dict)
+#     assert not isinstance(selected_name, list)
 
-    # def test_flow_table_cross_references_work(self, engine, test_system):
-    #     """Test that cross-references between flows and tables work during execution."""
-    #     context = engine.create_execution_context()
+# def test_flow_table_cross_references_work(self, engine, test_system):
+#     """Test that cross-references between flows and tables work during execution."""
+#     context = engine.create_execution_context()
 
-    #     result = engine.execute_flow("table-flow", context, test_system)
+#     result = engine.execute_flow("table-flow", context, test_system)
 
-    #     assert result.success is True
+#     assert result.success is True
 
-    #     # The flow references the simple-names table, which should exist
-    #     names_table = test_system.tables.get("simple-names")
-    #     assert names_table is not None
+#     # The flow references the simple-names table, which should exist
+#     names_table = test_system.tables.get("simple-names")
+#     assert names_table is not None
 
-    #     # The flow execution should have successfully used this table
-    #     character = result.outputs.get("character", {})
-    #     selected_name = character.get("name")
+#     # The flow execution should have successfully used this table
+#     character = result.outputs.get("character", {})
+#     selected_name = character.get("name")
 
-    #     # The selected name should be from the referenced table
-    #     assert selected_name in names_table.entries.values()  # Check values, not keys
+#     # The selected name should be from the referenced table
+#     assert selected_name in names_table.entries.values()  # Check values, not keys
 
 
 class TestExecutionContext:

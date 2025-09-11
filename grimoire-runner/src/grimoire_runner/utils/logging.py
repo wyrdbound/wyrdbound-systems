@@ -8,10 +8,10 @@ from rich.logging import RichHandler
 
 
 def setup_logging(
-    level: str = "INFO", 
-    format_string: str | None = None, 
+    level: str = "INFO",
+    format_string: str | None = None,
     use_rich: bool = True,
-    log_file: str | None = None
+    log_file: str | None = None,
 ) -> None:
     """Setup logging configuration with optional Rich formatting and file output."""
 
@@ -51,14 +51,15 @@ def setup_logging(
     # Set up file handler if requested
     if log_file:
         import os
+
         log_dir = os.path.dirname(log_file)
         if log_dir:  # Only create directory if it's not empty (i.e., not current dir)
             os.makedirs(log_dir, exist_ok=True)
-        
-        file_handler = logging.FileHandler(log_file, mode='w')
+
+        file_handler = logging.FileHandler(log_file, mode="w")
         file_formatter = logging.Formatter(
-            '%(asctime)s - %(levelname)s - %(name)s - %(message)s',
-            datefmt='%Y-%m-%d %H:%M:%S'
+            "%(asctime)s - %(levelname)s - %(name)s - %(message)s",
+            datefmt="%Y-%m-%d %H:%M:%S",
         )
         file_handler.setFormatter(file_formatter)
         file_handler.setLevel(logging.DEBUG)  # Always debug level for file

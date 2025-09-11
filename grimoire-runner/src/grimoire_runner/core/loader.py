@@ -306,13 +306,15 @@ class SystemLoader:
                     data = yaml.safe_load(f)
 
                 flow = self._parse_flow_definition(data, system)
-                
+
                 # Validate the flow
                 validation_errors = flow.validate()
                 if validation_errors:
-                    error_msg = f"Flow '{flow.id}' validation failed:\n" + "\n".join(validation_errors)
+                    error_msg = f"Flow '{flow.id}' validation failed:\n" + "\n".join(
+                        validation_errors
+                    )
                     raise ValueError(error_msg)
-                
+
                 system.flows[flow.id] = flow
                 logger.debug(f"Loaded flow: {flow.id} ({len(flow.steps)} steps)")
 

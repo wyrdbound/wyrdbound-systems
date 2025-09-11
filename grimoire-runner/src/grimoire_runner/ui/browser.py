@@ -129,11 +129,24 @@ class CompendiumBrowser:
         # These are part of the GRIMOIRE specification and should be supported by UI
         grimoire_standard_fields = [
             # Universal GRIMOIRE root-level fields (from spec)
-            "kind", "id", "name", "description", "version",
+            "kind",
+            "id",
+            "name",
+            "description",
+            "version",
             # Content-type specific GRIMOIRE root-level fields
-            "model", "roll", "entry_type", "entries", "attributes", "extends", "validations",
+            "model",
+            "roll",
+            "entry_type",
+            "entries",
+            "attributes",
+            "extends",
+            "validations",
             # Common display fields that systems may choose to use
-            "display_name", "title", "label", "type"
+            "display_name",
+            "title",
+            "label",
+            "type",
         ]
 
         # Sort attributes by frequency and priority
@@ -141,7 +154,9 @@ class CompendiumBrowser:
             attr_counts.keys(),
             key=lambda x: (
                 -attr_counts[x],  # Higher frequency first
-                0 if x in grimoire_standard_fields else 1,  # GRIMOIRE standard fields first
+                0
+                if x in grimoire_standard_fields
+                else 1,  # GRIMOIRE standard fields first
                 x,  # Alphabetical as tiebreaker
             ),
         )
@@ -296,7 +311,7 @@ class CompendiumBrowser:
     def _get_entry_display_name(self, entry_data: dict[str, Any], entry_id: str) -> str:
         """Get a display name for an entry in a system-agnostic way."""
         # Try common identifying fields in order of preference
-        identifier_fields = ['name', 'title', 'label', 'display_name', 'id']
+        identifier_fields = ["name", "title", "label", "display_name", "id"]
 
         for field in identifier_fields:
             if field in entry_data and entry_data[field]:

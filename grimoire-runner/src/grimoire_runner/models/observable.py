@@ -12,7 +12,6 @@ if TYPE_CHECKING:
 
 # Import events at module level to avoid circular imports
 from ..services import event_signals
-from ..services.event_signals import FieldComputedData, ValueSetData
 
 logger = logging.getLogger(__name__)
 
@@ -185,7 +184,7 @@ class DerivedFieldManager:
             path=field_name,
             value=value,
             old_value=old_value,
-            context_id=self.execution_context.id
+            context_id=self.execution_context.id,
         )
 
         # Then create/update observable which will trigger recomputation
@@ -276,8 +275,12 @@ class DerivedFieldManager:
             # For a field like "abilities.strength.defense", the parent context is "abilities.strength"
             parent_context = ".".join(field.split(".")[:-1]) if "." in field else ""
             # Add the outputs prefix for template resolution
-            full_context_path = f"outputs.{parent_context}" if parent_context else "outputs"
-            jinja_expr = self._convert_to_jinja_syntax_with_context(template_expr, full_context_path)
+            full_context_path = (
+                f"outputs.{parent_context}" if parent_context else "outputs"
+            )
+            jinja_expr = self._convert_to_jinja_syntax_with_context(
+                template_expr, full_context_path
+            )
             logger.debug(
                 f"Computing field {field}: '{template_expr}' -> '{jinja_expr}'"
             )
@@ -295,7 +298,7 @@ class DerivedFieldManager:
                 path=field,
                 computed_value=result,
                 source_fields=list(dependencies),
-                context_id=self.execution_context.id
+                context_id=self.execution_context.id,
             )
 
             # Create/update observable for this computed field
@@ -331,45 +334,49 @@ class DerivedFieldManager:
             return expression
 
         # If the expression already has {{ }}, check if it needs self/this conversion
-        if expression.startswith('{{') and expression.endswith('}}'):
+        if expression.startswith("{{") and expression.endswith("}}"):
             # Replace 'this.' with the current instance ID for proper template resolution
-            if hasattr(self, 'current_instance_id') and self.current_instance_id:
+            if hasattr(self, "current_instance_id") and self.current_instance_id:
                 # Only replace 'this.' at the start of identifiers to avoid replacing it in strings
                 import re
-                pattern = r'\bthis\.'
-                replacement = f'{self.current_instance_id}.'
+
+                pattern = r"\bthis\."
+                replacement = f"{self.current_instance_id}."
                 expression = re.sub(pattern, replacement, expression)
             return expression
 
         # For expressions without {{ }}, wrap them and handle $ syntax
-        if hasattr(self, 'current_instance_id') and self.current_instance_id:
+        if hasattr(self, "current_instance_id") and self.current_instance_id:
             # Replace $ with the current instance ID
-            expression = expression.replace('$.', f'{self.current_instance_id}.')
-            expression = expression.replace('$', self.current_instance_id)
+            expression = expression.replace("$.", f"{self.current_instance_id}.")
+            expression = expression.replace("$", self.current_instance_id)
 
         return f"{{{{ {expression} }}}}"
 
-    def _convert_to_jinja_syntax_with_context(self, expression: str, context_path: str) -> str:
+    def _convert_to_jinja_syntax_with_context(
+        self, expression: str, context_path: str
+    ) -> str:
         """Convert expressions with $ syntax to Jinja2 template syntax with specific context."""
         if not expression:
             return expression
 
         # If the expression already has {{ }}, check if it needs self/this conversion
-        if expression.startswith('{{') and expression.endswith('}}'):
+        if expression.startswith("{{") and expression.endswith("}}"):
             # Replace 'this.' with the context path for proper template resolution
             if context_path:
                 # Only replace 'this.' at the start of identifiers to avoid replacing it in strings
                 import re
-                pattern = r'\bthis\.'
-                replacement = f'{context_path}.'
+
+                pattern = r"\bthis\."
+                replacement = f"{context_path}."
                 expression = re.sub(pattern, replacement, expression)
             return expression
 
         # For expressions without {{ }}, wrap them and handle $ syntax
         if context_path:
             # Replace $ with the context path
-            expression = expression.replace('$.', f'{context_path}.')
-            expression = expression.replace('$', context_path)
+            expression = expression.replace("$.", f"{context_path}.")
+            expression = expression.replace("$", context_path)
 
         return f"{{{{ {expression} }}}}"
 
@@ -589,7 +596,11 @@ class DerivedFieldManager:
                 )
                 self.register_derived_field(full_path, attr_config.derived)
             # Handle AttributeDefinition with model type references
-            elif hasattr(attr_config, "type") and self.model_resolver and attr_config.type:
+            elif (
+                hasattr(attr_config, "type")
+                and self.model_resolver
+                and attr_config.type
+            ):
                 # This attribute references another model - try to resolve it
                 referenced_model = self.model_resolver(attr_config.type)
                 if referenced_model:
@@ -597,9 +608,13 @@ class DerivedFieldManager:
                         f"Found model type reference: {full_path} -> {attr_config.type}, registering derived fields"
                     )
                     # Recursively register the referenced model's attributes under this path
-                    self._register_attributes_recursive(referenced_model.attributes, full_path)
+                    self._register_attributes_recursive(
+                        referenced_model.attributes, full_path
+                    )
                 else:
-                    logger.debug(f"Model type '{attr_config.type}' could not be resolved for {full_path}")
+                    logger.debug(
+                        f"Model type '{attr_config.type}' could not be resolved for {full_path}"
+                    )
             # Handle nested attributes (dictionaries)
             elif isinstance(attr_config, dict):
                 if "derived" in attr_config:

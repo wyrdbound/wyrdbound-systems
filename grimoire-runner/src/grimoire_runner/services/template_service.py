@@ -44,7 +44,9 @@ class ModelAwareDict:
         # This makes it system-agnostic by checking actual model definitions
         # rather than hardcoded assumptions about specific field names
 
-        logger.debug(f"_infer_model_type called, _models has {len(self._models)} entries")
+        logger.debug(
+            f"_infer_model_type called, _models has {len(self._models)} entries"
+        )
 
         best_match = None
         best_score = 0
@@ -60,7 +62,11 @@ class ModelAwareDict:
             total_fields = 0
 
             try:
-                all_attrs = model_def.get_all_attributes() if hasattr(model_def, 'get_all_attributes') else {}
+                all_attrs = (
+                    model_def.get_all_attributes()
+                    if hasattr(model_def, "get_all_attributes")
+                    else {}
+                )
                 total_fields = len(all_attrs)
 
                 for attr_name in all_attrs:
@@ -100,9 +106,15 @@ class ModelAwareDict:
     def __getattribute__(self, name):
         """Handle attribute access - required for Jinja2 compatibility."""
         # Let Python handle special attributes normally
-        if name.startswith('_') or name in ('get', 'keys', 'values', 'items', 'to_dict'):
+        if name.startswith("_") or name in (
+            "get",
+            "keys",
+            "values",
+            "items",
+            "to_dict",
+        ):
             return object.__getattribute__(self, name)
-        
+
         # For regular attributes, delegate to our custom __getattr__
         try:
             return object.__getattribute__(self, name)
@@ -131,14 +143,14 @@ class ModelAwareDict:
         if self._model_def:
             # Get all attributes (including nested ones like 'hit_points.max')
             all_attrs = self._model_def.get_all_attributes()
-            
+
             # Extract root-level keys from potentially dotted attribute names in definition order
             ordered_model_keys = []
             seen_keys = set()
             for key in all_attrs.keys():
-                if '.' in key:
+                if "." in key:
                     # For nested keys like 'hit_points.max', take the root part 'hit_points'
-                    root_key = key.split('.')[0]
+                    root_key = key.split(".")[0]
                     if root_key not in seen_keys:
                         ordered_model_keys.append(root_key)
                         seen_keys.add(root_key)
@@ -147,10 +159,10 @@ class ModelAwareDict:
                     if key not in seen_keys:
                         ordered_model_keys.append(key)
                         seen_keys.add(key)
-            
+
             # Add any data keys that aren't in the model (preserve them at the end)
             data_keys = [key for key in self._data.keys() if key not in seen_keys]
-            
+
             return ordered_model_keys + data_keys
         return list(self._data.keys())
 
@@ -169,11 +181,11 @@ class ModelAwareDict:
     def __repr__(self):
         """String representation for debugging."""
         return f"ModelAwareDict({self._data})"
-        
+
     def _repr_html_(self):
         """Jupyter/HTML representation - return the underlying data."""
         return str(self._data)
-        
+
     def __format__(self, format_spec):
         """Format method for f-strings and other formatting."""
         if format_spec:
@@ -295,12 +307,13 @@ class RuntimeTemplateStrategy(TemplateResolutionStrategy):
 
             # NO FALLBACKS - template resolution must be explicit about missing variables
             # This will cause Jinja2 to raise UndefinedError for missing variables
-            
+
             # For complex expressions, try to evaluate them to preserve object types
             if self._is_complex_expression(template_str_stripped):
                 try:
                     # Use Jinja2's native environment to get actual Python objects
                     from jinja2.nativetypes import NativeEnvironment
+
                     native_env = NativeEnvironment(
                         undefined=StrictUndefined,
                         trim_blocks=True,
@@ -308,11 +321,15 @@ class RuntimeTemplateStrategy(TemplateResolutionStrategy):
                     )
                     native_template = native_env.from_string(template_str)
                     native_result = native_template.render(enhanced_context)
-                    logger.debug(f"Native template result: {type(native_result)} = {native_result}")
+                    logger.debug(
+                        f"Native template result: {type(native_result)} = {native_result}"
+                    )
                     return native_result
                 except Exception as native_e:
-                    logger.debug(f"Native template evaluation failed: {native_e}, falling back to regular rendering")
-            
+                    logger.debug(
+                        f"Native template evaluation failed: {native_e}, falling back to regular rendering"
+                    )
+
             result = template.render(enhanced_context)
 
             # Try to parse as structured data if it looks like it
@@ -326,12 +343,14 @@ class RuntimeTemplateStrategy(TemplateResolutionStrategy):
             # Create explicit error with full context for debugging
             try:
                 if isinstance(context_data, dict):
-                    context_info = f"Available context keys: {list(context_data.keys())}"
+                    context_info = (
+                        f"Available context keys: {list(context_data.keys())}"
+                    )
                 else:
                     context_info = f"Context data type: {type(context_data).__name__}"
             except Exception:
                 context_info = "Context data could not be analyzed"
-            
+
             error_msg = (
                 f"Runtime template resolution failed for '{template_str}': {e}. "
                 f"{context_info}"
@@ -342,10 +361,12 @@ class RuntimeTemplateStrategy(TemplateResolutionStrategy):
     def _is_complex_expression(self, template_str: str) -> bool:
         """Determine if a template string contains complex expressions that should preserve object types."""
         # Strip {{ }} to get the inner expression
-        if template_str.startswith('{{') and template_str.endswith('}}'):
+        if template_str.startswith("{{") and template_str.endswith("}}"):
             inner = template_str[2:-2].strip()
             # Check for operations that create new data structures or access object properties
-            return any(op in inner for op in ['+', '-', '*', '/', '|', '[', ']', '(', ')', '.'])
+            return any(
+                op in inner for op in ["+", "-", "*", "/", "|", "[", "]", "(", ")", "."]
+            )
         return False
 
     def _enhance_context_for_objects(self, context_data: dict) -> dict:
@@ -358,13 +379,15 @@ class RuntimeTemplateStrategy(TemplateResolutionStrategy):
         def make_object_accessible(obj):
             """Convert objects to be more accessible in Jinja2 templates."""
             # Skip System objects and other complex objects that shouldn't be processed
-            from ..models.system import System
             from ..models.model import ModelDefinition
-            
-            if isinstance(obj, (System, ModelDefinition)):
-                logger.debug(f"[TEMPLATE_SERVICE] Skipping {type(obj).__name__} object in template context")
+            from ..models.system import System
+
+            if isinstance(obj, System | ModelDefinition):
+                logger.debug(
+                    f"[TEMPLATE_SERVICE] Skipping {type(obj).__name__} object in template context"
+                )
                 return obj  # Return as-is, don't process these objects
-                
+
             if isinstance(obj, RollResult):
                 # Convert RollResult to a dict-like object that preserves all attributes
                 return {
@@ -380,53 +403,75 @@ class RuntimeTemplateStrategy(TemplateResolutionStrategy):
             elif isinstance(obj, dict):
                 # Don't re-process ModelAwareDict objects
                 if isinstance(obj, ModelAwareDict):
-                    logger.debug(f"[TEMPLATE_SERVICE] Skipping ModelAwareDict re-processing")
+                    logger.debug(
+                        "[TEMPLATE_SERVICE] Skipping ModelAwareDict re-processing"
+                    )
                     return obj
-                    
+
                 # Check if this looks like a model instance by checking for type information
                 # Model instances typically come with metadata about their type
                 try:
                     if self._is_model_instance_dict(obj, enhanced_context):
                         # Get models from system context (always a dictionary in template context)
                         system_dict = enhanced_context.get("system", {})
-                        logger.debug(f"system_dict type: {type(system_dict)}, keys: {list(system_dict.keys()) if system_dict else 'None'}")
+                        logger.debug(
+                            f"system_dict type: {type(system_dict)}, keys: {list(system_dict.keys()) if system_dict else 'None'}"
+                        )
                         logger.debug(f"full system_dict content: {system_dict}")
                         models = system_dict.get("models", {})
-                        logger.debug(f"models type: {type(models)}, keys: {list(models.keys()) if models else 'None'}")
-                        
+                        logger.debug(
+                            f"models type: {type(models)}, keys: {list(models.keys()) if models else 'None'}"
+                        )
+
                         # Check what's actually in the models dict
                         if models:
                             for name, model_def in models.items():
-                                logger.debug(f"model '{name}' type: {type(model_def)}, has get_all_attributes: {hasattr(model_def, 'get_all_attributes')}")
-                                if hasattr(model_def, 'get_all_attributes'):
+                                logger.debug(
+                                    f"model '{name}' type: {type(model_def)}, has get_all_attributes: {hasattr(model_def, 'get_all_attributes')}"
+                                )
+                                if hasattr(model_def, "get_all_attributes"):
                                     try:
                                         attrs = model_def.get_all_attributes()
-                                        logger.debug(f"model '{name}' attributes: {list(attrs.keys())}")
+                                        logger.debug(
+                                            f"model '{name}' attributes: {list(attrs.keys())}"
+                                        )
                                     except Exception as e:
-                                        logger.debug(f"model '{name}' get_all_attributes() failed: {e}")
+                                        logger.debug(
+                                            f"model '{name}' get_all_attributes() failed: {e}"
+                                        )
                         else:
-                            logger.debug(f"models dict is empty!")
-                        
+                            logger.debug("models dict is empty!")
+
                         # Ensure models has dictionary-like interface for ModelAwareDict
-                        if not hasattr(models, 'keys') or not hasattr(models, 'get'):
-                            logger.debug(f"models is not dict-like (type: {type(models)}), using empty dict")
+                        if not hasattr(models, "keys") or not hasattr(models, "get"):
+                            logger.debug(
+                                f"models is not dict-like (type: {type(models)}), using empty dict"
+                            )
                             models = {}
-                        
+
                         # Check if we can determine model type from context structure
                         # Look for type hints in the context path or object metadata
-                        model_type = self._determine_model_type_from_context(obj, enhanced_context)
+                        model_type = self._determine_model_type_from_context(
+                            obj, enhanced_context
+                        )
                         return ModelAwareDict(obj, models, model_type)
                     else:
                         # Recursively process dict values
                         return {k: make_object_accessible(v) for k, v in obj.items()}
                 except Exception as e:
-                    logger.debug(f"[TEMPLATE_SERVICE] Harmless error in _is_model_instance_dict for obj type {type(obj)}: {e}")
-                    logger.debug(f"[TEMPLATE_SERVICE] Obj content: {str(obj)[:200]}...")  # Truncated for brevity
+                    logger.debug(
+                        f"[TEMPLATE_SERVICE] Harmless error in _is_model_instance_dict for obj type {type(obj)}: {e}"
+                    )
+                    logger.debug(
+                        f"[TEMPLATE_SERVICE] Obj content: {str(obj)[:200]}..."
+                    )  # Truncated for brevity
                     # Fall back to simple dict processing
                     try:
                         return {k: make_object_accessible(v) for k, v in obj.items()}
                     except Exception as e2:
-                        logger.debug(f"[TEMPLATE_SERVICE] Error in fallback dict processing: {e2}")
+                        logger.debug(
+                            f"[TEMPLATE_SERVICE] Error in fallback dict processing: {e2}"
+                        )
                         return obj
             elif isinstance(obj, list):
                 # Recursively process list items, but be careful about ModelAwareDict objects
@@ -444,45 +489,65 @@ class RuntimeTemplateStrategy(TemplateResolutionStrategy):
         """Check if a dictionary appears to be a model instance."""
         # Safety check: ensure obj is actually a dict
         if not isinstance(obj, dict):
-            logger.warning(f"[TEMPLATE_SERVICE] _is_model_instance_dict called with non-dict: {type(obj)}")
+            logger.warning(
+                f"[TEMPLATE_SERVICE] _is_model_instance_dict called with non-dict: {type(obj)}"
+            )
             return False
-        
+
         # Safety check: ensure context is actually a dict
         if not isinstance(context, dict):
-            logger.warning(f"[TEMPLATE_SERVICE] _is_model_instance_dict called with non-dict context: {type(context)}")
+            logger.warning(
+                f"[TEMPLATE_SERVICE] _is_model_instance_dict called with non-dict context: {type(context)}"
+            )
             return False
-            
+
         # Don't treat top-level context containers as model instances
         try:
-            if obj is context.get("variables") or obj is context.get("inputs") or obj is context.get("outputs") or obj is context.get("system"):
+            if (
+                obj is context.get("variables")
+                or obj is context.get("inputs")
+                or obj is context.get("outputs")
+                or obj is context.get("system")
+            ):
                 return False
         except (AttributeError, TypeError):
-            logger.warning(f"[TEMPLATE_SERVICE] Error checking context objects in _is_model_instance_dict")
+            logger.warning(
+                "[TEMPLATE_SERVICE] Error checking context objects in _is_model_instance_dict"
+            )
             return False
-        
+
         # Don't treat converted RollResult objects as model instances
         try:
-            if obj.get("_original") or "total" in obj or "expression" in obj or "breakdown" in obj:
+            if (
+                obj.get("_original")
+                or "total" in obj
+                or "expression" in obj
+                or "breakdown" in obj
+            ):
                 return False
         except AttributeError:
             # If obj doesn't have .get() method, it's not a dict we should be processing
-            logger.warning(f"[TEMPLATE_SERVICE] Object in _is_model_instance_dict doesn't have .get() method: {type(obj)}")
+            logger.warning(
+                f"[TEMPLATE_SERVICE] Object in _is_model_instance_dict doesn't have .get() method: {type(obj)}"
+            )
             return False
-        
+
         # This is a heuristic - we could improve this by checking against known model definitions
         # For now, assume any dict that comes from outputs/inputs in a flow context is likely a model instance
         return isinstance(obj, dict) and len(obj) > 1
 
-    def _determine_model_type_from_context(self, obj: dict, context: dict) -> str | None:
+    def _determine_model_type_from_context(
+        self, obj: dict, context: dict
+    ) -> str | None:
         """Try to determine the model type from context clues."""
         # Strategy 1: Check if the object has explicit type information
         if isinstance(obj, dict) and "type" in obj:
             return obj["type"]
-        
+
         # Strategy 2: Check context for type hints
         # Look through the context to see if this object appears in a typed location
-        system_dict = context.get("system", {})
-        
+        context.get("system", {})
+
         # Strategy 3: For now, assume character type if it has character-like fields
         # This is a fallback heuristic - in a better implementation we'd track object types
         if isinstance(obj, dict):
@@ -490,7 +555,7 @@ class RuntimeTemplateStrategy(TemplateResolutionStrategy):
             obj_fields = set(obj.keys())
             if len(character_like_fields & obj_fields) >= 2:
                 return "character"
-        
+
         return None
 
     def is_template(self, text: str) -> bool:
@@ -801,17 +866,17 @@ class TemplateService:
         if system:
             logger.debug(f"System object type: {type(system)}")
             logger.debug(f"System object: {system}")
-            
+
             # Convert system.models to a simple dict format to avoid complex object processing
             models_dict = {}
-            if hasattr(system, 'models') and system.models:
+            if hasattr(system, "models") and system.models:
                 for model_id, model_def in system.models.items():
-                    if hasattr(model_def, '__dict__'):
+                    if hasattr(model_def, "__dict__"):
                         # Convert ModelDefinition to a simple dict
                         models_dict[model_id] = model_def.__dict__
                     else:
                         models_dict[model_id] = model_def
-            
+
             context_dict["system"] = {
                 "id": system.id,
                 "name": system.name,

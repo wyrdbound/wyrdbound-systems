@@ -22,10 +22,11 @@ class ChoiceExecutor(BaseStepExecutor):
         """Initialize the choice executor with optional engine reference and action executor."""
         self.engine = engine
         self.flow_helper = create_flow_helper(engine)
-        
+
         if action_executor is None:
             # Fallback to direct creation for backward compatibility
             from .action_executor import ActionExecutor
+
             action_executor = ActionExecutor()
         self.action_executor = action_executor
 
@@ -73,60 +74,70 @@ class ChoiceExecutor(BaseStepExecutor):
             # Check if user input is already available in the context
             user_choice_id = context.get_variable("pending_user_choice_id")
             user_choice_ids = context.get_variable("pending_user_choice_ids")
-            
+
             if selection_count > 1 and user_choice_ids is not None:
                 # Process multiple choice selection
-                logger.debug(f"MULTIPLE CHOICE PATH - Processing multiple user choices: {user_choice_ids}")
-                logger.debug(f"MULTIPLE CHOICE PATH - selection_count: {selection_count}")
-                
+                logger.debug(
+                    f"MULTIPLE CHOICE PATH - Processing multiple user choices: {user_choice_ids}"
+                )
+                logger.debug(
+                    f"MULTIPLE CHOICE PATH - selection_count: {selection_count}"
+                )
+
                 # Clear the pending input
                 context.set_variable("pending_user_choice_ids", None)
-                
+
                 # Set the results variable for multiple choices
                 context.set_variable("results", user_choice_ids)
-                
+
                 # Debug: Check if step has actions
                 logger.debug(f"Step {step.id} step object: {step}")
                 logger.debug(f"Step {step.id} step dir: {dir(step)}")
                 logger.debug(f"Step {step.id} has actions: {step.actions is not None}")
-                if hasattr(step, 'actions') and step.actions:
+                if hasattr(step, "actions") and step.actions:
                     logger.debug(f"Step {step.id} actions count: {len(step.actions)}")
                     logger.debug(f"Step {step.id} actions: {step.actions}")
                 else:
                     logger.debug(f"Step {step.id} has no actions or actions is None")
-                
+
                 # Execute step-level actions if present
                 actions_already_executed = False
-                if hasattr(step, 'actions') and step.actions:
-                    logger.debug(f"Executing {len(step.actions)} step actions after multiple choice")
+                if hasattr(step, "actions") and step.actions:
+                    logger.debug(
+                        f"Executing {len(step.actions)} step actions after multiple choice"
+                    )
                     step_result_data = {"results": user_choice_ids}
-                    self.action_executor.execute_actions(step.actions, context, step_result_data, system)
+                    self.action_executor.execute_actions(
+                        step.actions, context, step_result_data, system
+                    )
                     logger.debug(f"Finished executing step actions for {step.id}")
                     actions_already_executed = True
                 else:
                     logger.debug(f"No step actions to execute for {step.id}")
-                
+
                 # Return successful result with next_step_id if specified
                 result = StepResult(
                     step_id=step.id,
                     success=True,
                     data={"results": user_choice_ids},
-                    next_step_id=step.next_step
+                    next_step_id=step.next_step,
                 )
                 result.actions_already_executed = actions_already_executed
                 return result
-                
+
             elif selection_count == 1 and user_choice_id is not None:
                 # Process single choice selection
                 logger.debug(f"Processing user choice: {user_choice_id}")
-                
+
                 # Clear the pending input
                 context.set_variable("pending_user_choice_id", None)
-                
+
                 # Process the choice using existing logic
-                choice_result = self.process_choice(user_choice_id, step, context, system)
+                choice_result = self.process_choice(
+                    user_choice_id, step, context, system
+                )
                 return choice_result
-                
+
             else:
                 # No user input available - return step that requires input
                 return StepResult(
@@ -152,9 +163,7 @@ class ChoiceExecutor(BaseStepExecutor):
         """Execute pre-actions before presenting choices."""
         # Delegate all pre-actions to the centralized ActionExecutor
         try:
-            self.action_executor.execute_actions(
-                pre_actions, context, {}, None
-            )
+            self.action_executor.execute_actions(pre_actions, context, {}, None)
         except Exception as e:
             logger.error(f"Error executing pre-actions: {e}")
 
@@ -275,10 +284,22 @@ class ChoiceExecutor(BaseStepExecutor):
                                         if table.entry_type in system.models:
                                             model_def = system.models[table.entry_type]
                                             # Create a copy and apply model defaults
-                                            enhanced_entry_data = dict(entry_data) if isinstance(entry_data, dict) else entry_data
+                                            enhanced_entry_data = (
+                                                dict(entry_data)
+                                                if isinstance(entry_data, dict)
+                                                else entry_data
+                                            )
                                             if isinstance(enhanced_entry_data, dict):
-                                                enhanced_entry_data = self._apply_model_defaults(enhanced_entry_data, model_def, system)
-                                                selected_item_value = enhanced_entry_data
+                                                enhanced_entry_data = (
+                                                    self._apply_model_defaults(
+                                                        enhanced_entry_data,
+                                                        model_def,
+                                                        system,
+                                                    )
+                                                )
+                                                selected_item_value = (
+                                                    enhanced_entry_data
+                                                )
                                             else:
                                                 selected_item_value = entry_data
                                         else:
@@ -385,7 +406,10 @@ class ChoiceExecutor(BaseStepExecutor):
             logger.debug(f"User chose: {selected_choice.label} ({choice_id})")
 
             # Prepare step result data
-            step_result_data = {"choice_id": choice_id, "choice_label": selected_choice.label}
+            step_result_data = {
+                "choice_id": choice_id,
+                "choice_label": selected_choice.label,
+            }
 
             # Add result for single selections (from compendium/table choices)
             result = context.get_variable("result")
@@ -462,10 +486,14 @@ class ChoiceExecutor(BaseStepExecutor):
         step_result_data: dict[str, Any] = None,
     ) -> None:
         """Execute a step-level action (including flow calls)."""
-        action_type = list(action.keys())[0]
+        list(action.keys())[0]
 
     def _execute_step_action(
-        self, action, context: "ExecutionContext", system: "System", step_result_data: dict
+        self,
+        action,
+        context: "ExecutionContext",
+        system: "System",
+        step_result_data: dict,
     ) -> None:
         """Execute a step action using centralized ActionExecutor."""
         # Delegate all step actions to the centralized ActionExecutor
@@ -509,7 +537,7 @@ class ChoiceExecutor(BaseStepExecutor):
         # Apply defaults for missing attributes
         for attr_name, attr_def in all_attributes.items():
             if attr_name not in result:
-                if hasattr(attr_def, 'default') and attr_def.default is not None:
+                if hasattr(attr_def, "default") and attr_def.default is not None:
                     result[attr_name] = attr_def.default
 
         return result
@@ -519,15 +547,17 @@ class ChoiceExecutor(BaseStepExecutor):
         all_attributes = {}
 
         # Process inheritance chain (extends)
-        if hasattr(model_def, 'extends') and model_def.extends:
+        if hasattr(model_def, "extends") and model_def.extends:
             for parent_model_id in model_def.extends:
                 if parent_model_id in system.models:
                     parent_model = system.models[parent_model_id]
-                    parent_attributes = self._get_all_model_attributes(parent_model, system)
+                    parent_attributes = self._get_all_model_attributes(
+                        parent_model, system
+                    )
                     all_attributes.update(parent_attributes)
 
         # Add this model's own attributes (these override inherited ones)
-        if hasattr(model_def, 'attributes'):
+        if hasattr(model_def, "attributes"):
             all_attributes.update(model_def.attributes)
 
         return all_attributes

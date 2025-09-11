@@ -61,7 +61,9 @@ class ActionExecutor:
 
         # Temporarily add step_data to current step context for template resolution
         if step_data:
-            logger.debug(f"[ACTION_EXECUTOR] Setting step_data for current step: {step_data}")
+            logger.debug(
+                f"[ACTION_EXECUTOR] Setting step_data for current step: {step_data}"
+            )
             for key, value in step_data.items():
                 logger.debug(
                     f"[ACTION_EXECUTOR] Setting step data {key} = {value} (type: {type(value)})"
@@ -69,9 +71,7 @@ class ActionExecutor:
                 context.set_current_step_data(key, value)
 
             # Verify step data is set
-            logger.debug(
-                f"[ACTION_EXECUTOR] Current step: {context.current_step}"
-            )
+            logger.debug(f"[ACTION_EXECUTOR] Current step: {context.current_step}")
             logger.debug(
                 f"[ACTION_EXECUTOR] Checking result in step data: {context.get_current_step_data('result')}"
             )

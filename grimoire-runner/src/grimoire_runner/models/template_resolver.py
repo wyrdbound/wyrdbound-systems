@@ -32,8 +32,13 @@ class TemplateResolver:
     ) -> Any:
         """Resolve a template with access to current step data."""
         context = self._build_template_context(
-            variables, outputs, inputs, system_metadata,
-            namespace_manager, derived_field_manager, current_step_data
+            variables,
+            outputs,
+            inputs,
+            system_metadata,
+            namespace_manager,
+            derived_field_manager,
+            current_step_data,
         )
 
         # Store context resolver for template functions
@@ -163,17 +168,19 @@ class TemplateResolver:
 
         # Add all current step data as top-level context keys if available
         if current_step_data:
-            logger.debug(f"[TEMPLATE_RESOLVER] Adding step_data to context: {current_step_data}")
+            logger.debug(
+                f"[TEMPLATE_RESOLVER] Adding step_data to context: {current_step_data}"
+            )
             for key, value in current_step_data.items():
                 logger.debug(f"[TEMPLATE_RESOLVER] Adding {key} = {value} to context")
                 context[key] = value
         # Also check if result is available in variables for backward compatibility
-        elif 'result' in variables:
-            context['result'] = variables['result']
+        elif "result" in variables:
+            context["result"] = variables["result"]
 
         logger.debug(f"[TEMPLATE_RESOLVER] Final context keys: {list(context.keys())}")
 
-                # NOTE: 'this' reference should only be available during derived field resolution,
+        # NOTE: 'this' reference should only be available during derived field resolution,
         # not exposed in general template context to prevent namespace pollution
 
         # Add input instances directly to the context for observable system

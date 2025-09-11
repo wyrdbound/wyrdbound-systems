@@ -1,36 +1,36 @@
 """UI Service layer interfaces for clean UI/Engine separation."""
 
-from .interfaces import (
-    UIServiceInterface,
-    SystemInfo,
-    FlowInfo,
-    ExecutionSession,
-    ExecutionStatus,
-    ExecutionProgress,
-    DisplayMessage,
-    StepInfo,
-    Choice,
-    InputType,
-)
+from . import event_signals
 from .commands import (
-    Command,
-    LoadSystemCommand,
-    StartFlowCommand,
-    ProvideInputCommand,
-    MakeChoiceCommand,
     CancelExecutionCommand,
+    Command,
+    ContinueExecutionCommand,
     GetExecutionStatusCommand,
     ListFlowsCommand,
-    ContinueExecutionCommand,
+    LoadSystemCommand,
+    MakeChoiceCommand,
+    ProvideInputCommand,
+    StartFlowCommand,
 )
-from . import event_signals
+from .interfaces import (
+    Choice,
+    DisplayMessage,
+    ExecutionProgress,
+    ExecutionSession,
+    ExecutionStatus,
+    FlowInfo,
+    InputType,
+    StepInfo,
+    SystemInfo,
+    UIServiceInterface,
+)
 from .ui_service_impl import GrimoireUIService
 
 __all__ = [
     # Interfaces
     "UIServiceInterface",
     "SystemInfo",
-    "FlowInfo", 
+    "FlowInfo",
     "ExecutionSession",
     "ExecutionStatus",
     "ExecutionProgress",

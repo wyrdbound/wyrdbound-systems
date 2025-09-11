@@ -22,10 +22,11 @@ class TableExecutor(BaseStepExecutor):
     def __init__(self, action_executor: "ActionExecutor" = None):
         """Initialize the table executor with optional action executor."""
         self.dice_integration = DiceIntegration()
-        
+
         if action_executor is None:
             # Fallback to direct creation for backward compatibility
             from .action_executor import ActionExecutor
+
             action_executor = ActionExecutor()
         self.action_executor = action_executor
 
@@ -205,18 +206,24 @@ class TableExecutor(BaseStepExecutor):
 
             # Use the same step data mechanism as ActionExecutor for consistency
             step_data = {"result": result}
-            
+
             # Delegate to the centralized ActionExecutor for consistency
-            logger.debug(f"Delegating table set_value action to centralized ActionExecutor")
+            logger.debug(
+                "Delegating table set_value action to centralized ActionExecutor"
+            )
             try:
-                self.action_executor.execute_single_action(action, context, step_data, system)
+                self.action_executor.execute_single_action(
+                    action, context, step_data, system
+                )
             except Exception as e:
-                logger.error(f"Error delegating set_value action to ActionExecutor: {e}")
+                logger.error(
+                    f"Error delegating set_value action to ActionExecutor: {e}"
+                )
                 # Fallback to original behavior
                 # Temporarily add step_data to current step context for template resolution
                 for key, step_value in step_data.items():
                     context.set_current_step_data(key, step_value)
-                
+
                 try:
                     # Resolve templates with the step data context
                     resolved_value = context.resolve_template(str(value))
@@ -258,16 +265,24 @@ class TableExecutor(BaseStepExecutor):
 
         else:
             # Use centralized ActionExecutor for other action types (display_value, etc.)
-            logger.debug(f"Delegating table action '{action_type}' to centralized ActionExecutor")
-            
+            logger.debug(
+                f"Delegating table action '{action_type}' to centralized ActionExecutor"
+            )
+
             # Prepare step data from the table result
             step_data = {"result": result}
-            
+
             try:
-                self.action_executor.execute_single_action(action, context, step_data, system)
+                self.action_executor.execute_single_action(
+                    action, context, step_data, system
+                )
             except Exception as e:
-                logger.warning(f"Unsupported table action type '{action_type}' or execution failed: {e}")
-                logger.debug(f"Available action types: {self.action_executor.get_supported_action_types()}")
+                logger.warning(
+                    f"Unsupported table action type '{action_type}' or execution failed: {e}"
+                )
+                logger.debug(
+                    f"Available action types: {self.action_executor.get_supported_action_types()}"
+                )
 
     def _execute_sub_flow(
         self,
@@ -846,9 +861,11 @@ class TableExecutor(BaseStepExecutor):
         # Add minimal generic defaults that work across systems
         # Rather than hardcoding system-specific attributes, use minimal common patterns
 
-        base_object.update({
-            "description": f"Unknown {entry_type}: {entry_name}",
-        })
+        base_object.update(
+            {
+                "description": f"Unknown {entry_type}: {entry_name}",
+            }
+        )
 
         # Only add truly universal attributes that most systems would recognize
         # System-specific attributes should come from model definitions, not hardcoded here

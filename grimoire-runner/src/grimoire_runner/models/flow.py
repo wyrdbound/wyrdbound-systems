@@ -178,9 +178,13 @@ class StepDefinition:
 
     # For name_generation
     generator: str | None = None  # Name generator identifier
-    settings: dict[str, Any] = field(default_factory=dict)  # Generator settings (corpus, segmenter, max_length)
+    settings: dict[str, Any] = field(
+        default_factory=dict
+    )  # Generator settings (corpus, segmenter, max_length)
     generator_file: str | None = None  # Path to name generator file (legacy)
-    generator_params: dict[str, Any] = field(default_factory=dict)  # Parameters for name generation (legacy)
+    generator_params: dict[str, Any] = field(
+        default_factory=dict
+    )  # Parameters for name generation (legacy)
 
 
 @dataclass
@@ -293,9 +297,9 @@ class FlowDefinition:
                 errors.append(
                     f"Step '{step.id}' references unknown next_step '{step.next_step}'"
                 )
-            
+
             # Validate choice next_step references
-            if hasattr(step, 'choices') and step.choices:
+            if hasattr(step, "choices") and step.choices:
                 for choice in step.choices:
                     if choice.next_step and choice.next_step not in step_ids:
                         errors.append(

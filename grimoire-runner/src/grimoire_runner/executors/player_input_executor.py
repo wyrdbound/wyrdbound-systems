@@ -16,11 +16,12 @@ logger = logging.getLogger(__name__)
 
 class PlayerInputExecutor(BaseStepExecutor):
     """Executor for player input steps."""
-    
+
     def __init__(self, action_executor: "ActionExecutor" = None):
         if action_executor is None:
             # Fallback to direct creation for backward compatibility
             from .action_executor import ActionExecutor
+
             action_executor = ActionExecutor()
         self.action_executor = action_executor
 
@@ -71,7 +72,9 @@ class PlayerInputExecutor(BaseStepExecutor):
             # Execute step actions if present using the centralized ActionExecutor
             if step.actions:
                 step_data = {"result": user_input, "user_input": user_input}
-                self.action_executor.execute_actions(step.actions, context, step_data, system)
+                self.action_executor.execute_actions(
+                    step.actions, context, step_data, system
+                )
 
             logger.debug(f"User input processed: '{user_input}'")
 

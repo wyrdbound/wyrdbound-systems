@@ -4,7 +4,7 @@ import logging
 from typing import TYPE_CHECKING
 
 from . import event_signals
-from .event_signals import ValueSetData, FieldComputedData
+from .event_signals import FieldComputedData, ValueSetData
 
 if TYPE_CHECKING:
     from ..models.observable import DerivedFieldManager
@@ -27,7 +27,9 @@ class ReactiveFieldService:
         # Listen for field computed events for logging/debugging
         event_signals.field_computed.connect(self._on_field_computed)
 
-    def register_field_manager(self, context_id: str, field_manager: 'DerivedFieldManager'):
+    def register_field_manager(
+        self, context_id: str, field_manager: "DerivedFieldManager"
+    ):
         """Register a field manager for a specific context."""
         logger.debug(f"Registering field manager for context: {context_id}")
         self.field_managers[context_id] = field_manager
@@ -40,14 +42,16 @@ class ReactiveFieldService:
 
     def _on_value_set(self, sender, **kwargs):
         """Handle value set events."""
-        event_data: ValueSetData = kwargs.get('data')
+        event_data: ValueSetData = kwargs.get("data")
         if not event_data:
             return
 
-        logger.debug(f"ReactiveFieldService: Value set event - {event_data.path} = {event_data.value}")
+        logger.debug(
+            f"ReactiveFieldService: Value set event - {event_data.path} = {event_data.value}"
+        )
 
         # Find the appropriate field manager
-        context_id = event_data.context_id or 'default'
+        context_id = event_data.context_id or "default"
         field_manager = self.field_managers.get(context_id)
 
         if not field_manager:
@@ -57,7 +61,9 @@ class ReactiveFieldService:
         # Check if the sender is the field manager itself to avoid loops
         # If the event came from the field manager, the observables will handle recomputation
         if sender == field_manager:
-            logger.debug("Event came from field manager itself, observables will handle recomputation")
+            logger.debug(
+                "Event came from field manager itself, observables will handle recomputation"
+            )
             return
 
         # For external value sets, trigger recomputation of dependent fields
@@ -65,7 +71,7 @@ class ReactiveFieldService:
 
     def _on_field_computed(self, sender, **kwargs):
         """Handle field computed events for logging."""
-        event_data: FieldComputedData = kwargs.get('data')
+        event_data: FieldComputedData = kwargs.get("data")
         if not event_data:
             return
 

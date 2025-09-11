@@ -28,6 +28,7 @@ class DiceExecutor(BaseStepExecutor):
         if action_executor is None:
             # Fallback to direct creation for backward compatibility
             from .action_executor import ActionExecutor
+
             action_executor = ActionExecutor()
         self.action_executor = action_executor
         self.dice_integration = DiceIntegration()

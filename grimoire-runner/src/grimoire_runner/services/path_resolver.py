@@ -97,7 +97,7 @@ class OutputsPathHandler(PathResolverHandler):
 
         # Remove 'outputs.' prefix and set in outputs dict
         output_path = path[8:]  # len("outputs.") = 8
-        
+
         engine_logger.debug(f"PathResolver: Setting output path={output_path}")
 
         # Use the derived field manager if available for observable updates
@@ -140,27 +140,35 @@ class OutputsPathHandler(PathResolverHandler):
         current = obj
 
         # Navigate to parent of target
-        for i, part in enumerate(parts[:-1]):
+        for _i, part in enumerate(parts[:-1]):
             if part not in current:
                 current[part] = {}
-            elif not (isinstance(current[part], dict) or hasattr(current[part], '__getitem__')):
-                engine_logger.warning(f"PathResolver: Cannot set nested value: '{part}' is not a dict-like object")
-                raise ValueError(f"Cannot set nested value: '{part}' is not a dict-like object")
+            elif not (
+                isinstance(current[part], dict) or hasattr(current[part], "__getitem__")
+            ):
+                engine_logger.warning(
+                    f"PathResolver: Cannot set nested value: '{part}' is not a dict-like object"
+                )
+                raise ValueError(
+                    f"Cannot set nested value: '{part}' is not a dict-like object"
+                )
             current = current[part]
 
         # Set the final value
         final_key = parts[-1]
-        
-        if hasattr(current, '__setitem__'):
+
+        if hasattr(current, "__setitem__"):
             current[final_key] = value
         elif isinstance(current, dict):
             current[final_key] = value
         else:
             # For ModelAwareDict and similar objects, try to set the underlying data
-            if hasattr(current, '_data'):
+            if hasattr(current, "_data"):
                 current._data[final_key] = value
             else:
                 setattr(current, final_key, value)
+
+
 class VariablesPathHandler(PathResolverHandler):
     """Handler for paths starting with 'variables.'"""
 

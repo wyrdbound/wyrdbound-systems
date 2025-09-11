@@ -26,10 +26,11 @@ class LLMExecutor(BaseStepExecutor):
         """Initialize the LLM executor with optional action executor."""
         super().__init__()
         self.llm_integration = LLMIntegration()
-        
+
         if action_executor is None:
             # Fallback to direct creation for backward compatibility
             from .action_executor import ActionExecutor
+
             action_executor = ActionExecutor()
         self.action_executor = action_executor
 
