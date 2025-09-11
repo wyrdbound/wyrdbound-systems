@@ -45,45 +45,79 @@ class SetValueActionStrategy(ActionStrategy):
         path = action_data["path"]
         value = action_data["value"]
 
-        # Handle dictionary values specially to avoid string conversion
+        # Resolve templates in the path (e.g., "outputs.character.abilities.{{ item }}.bonus" -> "outputs.character.abilities.strength.bonus")
+        resolved_path = context.resolve_template(path)
+        logger.debug(
+            f"Action set_value: Resolved path from '{path}' to '{resolved_path}'"
+        )
+
+        # Resolve the value to append
         if isinstance(value, dict):
-            # Use dictionary directly without template resolution
+            # Use dictionary directly without template resolution to preserve ModelAwareDict
             resolved_value = value
-            logger.debug(f"Action set_value: Using dict directly for {path}")
+            logger.debug(f"Action set_value: Using dict directly for {resolved_path}")
+
+            # Apply model enhancement to direct dictionary assignments
+            if system and system.models:
+                expected_type = self._get_output_type(resolved_path, context, system)
+                enhanced_value = self._enhance_with_model_defaults(
+                    resolved_value, expected_type, system
+                )
+                if enhanced_value is not resolved_value:
+                    resolved_value = enhanced_value
+                    print(
+                        "SetValueActionStrategy: Enhanced direct dict assignment with model defaults"
+                    )
         elif isinstance(value, bool):
             # Preserve boolean values without template resolution
             resolved_value = value
-            logger.debug(f"Action set_value: Using boolean directly for {path}")
+            logger.debug(
+                f"Action set_value: Using boolean directly for {resolved_path}"
+            )
         else:
             # Check if this is a variable assignment and if we can preserve object types
             resolved_value = self._resolve_value_with_type_preservation(
-                value, path, context, system
+                value, resolved_path, context, system
             )
-            logger.debug(f"Action set_value: Resolved value for {path}")
+            logger.debug(f"Action set_value: Resolved value for {resolved_path}")
 
-        # Use namespaced paths to avoid collision during flow execution
-        current_namespace = context.get_current_flow_namespace()
+        # Use path resolver as the primary mechanism
+        try:
+            context.path_resolver.set_value(context, resolved_path, resolved_value)
+            logger.debug(f"Successfully set {resolved_path} using path resolver")
+        except Exception as e:
+            logger.error(f"Path resolver failed for {resolved_path}: {e}")
+            # Use namespaced paths to avoid collision during flow execution
+            current_namespace = context.get_current_flow_namespace()
 
-        if current_namespace:
-            # Use namespaced path to avoid collision
-            if path.startswith("outputs."):
-                namespaced_path = f"{current_namespace}.outputs.{path[8:]}"
-            elif path.startswith("variables."):
-                namespaced_path = f"{current_namespace}.variables.{path[10:]}"
+            if current_namespace:
+                # Use namespaced path to avoid collision
+                try:
+                    if resolved_path.startswith("outputs."):
+                        namespaced_path = (
+                            f"{current_namespace}.outputs.{resolved_path[8:]}"
+                        )
+                    elif resolved_path.startswith("variables."):
+                        namespaced_path = (
+                            f"{current_namespace}.variables.{resolved_path[10:]}"
+                        )
+                    else:
+                        # Default to outputs if no prefix specified
+                        namespaced_path = f"{current_namespace}.outputs.{resolved_path}"
+
+                    context.set_namespaced_value(namespaced_path, resolved_value)
+                except Exception as e2:
+                    logger.debug(f"Namespace operation also failed: {e2}")
+                    raise e from e2  # Re-raise original error
             else:
-                # Default to outputs if no prefix specified
-                namespaced_path = f"{current_namespace}.outputs.{path}"
-
-            context.set_namespaced_value(namespaced_path, resolved_value)
-        else:
-            # Fallback to original behavior for backward compatibility
-            if path.startswith("outputs."):
-                context.set_output(path[8:], resolved_value)
-            elif path.startswith("variables."):
-                context.set_variable(path[10:], resolved_value)
-            else:
-                # Default to outputs
-                context.set_output(path, resolved_value)
+                # Fallback to original behavior for backward compatibility
+                if resolved_path.startswith("outputs."):
+                    context.set_output(resolved_path[8:], resolved_value)
+                elif resolved_path.startswith("variables."):
+                    context.set_variable(resolved_path[10:], resolved_value)
+                else:
+                    # Default to outputs
+                    context.set_output(resolved_path, resolved_value)
 
     def _resolve_value_with_type_preservation(
         self,
@@ -179,6 +213,54 @@ class SetValueActionStrategy(ActionStrategy):
         return None
 
 
+class AppendItemActionStrategy(ActionStrategy):
+    """Strategy for handling append_item actions."""
+
+    def get_action_type(self) -> str:
+        return "append_item"
+
+    def execute(
+        self,
+        action_data: dict[str, Any],
+        context: "ExecutionContext",
+        system: "System | None" = None,
+    ) -> None:
+        """Execute an append_item action."""
+        path = action_data["path"]
+        value = action_data["value"]
+
+        # Resolve templates in the path
+        resolved_path = context.resolve_template(path)
+        logger.debug(
+            f"Action append_item: Resolved path from '{path}' to '{resolved_path}'"
+        )
+
+        # Resolve the value to append
+        if isinstance(value, dict):
+            # Use dictionary directly without template resolution to preserve ModelAwareDict
+            resolved_value = value
+            logger.debug(f"Action append_item: Using dict directly for {resolved_path}")
+        else:
+            resolved_value = context.resolve_template(str(value))
+            logger.debug(f"Action append_item: Resolved value for {resolved_path}")
+
+        # Get the current list value
+        try:
+            current_list = context.path_resolver.get_value(context, resolved_path, [])
+            if not isinstance(current_list, list):
+                current_list = []
+
+            # Append the new item to the list
+            updated_list = current_list + [resolved_value]
+
+            # Set the updated list back
+            context.path_resolver.set_value(context, resolved_path, updated_list)
+            logger.debug(f"Successfully appended item to {resolved_path}")
+        except Exception as e:
+            logger.error(f"Failed to append item to {resolved_path}: {e}")
+            raise
+
+
 class DisplayValueActionStrategy(ActionStrategy):
     """Strategy for handling display_value actions."""
 
@@ -191,16 +273,481 @@ class DisplayValueActionStrategy(ActionStrategy):
         context: "ExecutionContext",
         system: "System | None" = None,
     ) -> None:
-        """Execute a display_value action."""
-        # For now, just log the value
+        """Execute a display_value action with structured data return.
+
+        The engine returns structured data; the presentation layer handles formatting.
+        """
         path = (
             action_data if isinstance(action_data, str) else action_data.get("path", "")
         )
         try:
-            value = context.resolve_path_value(path)
+            # For simple variable names (no dots), check step data first
+            if "." not in path and context.current_step:
+                step_data = context.step_data.get(context.current_step, {})
+                if path in step_data:
+                    value = step_data[path]
+                else:
+                    # Fall back to path resolution
+                    value = context.resolve_path_value(path)
+            else:
+                # For complex paths, first try template resolution (which includes step data)
+                # This handles cases like "result.roll_result.detail" from table actions
+                try:
+                    template_string = f"{{{{ {path} }}}}"
+                    value = context.resolve_template(template_string)
+                except Exception:
+                    # If template resolution fails, fall back to path resolution
+                    value = context.resolve_path_value(path)
+
+            # Determine value type and structure the data appropriately
+            action_data = {
+                "path": path,
+                "value": self._extract_structured_value(value),
+                "value_type": self._determine_value_type(value),
+            }
+
+            # Add structured data to action messages for the presentation layer to format
+            context.add_action_message("display_value", action_data)
+
+            # Also log it for debugging
             logger.debug(f"Display: {path} = {value}")
         except Exception as e:
-            logger.warning(f"Could not display value at path {path}: {e}")
+            error_msg = f"Could not display value at path {path}: {e}"
+            context.add_action_message(
+                "display_value",
+                {
+                    "path": path,
+                    "value": None,
+                    "value_type": "error",
+                    "error": error_msg,
+                },
+            )
+            logger.warning(error_msg)
+
+    def _extract_structured_value(self, value: Any) -> Any:
+        """Extract structured data from a value, removing presentation-specific formatting."""
+
+        if value is None:
+            return None
+
+        # Handle RollResult objects
+        from ..models.roll_result import RollResult
+
+        if isinstance(value, RollResult):
+            return {
+                "total": value.total,
+                "detail": value.detail,
+                "expression": getattr(value, "expression", None),
+                "breakdown": getattr(value, "breakdown", None),
+            }
+
+        # Handle dict-like objects (including model instances)
+        if hasattr(value, "keys") and hasattr(value, "__getitem__"):
+            # For ModelAwareDict and similar objects, use dict() conversion
+            # Don't rely on __dict__ as it may not contain the actual data
+            result = dict(value)
+            return result
+
+        # Handle lists
+        if isinstance(value, list):
+            return [self._extract_structured_value(item) for item in value]
+
+        # Handle simple values (str, int, float, bool)
+        return value
+
+    def _determine_value_type(self, value: Any) -> str:
+        """Determine the type of value for the presentation layer."""
+        if value is None:
+            return "null"
+
+        from ..models.roll_result import RollResult
+
+        if isinstance(value, RollResult):
+            return "roll_result"
+
+        if hasattr(value, "keys") and hasattr(value, "__getitem__"):
+            return "dict"
+
+        if isinstance(value, list):
+            return "list"
+
+        if isinstance(value, str):
+            return "string"
+
+        if isinstance(value, int | float):
+            return "number"
+
+        if isinstance(value, bool):
+            return "boolean"
+
+        return "object"
+
+    def _format_path_for_display(self, path: str) -> str:
+        """Format a path for user-friendly display."""
+        # Convert technical paths to more readable names
+        if path.startswith("inputs."):
+            return f"Input: {path[7:].replace('_', ' ').title()}"
+        elif path.startswith("outputs."):
+            return f"Output: {path[8:].replace('_', ' ').title()}"
+        elif path.startswith("variables."):
+            return f"Variable: {path[10:].replace('_', ' ').title()}"
+        else:
+            return path.replace("_", " ").title()
+
+    def _format_value_for_display(self, value: Any, path: str) -> str:
+        """Format a value for user-friendly display."""
+        if value is None:
+            return "None"
+
+        # Handle RollResult objects specially
+        from ..models.roll_result import RollResult
+
+        if isinstance(value, RollResult):
+            return self._format_roll_result_for_display(value)
+
+        # Handle dictionaries (like character objects)
+        if isinstance(value, dict):
+            return self._format_dict_for_display(value, path)
+
+        # Handle lists
+        if isinstance(value, list):
+            if not value:
+                return "(empty list)"
+            elif len(value) == 1:
+                item_desc = self._format_value_for_display(value[0], f"{path}[0]")
+                return f"[1 item: {item_desc}]"
+            else:
+                # Show summary for multiple items
+                sample_items = []
+                for _i, item in enumerate(value[:2]):
+                    if isinstance(item, dict):
+                        # Try to find an identifying field in a system-agnostic way
+                        item_name = self._get_display_identifier(item)
+                        if item_name:
+                            sample_items.append(item_name)
+                        else:
+                            sample_items.append(f"dict({len(item)} keys)")
+                    else:
+                        sample_items.append(str(item))
+
+                sample_str = ", ".join(sample_items)
+                if len(value) > 2:
+                    return f"[{len(value)} items: {sample_str}, ...]"
+                else:
+                    return f"[{len(value)} items: {sample_str}]"
+
+        # Handle strings
+        if isinstance(value, str):
+            return f'"{value}"' if len(value) < 50 else f'"{value[:47]}..."'
+
+        # Handle numbers and booleans
+        if isinstance(value, int | float | bool):
+            return str(value)
+
+        # Handle objects with a display-friendly representation
+        if hasattr(value, "__dict__"):
+            return self._format_object_for_display(value)
+
+        # Fallback to string representation
+        return str(value)
+
+    def _format_dict_for_display(self, data: dict, path: str) -> str:
+        """Format a dictionary for user-friendly display using tables."""
+        if not data:
+            return "  (empty)"
+
+        # Use table format for dictionaries
+        return self._create_table_for_dict(data, path)
+
+    def _print_table_for_dict(self, data: dict, path: str, console) -> None:
+        """Print a table representation of a dictionary directly to console."""
+        from rich.table import Table
+
+        # Create table with styling and left-justified title for accessibility
+        table = Table(
+            show_header=True,
+            header_style="bold blue",
+            show_lines=True,
+            title_justify="left",
+        )
+        table.add_column("Property", style="cyan", width=18, no_wrap=True)
+        table.add_column("Value", style="white", width=60)
+
+        # Get ordered keys - prefer model definition order if available
+        ordered_keys = self._get_ordered_keys(data)
+
+        # Add rows for each key-value pair in the correct order
+        for key in ordered_keys:
+            if key in data:  # Only show keys that have values
+                value = data[key]
+                formatted_value = self._format_value_for_table(value, f"{path}.{key}")
+                table.add_row(str(key), formatted_value)
+
+        # Print table directly to console
+        console.print(table)
+
+    def _create_table_for_dict(self, data: dict, path: str) -> str:
+        """Create a table representation of a dictionary."""
+        from io import StringIO
+
+        from rich.console import Console
+        from rich.table import Table
+
+        # Create a console that writes to a string with color support
+        console = Console(
+            file=StringIO(), width=100, legacy_windows=False, force_terminal=True
+        )
+
+        # Create table with styling and left-justified title for accessibility
+        table = Table(
+            show_header=True,
+            header_style="bold blue",
+            show_lines=True,
+            title_justify="left",
+        )
+        table.add_column("Property", style="cyan", width=18, no_wrap=True)
+        table.add_column("Value", style="white", width=60)
+
+        # Get ordered keys - prefer model definition order if available
+        ordered_keys = self._get_ordered_keys(data)
+
+        # Add rows for each key-value pair in the correct order
+        for key in ordered_keys:
+            if key in data:  # Only show keys that have values
+                value = data[key]
+                formatted_value = self._format_value_for_table(value, f"{path}.{key}")
+                table.add_row(str(key), formatted_value)
+
+        # Render table to string
+        console.print(table)
+        output = console.file.getvalue()
+        console.file.close()
+
+        return output.strip()
+
+    def _get_ordered_keys(self, data: dict) -> list[str]:
+        """Get keys in the order defined by the model, falling back to insertion order."""
+        # If data is a ModelAwareDict with a model definition, use model order
+        if hasattr(data, "_model_def") and data._model_def:
+            # Get all attributes from the model definition
+            all_attrs = data._model_def.get_all_attributes()
+
+            # Debug: print the model attributes order
+            logger.debug(f"Model attributes order: {list(all_attrs.keys())}")
+
+            # Extract root-level keys from potentially dotted attribute names in definition order
+            model_keys = []
+            seen_keys = set()
+            for attr_key in all_attrs.keys():
+                if "." in attr_key:
+                    # For nested keys like 'hit_points.max', take the root part 'hit_points'
+                    root_key = attr_key.split(".")[0]
+                    if root_key not in seen_keys:
+                        model_keys.append(root_key)
+                        seen_keys.add(root_key)
+                else:
+                    # For non-nested keys, use as-is
+                    if attr_key not in seen_keys:
+                        model_keys.append(attr_key)
+                        seen_keys.add(attr_key)
+
+            # Debug: print the ordered keys we extracted
+            logger.debug(f"Extracted model keys order: {model_keys}")
+            logger.debug(f"Data keys: {list(data.keys())}")
+
+            # Add any data keys that aren't in the model (preserve them at the end)
+            data_keys = [key for key in data.keys() if key not in seen_keys]
+
+            result = model_keys + data_keys
+            logger.debug(f"Final ordered keys: {result}")
+            return result
+
+        # Fallback to data's natural order (insertion order for modern Python dicts)
+        return list(data.keys())
+
+    def _format_value_for_table(self, value: Any, path: str) -> str:
+        """Format a value specifically for table display with Rich markup."""
+        if value is None:
+            return "[dim]None[/dim]"
+
+        # Handle nested dictionaries
+        if isinstance(value, dict):
+            if not value:
+                return "[dim](empty dict)[/dim]"
+            elif len(value) <= 3:
+                # Small dict - show content details with styling
+                pairs = []
+                for k, v in value.items():
+                    if isinstance(v, int | float):
+                        pairs.append(f"[cyan]{k}[/cyan]: [magenta]{v}[/magenta]")
+                    elif isinstance(v, str) and len(v) < 20:
+                        pairs.append(f"[cyan]{k}[/cyan]: [green]'{v}'[/green]")
+                    else:
+                        pairs.append(
+                            f"[cyan]{k}[/cyan]: [yellow]{type(v).__name__}[/yellow]"
+                        )
+                return "{" + ", ".join(pairs) + "}"
+            else:
+                return (
+                    f"[yellow]Dict with [bold]{len(value)}[/bold] properties[/yellow]"
+                )
+
+        # Handle lists
+        if isinstance(value, list):
+            if not value:
+                return "[dim](empty list)[/dim]"
+            elif len(value) == 1:
+                if isinstance(value[0], dict) or (
+                    hasattr(value[0], "keys") and hasattr(value[0], "__getitem__")
+                ):
+                    item_name = self._get_display_identifier(value[0]) or "item"
+                    return f"[[green]{item_name}[/green]]"
+                else:
+                    return f"[[yellow]{value[0]}[/yellow]]"
+            else:
+                # Show summary for multiple items
+                item_descriptions = []
+                for item in value[:3]:
+                    if isinstance(item, dict) or (
+                        hasattr(item, "keys") and hasattr(item, "__getitem__")
+                    ):
+                        name = self._get_display_identifier(item) or "item"
+                        item_descriptions.append(f"[green]{name}[/green]")
+                    else:
+                        item_descriptions.append(f"[yellow]{str(item)}[/yellow]")
+
+                result = ", ".join(item_descriptions)
+                if len(value) > 3:
+                    result += f", [dim]... ([bold]{len(value)}[/bold] total)[/dim]"
+                return f"[{result}]"
+
+        # Handle strings
+        if isinstance(value, str):
+            if len(value) == 0:
+                return "[dim](empty string)[/dim]"
+            elif len(value) < 40:
+                return f'[green]"{value}"[/green]'
+            else:
+                return f'[green]"{value[:37]}..."[/green]'
+
+        # Handle numbers and booleans
+        if isinstance(value, bool):
+            return f"[{'green' if value else 'red'}]{value}[/{'green' if value else 'red'}]"
+        elif isinstance(value, int | float):
+            return f"[magenta]{value}[/magenta]"
+
+        # Handle objects with a display-friendly representation
+        if hasattr(value, "__dict__"):
+            return self._format_object_for_table(value)
+
+        # Fallback to string representation
+        str_value = str(value)
+        if len(str_value) > 50:
+            str_value = str_value[:47] + "..."
+        return f"[white]{str_value}[/white]"
+
+    def _format_object_for_table(self, obj: Any) -> str:
+        """Format an object for table display with Rich styling."""
+        class_name = obj.__class__.__name__
+
+        # Try to find meaningful attributes to display in a system-agnostic way
+        attrs = []
+        identifying_attrs = self._get_identifying_attributes(obj)
+        for attr_name, attr_value in identifying_attrs.items():
+            attrs.append(f"[cyan]{attr_name}[/cyan]: [yellow]{attr_value}[/yellow]")
+
+        if attrs:
+            return f"[bold blue]{class_name}[/bold blue]({', '.join(attrs)})"
+        else:
+            return f"[bold blue]{class_name}[/bold blue]([dim]...[/dim])"
+
+    def _format_object_for_display(self, obj: Any) -> str:
+        """Format an object for display."""
+        class_name = obj.__class__.__name__
+
+        # Try to find meaningful attributes to display in a system-agnostic way
+        attrs = []
+        identifying_attrs = self._get_identifying_attributes_from_object(obj)
+        for attr_name, attr_value in identifying_attrs.items():
+            attrs.append(f"{attr_name}: {attr_value}")
+
+        if attrs:
+            return f"{class_name}({', '.join(attrs)})"
+        else:
+            return f"{class_name}(...)"
+
+    def _get_display_identifier(self, obj: dict) -> str | None:
+        """Get a display identifier from a dictionary object using GRIMOIRE field conventions."""
+        # Try GRIMOIRE standard identifying fields in order of preference
+        # This follows the GRIMOIRE specification for standard field names
+        grimoire_identifier_fields = ["name", "id", "title", "label", "display_name"]
+
+        for field in grimoire_identifier_fields:
+            if field in obj and obj[field]:
+                return str(obj[field])
+
+        return None
+
+    def _get_identifying_attributes(self, obj: Any) -> dict[str, Any]:
+        """Get identifying attributes from an object using GRIMOIRE field conventions."""
+        attrs = {}
+        # Try GRIMOIRE standard identifying attributes in order of preference
+        grimoire_identifier_attrs = ["name", "id", "title", "label", "value", "total"]
+
+        for attr_name in grimoire_identifier_attrs:
+            if hasattr(obj, attr_name):
+                attr_value = getattr(obj, attr_name)
+                if attr_value is not None:
+                    attrs[attr_name] = attr_value
+                    # Limit to first 3 meaningful attributes to keep display manageable
+                    if len(attrs) >= 3:
+                        break
+
+        return attrs
+
+    def _get_identifying_attributes_from_object(self, obj: Any) -> dict[str, Any]:
+        """Get identifying attributes from an object using GRIMOIRE field conventions."""
+        attrs = {}
+        # Try GRIMOIRE standard identifying attributes in order of preference
+        grimoire_identifier_attrs = ["name", "id", "title", "label", "value", "total"]
+
+        for attr_name in grimoire_identifier_attrs:
+            if hasattr(obj, attr_name):
+                attr_value = getattr(obj, attr_name)
+                if attr_value is not None:
+                    attrs[attr_name] = attr_value
+                    # Limit to first 3 meaningful attributes to keep display manageable
+                    if len(attrs) >= 3:
+                        break
+
+        return attrs
+
+    def _format_roll_result_for_display(self, roll_result) -> str:
+        """Format a RollResult object for display as a simple string."""
+        return f"🎲 {roll_result.total} ({roll_result.expression})"
+
+    def _print_roll_result_table(self, roll_result, console) -> None:
+        """Print a RollResult as a table directly to console."""
+        from rich.table import Table
+
+        # Create table with styling and left-justified title for accessibility
+        table = Table(
+            show_header=True,
+            header_style="bold blue",
+            show_lines=True,
+            title="🎲 Dice Roll Result",
+            title_justify="left",
+        )
+        table.add_column("Property", style="cyan", width=12, no_wrap=True)
+        table.add_column("Value", style="white", width=50)
+
+        # Add rows for roll result properties
+        table.add_row("Total", f"[bold magenta]{roll_result.total}[/bold magenta]")
+        table.add_row("Expression", f"[yellow]{roll_result.expression}[/yellow]")
+        table.add_row("Detail", f"[green]{roll_result.detail}[/green]")
+
+        # Print table directly to console
+        console.print(table)
 
 
 class LogEventActionStrategy(ActionStrategy):
@@ -236,18 +783,25 @@ class LogMessageActionStrategy(ActionStrategy):
 
     def execute(
         self,
-        action_data: dict[str, Any],
+        action_data: dict[str, Any] | str,
         context: "ExecutionContext",
         system: "System | None" = None,
     ) -> None:
-        """Execute a log_message action."""
-        message = action_data.get("message", "")
+        """Execute a log_message action with structured data return."""
+        # Support both shorthand (string) and object (dict) syntax
+        message = (
+            action_data
+            if isinstance(action_data, str)
+            else action_data.get("message", "")
+        )
 
         # Resolve templates in the message
         resolved_message = context.resolve_template(str(message))
 
-        # Add the message to the execution context for UI display
-        context.add_action_message(f"📝 {resolved_message}")
+        # Add structured data to action messages for the presentation layer
+        context.add_action_message(
+            "log_message", {"message": message, "resolved_message": resolved_message}
+        )
 
         # Also log it for debugging
         logger.debug(f"Action log_message: {resolved_message}")
@@ -266,6 +820,7 @@ class SwapValuesActionStrategy(ActionStrategy):
         system: "System | None" = None,
     ) -> None:
         """Execute a swap_values action."""
+
         # Swap values between two paths
         path1 = action_data.get("path1", "")
         path2 = action_data.get("path2", "")
@@ -282,8 +837,6 @@ class SwapValuesActionStrategy(ActionStrategy):
             # Swap them
             self._set_value_at_path(context, path1, value2)
             self._set_value_at_path(context, path2, value1)
-
-            logger.debug(f"Swapped values: {path1} <-> {path2}")
 
         except Exception as e:
             logger.error(f"Error swapping values between {path1} and {path2}: {e}")
@@ -427,6 +980,7 @@ class ActionStrategyRegistry:
         """Register the default action strategies."""
         default_strategies = [
             SetValueActionStrategy(),
+            AppendItemActionStrategy(),
             DisplayValueActionStrategy(),
             LogEventActionStrategy(),
             LogMessageActionStrategy(),

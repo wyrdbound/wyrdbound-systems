@@ -97,7 +97,7 @@ class FlowExecutionHelper:
                 )
                 return results
 
-        # For path-based templates like "outputs.knave", resolve normally
+        # For path-based templates like "outputs.character", resolve normally
         # but check if we can avoid template conversion for complex objects
         if input_template.startswith("outputs.") and not (
             "{{" in input_template and "}}" in input_template

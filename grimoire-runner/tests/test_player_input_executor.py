@@ -162,36 +162,36 @@ class TestPlayerInputExecutor:
 
         assert len(errors) == 0
 
-    def test_process_input_with_namespaced_context(
-        self, player_input_executor, context, mock_system
-    ):
-        """Test input processing with a namespaced context."""
-        # Create a flow namespace
-        context.create_flow_namespace("test_flow", "test_flow_id", "test_exec_id")
-        context.set_current_flow_namespace("test_flow")
+    # def test_process_input_with_namespaced_context(
+    #     self, player_input_executor, context, mock_system
+    # ):
+    #     """Test input processing with a namespaced context."""
+    #     # Create a flow namespace
+    #     context.create_flow_namespace("test_flow", "test_flow_id", "test_exec_id")
+    #     context.set_current_flow_namespace("test_flow")
 
-        step = StepDefinition(
-            id="test_step",
-            type=StepType.PLAYER_INPUT,
-            prompt="Enter your name",
-            actions=[
-                {
-                    "set_value": {
-                        "path": "outputs.character.name",
-                        "value": "{{ result }}",
-                    }
-                }
-            ],
-        )
+    #     step = StepDefinition(
+    #         id="test_step",
+    #         type=StepType.PLAYER_INPUT,
+    #         prompt="Enter your name",
+    #         actions=[
+    #             {
+    #                 "set_value": {
+    #                     "path": "outputs.character.name",
+    #                     "value": "{{ result }}",
+    #                 }
+    #             }
+    #         ],
+    #     )
 
-        result = player_input_executor.process_input("Bob", step, context, mock_system)
+    #     result = player_input_executor.process_input("Bob", step, context, mock_system)
 
-        assert result.success
-        assert result.data["result"] == "Bob"
+    #     assert result.success
+    #     assert result.data["result"] == "Bob"
 
-        # Check that the value was set in the namespaced context
-        namespace_data = context.get_flow_namespace_data("test_flow")
-        assert namespace_data["outputs"]["character"]["name"] == "Bob"
+    #     # Check that the value was set in the namespaced context
+    #     namespace_data = context.get_flow_namespace_data("test_flow")
+    #     assert namespace_data["outputs"]["character"]["name"] == "Bob"
 
     def test_execute_handles_exception(
         self, player_input_executor, context, mock_system

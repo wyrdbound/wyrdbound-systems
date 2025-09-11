@@ -10,6 +10,9 @@ if TYPE_CHECKING:
     from .context_data import ExecutionContext
     from .model import ModelDefinition
 
+# Import events at module level to avoid circular imports
+from ..services import event_signals
+
 logger = logging.getLogger(__name__)
 
 
@@ -94,7 +97,7 @@ class DerivedFieldManager:
         matches = re.findall(pattern, expression)
         dependencies.update(matches)
 
-        # Find $ syntax variables like $abilities.str.bonus
+        # Find $ syntax variables like $attributes.str.bonus
         pattern = r"\$([a-zA-Z_][a-zA-Z0-9_.]*)"
         matches = re.findall(pattern, expression)
         dependencies.update(matches)
@@ -127,6 +130,17 @@ class DerivedFieldManager:
                     else instance_dep
                 )
                 qualified_dependencies.add(qualified_dep)
+            elif dep.startswith("this."):
+                # Convert this. to the current field's scope
+                # For a field like "abilities.strength.defense", this.bonus should become "abilities.strength.bonus"
+                instance_dep = dep[5:]  # Remove "this."
+                # Get the parent path by removing the last segment from qualified_field_name
+                if "." in qualified_field_name:
+                    parent_path = ".".join(qualified_field_name.split(".")[:-1])
+                    qualified_dep = f"{parent_path}.{instance_dep}"
+                else:
+                    qualified_dep = instance_dep
+                qualified_dependencies.add(qualified_dep)
             else:
                 qualified_dependencies.add(dep)
 
@@ -150,10 +164,27 @@ class DerivedFieldManager:
         """Set a value and trigger recomputation of dependent fields."""
         logger.debug(f"Observable: Setting field {field_name} = {value}")
 
+        # Get old value for the event
+        old_value = None
+        try:
+            old_value = self.execution_context.get_nested_value(
+                self.execution_context.outputs, field_name
+            )
+        except (KeyError, AttributeError):
+            old_value = None
+
         # First, set the value directly in the execution context outputs to avoid recursion
         # We use _set_nested_value directly instead of set_output to prevent circular calls
         self.execution_context._set_nested_value(
             self.execution_context.outputs, field_name, value
+        )
+
+        # Emit value set event
+        event_signals.publish_value_set(
+            path=field_name,
+            value=value,
+            old_value=old_value,
+            context_id=self.execution_context.id,
         )
 
         # Then create/update observable which will trigger recomputation
@@ -224,7 +255,7 @@ class DerivedFieldManager:
         """Recompute a single derived field."""
         logger.debug(f"_recompute_field called for: {field}")
 
-        # The field is already qualified (e.g., "knave.abilities.strength.defense")
+        # The field is already qualified (e.g., "character.abilities.strength.defense")
         # Look for it directly in the fields registry
         logger.debug(f"_recompute_field: looking for qualified field = {field}")
         logger.debug(
@@ -238,8 +269,18 @@ class DerivedFieldManager:
         self._computing.add(field)
         try:
             template_expr = self.fields[field]["derived"]
+            dependencies = list(self.fields[field]["dependencies"])
+
             # Convert $variable syntax to {{ variable }} syntax for Jinja2
-            jinja_expr = self._convert_to_jinja_syntax(template_expr)
+            # For a field like "abilities.strength.defense", the parent context is "abilities.strength"
+            parent_context = ".".join(field.split(".")[:-1]) if "." in field else ""
+            # Add the outputs prefix for template resolution
+            full_context_path = (
+                f"outputs.{parent_context}" if parent_context else "outputs"
+            )
+            jinja_expr = self._convert_to_jinja_syntax_with_context(
+                template_expr, full_context_path
+            )
             logger.debug(
                 f"Computing field {field}: '{template_expr}' -> '{jinja_expr}'"
             )
@@ -250,6 +291,14 @@ class DerivedFieldManager:
             # Store the result directly in outputs to avoid circular calls to set_output
             self.execution_context._set_nested_value(
                 self.execution_context.outputs, field, result
+            )
+
+            # Emit field computed event
+            event_signals.publish_field_computed(
+                path=field,
+                computed_value=result,
+                source_fields=list(dependencies),
+                context_id=self.execution_context.id,
             )
 
             # Create/update observable for this computed field
@@ -280,29 +329,56 @@ class DerivedFieldManager:
             self._computing.discard(field)
 
     def _convert_to_jinja_syntax(self, expression: str) -> str:
-        """Convert $variable syntax to {{ variable }} Jinja2 syntax."""
-        import re
+        """Convert expressions with $ syntax to Jinja2 template syntax."""
+        if not expression:
+            return expression
 
-        # For mathematical expressions like "10 + $.abilities.strength.bonus",
-        # we want to create "{{ 10 + knave.abilities.strength.bonus }}" so it evaluates the math
+        # If the expression already has {{ }}, check if it needs self/this conversion
+        if expression.startswith("{{") and expression.endswith("}}"):
+            # Replace 'this.' with the current instance ID for proper template resolution
+            if hasattr(self, "current_instance_id") and self.current_instance_id:
+                # Only replace 'this.' at the start of identifiers to avoid replacing it in strings
+                import re
 
-        # First handle $. references (current model instance)
-        if self.current_instance_id and "$." in expression:
-            # Replace $. with the current instance ID
-            expression = expression.replace("$.", f"${self.current_instance_id}.")
+                pattern = r"\bthis\."
+                replacement = f"{self.current_instance_id}."
+                expression = re.sub(pattern, replacement, expression)
+            return expression
 
-        # Check if this is a simple variable reference or a mathematical expression
-        if expression.startswith("$") and not any(
-            op in expression for op in ["+", "-", "*", "/", "(", ")"]
-        ):
-            # Simple variable reference: $variable -> {{ variable }}
-            return re.sub(r"\$([a-zA-Z_][a-zA-Z0-9_.]*)", r"{{ \1 }}", expression)
-        else:
-            # Mathematical expression: wrap the whole thing after converting variables
-            # First convert $variable to variable
-            converted = re.sub(r"\$([a-zA-Z_][a-zA-Z0-9_.]*)", r"\1", expression)
-            # Then wrap in {{ }} for evaluation
-            return f"{{{{ {converted} }}}}"
+        # For expressions without {{ }}, wrap them and handle $ syntax
+        if hasattr(self, "current_instance_id") and self.current_instance_id:
+            # Replace $ with the current instance ID
+            expression = expression.replace("$.", f"{self.current_instance_id}.")
+            expression = expression.replace("$", self.current_instance_id)
+
+        return f"{{{{ {expression} }}}}"
+
+    def _convert_to_jinja_syntax_with_context(
+        self, expression: str, context_path: str
+    ) -> str:
+        """Convert expressions with $ syntax to Jinja2 template syntax with specific context."""
+        if not expression:
+            return expression
+
+        # If the expression already has {{ }}, check if it needs self/this conversion
+        if expression.startswith("{{") and expression.endswith("}}"):
+            # Replace 'this.' with the context path for proper template resolution
+            if context_path:
+                # Only replace 'this.' at the start of identifiers to avoid replacing it in strings
+                import re
+
+                pattern = r"\bthis\."
+                replacement = f"{context_path}."
+                expression = re.sub(pattern, replacement, expression)
+            return expression
+
+        # For expressions without {{ }}, wrap them and handle $ syntax
+        if context_path:
+            # Replace $ with the context path
+            expression = expression.replace("$.", f"{context_path}.")
+            expression = expression.replace("$", context_path)
+
+        return f"{{{{ {expression} }}}}"
 
     def _topological_sort(self, fields: set[str]) -> list[str]:
         """Sort fields in dependency order."""
@@ -349,13 +425,20 @@ class DerivedFieldManager:
         )
 
     def initialize_from_model(
-        self, model_def: "ModelDefinition", instance_id: str = None
+        self, model_def: "ModelDefinition", instance_id: str = None, model_resolver=None
     ) -> None:
-        """Initialize observable system from a model definition."""
+        """Initialize observable system from a model definition.
+
+        Args:
+            model_def: The model definition to process
+            instance_id: Optional instance identifier for scoping
+            model_resolver: Optional function that takes a model type name and returns a ModelDefinition
+        """
         logger.debug(
             f"Initializing observable system for model {getattr(model_def, 'id', 'unknown')} with instance_id: {instance_id}"
         )
         self.current_instance_id = instance_id
+        self.model_resolver = model_resolver  # Store generic model resolver function
         self.register_model_attributes(model_def)
 
     def compute_all_derived_fields(self) -> None:
@@ -512,6 +595,26 @@ class DerivedFieldManager:
                     f"Found derived field: {full_path} = {attr_config.derived}"
                 )
                 self.register_derived_field(full_path, attr_config.derived)
+            # Handle AttributeDefinition with model type references
+            elif (
+                hasattr(attr_config, "type")
+                and self.model_resolver
+                and attr_config.type
+            ):
+                # This attribute references another model - try to resolve it
+                referenced_model = self.model_resolver(attr_config.type)
+                if referenced_model:
+                    logger.debug(
+                        f"Found model type reference: {full_path} -> {attr_config.type}, registering derived fields"
+                    )
+                    # Recursively register the referenced model's attributes under this path
+                    self._register_attributes_recursive(
+                        referenced_model.attributes, full_path
+                    )
+                else:
+                    logger.debug(
+                        f"Model type '{attr_config.type}' could not be resolved for {full_path}"
+                    )
             # Handle nested attributes (dictionaries)
             elif isinstance(attr_config, dict):
                 if "derived" in attr_config:

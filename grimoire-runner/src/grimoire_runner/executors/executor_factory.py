@@ -57,19 +57,45 @@ class DefaultExecutorFactory(ExecutorFactory):
         from ..executors.dice_executor import DiceExecutor
         from ..executors.flow_executor import FlowExecutor
         from ..executors.llm_executor import LLMExecutor
+        from ..executors.name_generation_executor import NameGenerationExecutor
         from ..executors.player_input_executor import PlayerInputExecutor
         from ..executors.table_executor import TableExecutor
 
         if step_type in ["dice_roll", "dice_sequence"]:
-            return DiceExecutor()
+            # Inject action executor dependency if registry is available
+            if self.executor_registry:
+                action_executor = self.executor_registry.create_action_executor()
+                return DiceExecutor(action_executor)
+            else:
+                return DiceExecutor()  # Falls back to internal creation
         elif step_type == "player_choice":
-            return ChoiceExecutor(engine)
+            # Inject action executor dependency if registry is available
+            if self.executor_registry:
+                action_executor = self.executor_registry.create_action_executor()
+                return ChoiceExecutor(engine, action_executor)
+            else:
+                return ChoiceExecutor(engine)  # Falls back to internal creation
         elif step_type == "player_input":
-            return PlayerInputExecutor()
+            # Inject action executor dependency if registry is available
+            if self.executor_registry:
+                action_executor = self.executor_registry.create_action_executor()
+                return PlayerInputExecutor(action_executor)
+            else:
+                return PlayerInputExecutor()  # Falls back to internal creation
         elif step_type == "table_roll":
-            return TableExecutor()
+            # Inject action executor dependency if registry is available
+            if self.executor_registry:
+                action_executor = self.executor_registry.create_action_executor()
+                return TableExecutor(action_executor)
+            else:
+                return TableExecutor()  # Falls back to internal creation
         elif step_type == "llm_generation":
-            return LLMExecutor()
+            # Inject action executor dependency if registry is available
+            if self.executor_registry:
+                action_executor = self.executor_registry.create_action_executor()
+                return LLMExecutor(action_executor)
+            else:
+                return LLMExecutor()  # Falls back to internal creation
         elif step_type == "conditional":
             # Inject action executor dependency if registry is available
             if self.executor_registry:
@@ -77,6 +103,13 @@ class DefaultExecutorFactory(ExecutorFactory):
                 return ConditionalExecutor(action_executor)
             else:
                 return ConditionalExecutor()  # Falls back to internal creation
+        elif step_type == "name_generation":
+            # Inject action executor dependency if registry is available
+            if self.executor_registry:
+                action_executor = self.executor_registry.create_action_executor()
+                return NameGenerationExecutor(action_executor)
+            else:
+                return NameGenerationExecutor()  # Falls back to internal creation
         elif step_type in ["completion", "flow_call"]:
             # Inject action executor dependency if registry is available
             if self.executor_registry:
@@ -96,6 +129,7 @@ class DefaultExecutorFactory(ExecutorFactory):
             "player_input",
             "table_roll",
             "llm_generation",
+            "name_generation",
             "completion",
             "flow_call",
             "conditional",

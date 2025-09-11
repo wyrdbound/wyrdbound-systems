@@ -2,16 +2,19 @@
 
 import copy
 import logging
+import uuid
 from dataclasses import dataclass, field
 from datetime import datetime
 from typing import TYPE_CHECKING, Any, Optional
 
+from ..services import event_signals
 from ..services.flow_execution_context_manager import (
     DefaultNamespaceDataAccess,
     FlowExecutionContextManager,
 )
 from ..services.path_resolver import PathResolver
 from .flow_namespace import FlowNamespaceManager
+from .model import AttributeDefinition, ModelDefinition
 from .template_resolver import TemplateResolver
 
 if TYPE_CHECKING:
@@ -35,6 +38,9 @@ class Checkpoint:
 class ExecutionContext:
     """Runtime execution context for flows."""
 
+    # Unique identifier for this context
+    id: str = field(default_factory=lambda: str(uuid.uuid4()))
+
     # Core state
     variables: dict[str, Any] = field(default_factory=dict)
     outputs: dict[str, Any] = field(default_factory=dict)
@@ -51,10 +57,13 @@ class ExecutionContext:
     # Execution tracking
     current_step: str | None = None
     step_history: list[str] = field(default_factory=list)
+    step_data: dict[str, dict[str, Any]] = field(
+        default_factory=dict
+    )  # step_id -> {key: value}
     checkpoints: dict[str, Checkpoint] = field(default_factory=dict)
 
     # Action messages for UI display
-    action_messages: list[str] = field(default_factory=list)
+    action_messages: list[dict] = field(default_factory=list)
 
     # Template resolution (delegated to specialized resolver)
     template_resolver: TemplateResolver = field(default_factory=TemplateResolver)
@@ -75,9 +84,13 @@ class ExecutionContext:
     def __post_init__(self) -> None:
         """Initialize the derived field manager and flow execution manager."""
         # Initialize the derived field manager
+        from ..services.reactive_service import reactive_service
         from .observable import DerivedFieldManager
 
         self._derived_field_manager = DerivedFieldManager(self, self.resolve_template)
+
+        # Register with the reactive service using the context ID
+        reactive_service.register_field_manager(self.id, self._derived_field_manager)
 
         # Initialize the flow execution context manager
         namespace_data_access = DefaultNamespaceDataAccess(self)
@@ -87,7 +100,21 @@ class ExecutionContext:
 
     def set_variable(self, path: str, value: Any) -> None:
         """Set a variable at the specified path."""
+        # Get old value for event
+        old_value = self.path_resolver.get_value(self, f"variables.{path}", None)
+
+        # Set the new value
         self.path_resolver.set_value(self, f"variables.{path}", value)
+
+        # Publish value set event
+        event_signals.publish_value_set(
+            path=f"variables.{path}",
+            value=value,
+            old_value=old_value,
+            context_id=getattr(self, "execution_id", self.id),
+        )
+
+        logger.debug(f"Variable set: variables.{path} = {value}")
 
     def get_variable(self, path: str, default: Any = None) -> Any:
         """Get a variable at the specified path."""
@@ -99,7 +126,21 @@ class ExecutionContext:
 
     def set_output(self, path: str, value: Any) -> None:
         """Set an output at the specified path, triggering derived field computation if applicable."""
+        # Get old value for event
+        old_value = self.path_resolver.get_value(self, f"outputs.{path}", None)
+
+        # Set the new value
         self.path_resolver.set_value(self, f"outputs.{path}", value)
+
+        # Publish value set event
+        event_signals.publish_value_set(
+            path=f"outputs.{path}",
+            value=value,
+            old_value=old_value,
+            context_id=getattr(self, "execution_id", self.id),
+        )
+
+        logger.debug(f"Output set: outputs.{path} = {value}")
 
     def set_output_with_observables(self, path: str, value: Any) -> None:
         """Set an output and trigger observable updates."""
@@ -117,7 +158,7 @@ class ExecutionContext:
             if self._derived_field_manager and isinstance(base_value, dict):
                 logger.debug(f"get_output({path}): checking for computed values")
                 # Check if this path corresponds to a model instance
-                # For paths like "knave", check if we have derived fields for that instance
+                # For paths like "character", check if we have derived fields for that instance
                 computed_values = (
                     self._derived_field_manager.get_computed_values_for_instance(path)
                 )
@@ -215,7 +256,12 @@ class ExecutionContext:
 
     def resolve_template(self, template_str: str) -> Any:
         """Resolve a Jinja2 template string with current context."""
-        return self.template_resolver.resolve_template(
+        # Prepare current step data for template resolution
+        current_step_data = None
+        if self.current_step:
+            current_step_data = self.step_data.get(self.current_step, {})
+
+        return self.template_resolver.resolve_template_with_step_data(
             template_str,
             self.variables,
             self.outputs,
@@ -223,44 +269,58 @@ class ExecutionContext:
             self.system_metadata,
             self.namespace_manager,
             self._derived_field_manager,
+            current_step_data,
         )
 
     def resolve_template_with_context(
         self, template_str: str, additional_context: dict[str, Any]
     ) -> Any:
-        """Resolve a template string with additional context variables."""
-        # Merge additional context with existing context
-        merged_variables = {**self.variables, **additional_context}
-        merged_outputs = {**self.outputs}
-        merged_inputs = {**self.inputs}
+        """Resolve a Jinja2 template string with additional context variables."""
+        # Store the additional context temporarily in merged variables
+        original_vars = self.variables.copy()
 
-        # If additional_context has variables/outputs/inputs, merge those too
-        if "variables" in additional_context:
-            merged_variables.update(additional_context["variables"])
-        if "outputs" in additional_context:
-            merged_outputs.update(additional_context["outputs"])
-        if "inputs" in additional_context:
-            merged_inputs.update(additional_context["inputs"])
+        # Merge additional context into variables for template resolution
+        merged_vars = {**self.variables, **additional_context}
 
-        return self.template_resolver.resolve_template(
+        try:
+            # Temporarily update variables for template resolution
+            self.variables.update(additional_context)
+            return self.template_resolver.resolve_template(
+                template_str,
+                merged_vars,
+                self.outputs,
+                self.inputs,
+                self.system_metadata,
+                self.namespace_manager,
+                self._derived_field_manager,
+            )
+        finally:
+            # Restore original variables to avoid pollution
+            self.variables.clear()
+            self.variables.update(original_vars)
+
+    def resolve_template_with_step_data(
+        self, template_str: str, step_data: dict[str, Any]
+    ) -> Any:
+        """Resolve a Jinja2 template string with step-specific data."""
+        return self.template_resolver.resolve_template_with_step_data(
             template_str,
-            merged_variables,
-            merged_outputs,
-            merged_inputs,
+            self.variables,
+            self.outputs,
+            self.inputs,
             self.system_metadata,
             self.namespace_manager,
             self._derived_field_manager,
+            step_data,
         )
 
     def resolve_path_value(self, path: str) -> Any:
-        """Resolve a path that might reference variables, outputs, inputs, or system metadata."""
-        logger.debug(f"resolve_path_value({path})")
-
-        # Use the centralized path resolver
-        try:
-            return self.path_resolver.get_value(self, path)
-        except Exception as e:
-            raise KeyError(f"Path '{path}' not found: {e}") from e
+        """Resolve a value at the given path."""
+        logger.debug(f"resolve_path_value called with path: {path}")
+        result = self.path_resolver.get_value(self, path)
+        logger.debug(f"resolve_path_value result type: {type(result)}")
+        logger.debug(f"resolve_path_value result preview: {str(result)[:100]}...")
+        return result
 
     # Flow Namespace Management (delegated to namespace manager)
     def create_flow_namespace(
@@ -334,6 +394,27 @@ class ExecutionContext:
         if self._flow_execution_manager:
             self._flow_execution_manager.update_execution_step(step_id)
 
+    def set_step_data(self, step_id: str, key: str, value: Any) -> None:
+        """Set step-scoped data for a specific step."""
+        if step_id not in self.step_data:
+            self.step_data[step_id] = {}
+        self.step_data[step_id][key] = value
+
+    def get_step_data(self, step_id: str, key: str, default: Any = None) -> Any:
+        """Get step-scoped data for a specific step."""
+        return self.step_data.get(step_id, {}).get(key, default)
+
+    def get_current_step_data(self, key: str, default: Any = None) -> Any:
+        """Get step-scoped data for the current step."""
+        if self.current_step:
+            return self.get_step_data(self.current_step, key, default)
+        return default
+
+    def set_current_step_data(self, key: str, value: Any) -> None:
+        """Set step-scoped data for the current step."""
+        if self.current_step:
+            self.set_step_data(self.current_step, key, value)
+
     def get_current_execution(self):
         """Get the current flow execution state."""
         if self._flow_execution_manager:
@@ -388,23 +469,34 @@ class ExecutionContext:
             "timestamp": datetime.now().isoformat(),
         }
 
-    def add_action_message(self, message: str) -> None:
-        """Add an action message to be displayed by the UI."""
-        self.action_messages.append(message)
+    def add_action_message(self, action_type: str, action_data: dict | str) -> None:
+        """Add an action message to be displayed by the UI.
 
-    def get_and_clear_action_messages(self) -> list[str]:
+        Args:
+            action_type: The type of action (e.g., 'display_value', 'log_message')
+            action_data: Structured data for the action, or legacy string message
+        """
+        self.action_messages.append({"type": action_type, "data": action_data})
+
+    def get_and_clear_action_messages(self) -> list[dict]:
         """Get all action messages and clear the list."""
         messages = self.action_messages.copy()
         self.action_messages.clear()
         return messages
 
     def initialize_model_observables(
-        self, model_definition, instance_id: str = None
+        self, model_definition, instance_id: str = None, model_resolver=None
     ) -> None:
-        """Initialize observable derived fields from a model definition."""
+        """Initialize observable derived fields from a model definition.
+
+        Args:
+            model_definition: The model definition to initialize
+            instance_id: Optional instance identifier
+            model_resolver: Optional function to resolve model type references
+        """
         if self._derived_field_manager:
             self._derived_field_manager.initialize_from_model(
-                model_definition, instance_id
+                model_definition, instance_id, model_resolver
             )
 
     def compute_derived_fields(self) -> None:
@@ -440,9 +532,198 @@ class ExecutionContext:
         for part in parts[:-1]:
             if part not in current:
                 current[part] = {}
-            elif not isinstance(current[part], dict):
-                raise ValueError(f"Cannot set nested value: '{part}' is not a dict")
+            elif not (
+                isinstance(current[part], dict) or hasattr(current[part], "__getitem__")
+            ):
+                raise ValueError(
+                    f"Cannot set nested value: '{part}' is not a dict-like object"
+                )
             current = current[part]
 
         # Set the final value
-        current[parts[-1]] = value
+        final_key = parts[-1]
+        if hasattr(current, "__setitem__"):
+            current[final_key] = value
+        elif isinstance(current, dict):
+            current[final_key] = value
+        else:
+            # For ModelAwareDict and similar objects, try to set the underlying data
+            if hasattr(current, "_data"):
+                current._data[final_key] = value
+            else:
+                setattr(current, final_key, value)
+
+    def initialize_output_models(self, outputs: list, system) -> None:
+        """Initialize outputs with complete model instances."""
+        for output_def in outputs:
+            if output_def.type in system.models:
+                model_def = system.models[output_def.type]
+                complete_instance = self._create_model_instance(model_def, system)
+
+                # Merge with existing data if any
+                if output_def.id in self.outputs:
+                    existing_data = self.outputs[output_def.id]
+                    if isinstance(existing_data, dict):
+                        complete_instance.update(existing_data)
+
+                self.outputs[output_def.id] = complete_instance
+
+    def initialize_input_models(self, inputs: list, system) -> None:
+        """Initialize inputs with complete model instances."""
+        for input_def in inputs:
+            if input_def.type in system.models:
+                model_def = system.models[input_def.type]
+                complete_instance = self._create_model_instance(model_def, system)
+
+                # Merge with existing data if any
+                if input_def.id in self.inputs:
+                    existing_data = self.inputs[input_def.id]
+                    if isinstance(existing_data, dict):
+                        complete_instance.update(existing_data)
+
+                self.inputs[input_def.id] = complete_instance
+
+    def _create_model_instance(
+        self, model_def: ModelDefinition, system, visited_models=None
+    ) -> dict[str, Any]:
+        """Create a complete model instance with all attributes set to defaults."""
+        if visited_models is None:
+            visited_models = set()
+
+        # Prevent infinite recursion
+        if model_def.id in visited_models:
+            return {}
+
+        visited_models.add(model_def.id)
+        instance = {}
+
+        for attr_name, attr_def in model_def.attributes.items():
+            if isinstance(attr_def, AttributeDefinition):
+                # It's an AttributeDefinition object
+                if attr_def.type in ("int", "float", "str", "bool"):
+                    # Primitive type
+                    instance[attr_name] = (
+                        attr_def.default
+                        if attr_def.default is not None
+                        else self._get_primitive_default(attr_def.type)
+                    )
+                elif attr_def.type == "list":
+                    instance[attr_name] = []
+                elif attr_def.type == "map":
+                    instance[attr_name] = {}
+                else:
+                    # Complex type - try to find the model
+                    nested_model = system.models.get(attr_def.type)
+                    if nested_model:
+                        instance[attr_name] = self._create_model_instance(
+                            nested_model, system, visited_models.copy()
+                        )
+                    else:
+                        instance[attr_name] = {}
+            elif isinstance(attr_def, dict):
+                # It's a nested structure - recursively process
+                instance[attr_name] = self._create_nested_structure(
+                    attr_def, system, visited_models
+                )
+            else:
+                # Fallback for simple values
+                instance[attr_name] = attr_def
+
+        visited_models.remove(model_def.id)
+        return instance
+
+    def _create_nested_structure(
+        self, attr_dict: dict[str, Any], system, visited_models=None
+    ) -> dict[str, Any]:
+        """Create a nested structure from a dictionary definition."""
+        if visited_models is None:
+            visited_models = set()
+
+        instance = {}
+
+        for key, value in attr_dict.items():
+            if isinstance(value, dict) and "type" in value:
+                # This looks like an attribute definition
+                attr_type = value["type"]
+                default_value = value.get("default")
+
+                if attr_type in ("int", "float", "str", "bool"):
+                    instance[key] = (
+                        default_value
+                        if default_value is not None
+                        else self._get_primitive_default(attr_type)
+                    )
+                elif attr_type == "list":
+                    instance[key] = []
+                elif attr_type == "map":
+                    instance[key] = {}
+                else:
+                    # Complex type - try to find the model
+                    nested_model = system.models.get(attr_type)
+                    if nested_model:
+                        instance[key] = self._create_model_instance(
+                            nested_model, system, visited_models
+                        )
+                    else:
+                        instance[key] = {}
+            elif isinstance(value, AttributeDefinition):
+                # Handle raw AttributeDefinition objects
+                if value.type in ("int", "float", "str", "bool"):
+                    instance[key] = (
+                        value.default
+                        if value.default is not None
+                        else self._get_primitive_default(value.type)
+                    )
+                elif value.type == "list":
+                    instance[key] = []
+                elif value.type == "map":
+                    instance[key] = {}
+                else:
+                    # Complex type
+                    nested_model = system.models.get(value.type)
+                    if nested_model:
+                        instance[key] = self._create_model_instance(
+                            nested_model, system, visited_models
+                        )
+                    else:
+                        instance[key] = {}
+            elif isinstance(value, dict):
+                # Nested structure
+                instance[key] = self._create_nested_structure(
+                    value, system, visited_models
+                )
+            else:
+                instance[key] = value
+
+        return instance
+
+    def _get_primitive_default(self, type_name: str) -> Any:
+        """Get default value for primitive types."""
+        defaults = {"int": 0, "float": 0.0, "str": "", "bool": False}
+        return defaults.get(type_name, None)
+
+    def _get_all_model_attributes(self, model_def, system) -> dict:
+        """Get all attributes from model definition including inherited ones."""
+        all_attributes = {}
+
+        # Process inheritance chain (extends)
+        if hasattr(model_def, "extends") and model_def.extends:
+            for parent_model_id in model_def.extends:
+                if parent_model_id in system.models:
+                    parent_model = system.models[parent_model_id]
+                    parent_attributes = self._get_all_model_attributes(
+                        parent_model, system
+                    )
+                    all_attributes.update(parent_attributes)
+
+        # Add this model's own attributes (these override inherited ones)
+        if hasattr(model_def, "attributes"):
+            all_attributes.update(model_def.attributes)
+
+        return all_attributes
+
+    def cleanup(self) -> None:
+        """Clean up resources and unregister from reactive service."""
+        from ..services.reactive_service import reactive_service
+
+        reactive_service.unregister_field_manager(self.id)

@@ -34,7 +34,6 @@ class InteractiveREPL:
         self.context = None
         self.current_flow = None
         self.current_step = None
-        self.debug_mode = False
 
     def run(self) -> None:
         """Start the interactive REPL."""
@@ -67,23 +66,8 @@ class InteractiveREPL:
                 elif command.startswith("run "):
                     flow_id = command[4:].strip()
                     self.start_flow(flow_id)
-                elif command.startswith("debug "):
-                    flow_id = command[6:].strip()
-                    self.start_flow(flow_id, debug=True)
                 elif command == "context":
                     self._show_context()
-                elif command == "step":
-                    self._step_forward()
-                elif command == "continue":
-                    self._continue_execution()
-                elif command.startswith("breakpoint "):
-                    parts = command.split()
-                    if len(parts) >= 3:
-                        flow_id, step_id = parts[1], parts[2]
-                        self.engine.set_breakpoint(flow_id, step_id)
-                        console.print(
-                            f"[yellow]Breakpoint set:[/yellow] {flow_id}.{step_id}"
-                        )
                 elif command == "models":
                     self._list_models()
                 elif command == "compendiums":
@@ -100,7 +84,7 @@ class InteractiveREPL:
                 console.print(f"[red]Error:[/red] {e}")
                 logger.exception("REPL error")
 
-    def start_flow(self, flow_id: str, debug: bool = False) -> None:
+    def start_flow(self, flow_id: str) -> None:
         """Start executing a flow."""
         flow = self.system.get_flow(flow_id)
         if not flow:
@@ -108,17 +92,10 @@ class InteractiveREPL:
             return
 
         self.current_flow = flow_id
-        self.debug_mode = debug
         self.context = self.engine.create_execution_context()
 
         console.print(f"[bold green]Starting flow:[/bold green] {flow.name}")
-
-        if debug:
-            console.print("[yellow]Debug mode enabled[/yellow]")
-            self.engine.enable_debug_mode()
-            self._execute_step_by_step()
-        else:
-            self._execute_full_flow()
+        self._execute_full_flow()
 
     def _execute_full_flow(self) -> None:
         """Execute the complete flow."""
@@ -146,79 +123,6 @@ class InteractiveREPL:
             console.print(f"[red]Flow execution error:[/red] {e}")
             logger.exception("Flow execution failed")
 
-    def _execute_step_by_step(self) -> None:
-        """Execute flow step by step for debugging."""
-        try:
-            step_generator = self.engine.step_through_flow(
-                self.current_flow, self.context, self.system
-            )
-
-            for step_result in step_generator:
-                self.current_step = step_result.step_id
-
-                console.print(f"\n[bold blue]Step:[/bold blue] {step_result.step_id}")
-
-                if step_result.prompt:
-                    console.print(f"[dim]{step_result.prompt}[/dim]")
-
-                if step_result.success:
-                    console.print("[green]✓ Step completed[/green]")
-
-                    if step_result.requires_input:
-                        self._handle_user_input(step_result)
-
-                    if step_result.data:
-                        console.print(f"[dim]Result: {step_result.data}[/dim]")
-                else:
-                    console.print(f"[red]✗ Step failed: {step_result.error}[/red]")
-                    break
-
-                # Wait for user input in debug mode
-                if self.debug_mode:
-                    action = Prompt.ask(
-                        "\n[yellow]Next action[/yellow] (continue/step/context/quit)",
-                        default="continue",
-                    ).lower()
-
-                    if action == "quit":
-                        break
-                    elif action == "context":
-                        self._show_context()
-                    elif action == "step":
-                        continue  # Continue to next step
-                    # else continue automatically
-
-            console.print("[bold green]Flow debugging session ended[/bold green]")
-
-        except Exception as e:
-            console.print(f"[red]Debug execution error:[/red] {e}")
-            logger.exception("Debug execution failed")
-
-    def _handle_user_input(self, step_result) -> None:
-        """Handle steps that require user input."""
-        if step_result.choices:
-            console.print("\n[bold]Available choices:[/bold]")
-
-            for i, choice in enumerate(step_result.choices, 1):
-                console.print(f"  {i}. {choice.label}")
-
-            while True:
-                try:
-                    choice_num = int(Prompt.ask("Select choice (number)"))
-                    if 1 <= choice_num <= len(step_result.choices):
-                        selected_choice = step_result.choices[choice_num - 1]
-                        self.context.set_variable("user_choice", selected_choice.id)
-                        console.print(
-                            f"[green]Selected:[/green] {selected_choice.label}"
-                        )
-                        break
-                    else:
-                        console.print(
-                            f"[red]Invalid choice. Select 1-{len(step_result.choices)}[/red]"
-                        )
-                except ValueError:
-                    console.print("[red]Please enter a number[/red]")
-
     def _show_help(self) -> None:
         """Show available commands."""
         help_text = """
@@ -232,15 +136,9 @@ class InteractiveREPL:
 
 [cyan]Flow Execution:[/cyan]
   run <flow_id>      - Execute a flow
-  debug <flow_id>    - Debug a flow step by step
-
-[cyan]Debugging:[/cyan]
-  context            - Show current execution context
-  step               - Execute next step (debug mode)
-  continue           - Continue execution
-  breakpoint <flow> <step> - Set a breakpoint
 
 [cyan]General:[/cyan]
+  context            - Show current execution context
   help               - Show this help
   quit/exit          - Exit the REPL
 """
@@ -382,21 +280,3 @@ class InteractiveREPL:
             console.print(table)
         else:
             console.print("[yellow]No tables available[/yellow]")
-
-    def _step_forward(self) -> None:
-        """Execute the next step in debug mode."""
-        if not self.debug_mode:
-            console.print("[yellow]Not in debug mode[/yellow]")
-            return
-
-        console.print("[cyan]Stepping forward...[/cyan]")
-        # This would be implemented as part of the step-by-step execution
-
-    def _continue_execution(self) -> None:
-        """Continue execution until next breakpoint."""
-        if not self.debug_mode:
-            console.print("[yellow]Not in debug mode[/yellow]")
-            return
-
-        console.print("[cyan]Continuing execution...[/cyan]")
-        # This would disable step-by-step mode temporarily

@@ -11,6 +11,7 @@ if TYPE_CHECKING:
     from ..models.context_data import ExecutionContext
     from ..models.flow import StepDefinition, StepResult
     from ..models.system import System
+    from .action_executor import ActionExecutor
 
 logger = logging.getLogger(__name__)
 
@@ -18,8 +19,16 @@ logger = logging.getLogger(__name__)
 class TableExecutor(BaseStepExecutor):
     """Executor for table rolling steps."""
 
-    def __init__(self):
+    def __init__(self, action_executor: "ActionExecutor" = None):
+        """Initialize the table executor with optional action executor."""
         self.dice_integration = DiceIntegration()
+
+        if action_executor is None:
+            # Fallback to direct creation for backward compatibility
+            from .action_executor import ActionExecutor
+
+            action_executor = ActionExecutor()
+        self.action_executor = action_executor
 
     def _dice_result_to_roll_result(self, dice_result) -> RollResult:
         """Convert a DiceResult from DiceIntegration to a RollResult."""
@@ -195,32 +204,41 @@ class TableExecutor(BaseStepExecutor):
             path = action_data["path"]
             value = action_data["value"]
 
-            # Resolve templates
-            resolved_value = context.resolve_template(str(value))
+            # Use the same step data mechanism as ActionExecutor for consistency
+            step_data = {"result": result}
 
-            # Get current flow namespace for proper isolation
-            current_namespace = context.get_current_flow_namespace()
+            # Delegate to the centralized ActionExecutor for consistency
+            logger.debug(
+                "Delegating table set_value action to centralized ActionExecutor"
+            )
+            try:
+                self.action_executor.execute_single_action(
+                    action, context, step_data, system
+                )
+            except Exception as e:
+                logger.error(
+                    f"Error delegating set_value action to ActionExecutor: {e}"
+                )
+                # Fallback to original behavior
+                # Temporarily add step_data to current step context for template resolution
+                for key, step_value in step_data.items():
+                    context.set_current_step_data(key, step_value)
 
-            if current_namespace:
-                # Use namespaced path to avoid collision
-                if path.startswith("outputs."):
-                    namespaced_path = f"{current_namespace}.outputs.{path[8:]}"
-                elif path.startswith("variables."):
-                    namespaced_path = f"{current_namespace}.variables.{path[10:]}"
-                else:
-                    # Default to outputs if no prefix specified
-                    namespaced_path = f"{current_namespace}.outputs.{path}"
+                try:
+                    # Resolve templates with the step data context
+                    resolved_value = context.resolve_template(str(value))
+                finally:
+                    # Clean up step data (the context handles this automatically)
+                    pass
 
-                context.set_namespaced_value(namespaced_path, resolved_value)
-            else:
-                # Fallback to original behavior for backward compatibility
+                # Simple path handling without namespacing complications
                 if path.startswith("outputs."):
                     context.set_output(path[8:], resolved_value)
                 elif path.startswith("variables."):
                     context.set_variable(path[10:], resolved_value)
                 else:
                     context.set_output(path, resolved_value)
-                logger.debug(f"Set non-namespaced value: {path} = {resolved_value}")
+                logger.debug(f"Set value using fallback: {path} = {resolved_value}")
 
         elif action_type == "flow_call":
             # Handle sub-flow calls
@@ -245,7 +263,26 @@ class TableExecutor(BaseStepExecutor):
             # Execute the sub-flow
             self._execute_sub_flow(flow_id, inputs, context, system, inputs)
 
-        # TODO: Add other action types as needed
+        else:
+            # Use centralized ActionExecutor for other action types (display_value, etc.)
+            logger.debug(
+                f"Delegating table action '{action_type}' to centralized ActionExecutor"
+            )
+
+            # Prepare step data from the table result
+            step_data = {"result": result}
+
+            try:
+                self.action_executor.execute_single_action(
+                    action, context, step_data, system
+                )
+            except Exception as e:
+                logger.warning(
+                    f"Unsupported table action type '{action_type}' or execution failed: {e}"
+                )
+                logger.debug(
+                    f"Available action types: {self.action_executor.get_supported_action_types()}"
+                )
 
     def _execute_sub_flow(
         self,
@@ -262,6 +299,15 @@ class TableExecutor(BaseStepExecutor):
 
         # Create a new execution context for the sub-flow
         sub_context = ExecutionContext()
+
+        # Populate system metadata for template resolution
+        sub_context.system_metadata = {
+            "id": system.id,
+            "name": system.name,
+            "description": system.description,
+            "version": system.version,
+            "models": system.models,  # Add models for ModelAwareDict
+        }
 
         # Resolve and set inputs for the sub-flow
         resolved_inputs = self._resolve_sub_flow_inputs(inputs, context, system)
@@ -514,7 +560,7 @@ class TableExecutor(BaseStepExecutor):
         new_data: dict,
         instance_id: str = None,
     ) -> None:
-        """Update observable values from a nested dictionary (like updated character data)."""
+        """Update observable values from a nested dictionary (like updated character or entity data)."""
 
         def update_recursive(data: dict, path_prefix: str = ""):
             for key, value in data.items():
@@ -522,7 +568,7 @@ class TableExecutor(BaseStepExecutor):
 
                 # Build qualified path for observable system
                 if instance_id:
-                    # Use the specific instance ID for character data
+                    # Use the specific instance ID for the main entity data
                     qualified_path = f"{instance_id}.{full_path}"
                 elif base_key:
                     qualified_path = f"{base_key}.{full_path}"
@@ -812,40 +858,23 @@ class TableExecutor(BaseStepExecutor):
         self, base_object: dict, entry_type: str, entry_name: str
     ) -> None:
         """Add fallback defaults when model inheritance is not available."""
-        # Add type-specific defaults based on common patterns
-        if entry_type == "item":
-            base_object.update(
-                {
-                    "slot_cost": 0,  # Default to no inventory slots for unknown items
-                    "cost": 0,
-                    "description": f"Unknown item: {entry_name}",
-                }
-            )
-        elif entry_type == "armor":
-            base_object.update(
-                {
-                    "armor_bonus": 0,  # Default to no armor bonus for unknown armor
-                    "slot_cost": 0,
-                    "cost": 0,
-                    "description": f"Unknown armor: {entry_name}",
-                }
-            )
-        elif entry_type == "weapon":
-            base_object.update(
-                {
-                    "damage": "1d4",  # Default minimal damage
-                    "slot_cost": 1,
-                    "cost": 0,
-                    "description": f"Unknown weapon: {entry_name}",
-                }
-            )
-        else:
-            # Generic object for unknown types
-            base_object.update(
-                {
-                    "description": f"Unknown {entry_type}: {entry_name}",
-                }
-            )
+        # Add minimal generic defaults that work across systems
+        # Rather than hardcoding system-specific attributes, use minimal common patterns
+
+        base_object.update(
+            {
+                "description": f"Unknown {entry_type}: {entry_name}",
+            }
+        )
+
+        # Only add truly universal attributes that most systems would recognize
+        # System-specific attributes should come from model definitions, not hardcoded here
+        if entry_type in ["item", "armor", "weapon"]:
+            # These are common enough across RPG systems to be reasonable defaults
+            base_object.setdefault("cost", 0)
+
+        # Let model inheritance and system definitions handle specific attributes
+        # rather than hardcoding system-specific values like slot_cost, armor_bonus, damage
 
     def can_execute(self, step: "StepDefinition") -> bool:
         """Check if this executor can handle the step."""

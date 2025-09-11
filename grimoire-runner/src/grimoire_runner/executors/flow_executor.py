@@ -1,5 +1,6 @@
 """Flow control step executor for completion and flow calls."""
 
+import copy
 import logging
 from typing import TYPE_CHECKING
 
@@ -67,12 +68,16 @@ class FlowExecutor(BaseStepExecutor):
                 )
                 self.action_executor.execute_actions(step.actions, context, {})
 
-            return StepResult(
+            step_result = StepResult(
                 step_id=step.id,
                 success=True,
                 data={"completion": True, "message": step.prompt},
                 prompt=step.prompt,
             )
+
+            # Mark that actions were already executed to prevent double execution
+            step_result.actions_already_executed = True
+            return step_result
 
         except Exception as e:
             logger.error(f"Error executing completion step {step.id}: {e}")
@@ -123,8 +128,8 @@ class FlowExecutor(BaseStepExecutor):
                     f"Sub-flow '{flow_name}' execution failed: {sub_flow_result.error}"
                 )
 
-            # Get sub-flow outputs
-            sub_flow_outputs = sub_flow_result.outputs or {}
+            # Get sub-flow outputs with deep copy to prevent reference sharing
+            sub_flow_outputs = copy.deepcopy(sub_flow_result.outputs or {})
 
             logger.debug(
                 f"Sub-flow {flow_name} completed with success: {sub_flow_result.success}"
@@ -181,7 +186,8 @@ class FlowExecutor(BaseStepExecutor):
                         value, context, system, mode="runtime"
                     )
                 )
-                resolved_inputs[key] = resolved_value
+                # Deep copy resolved values to prevent reference sharing between flows
+                resolved_inputs[key] = copy.deepcopy(resolved_value)
                 logger.debug(f"Resolved input {key}: {resolved_value}")
             except Exception as e:
                 raise ValueError(
@@ -198,6 +204,15 @@ class FlowExecutor(BaseStepExecutor):
 
         # Create a new execution context for the sub-flow
         sub_context = ExecutionContext()
+
+        # Populate system metadata with model information for template resolution
+        sub_context.system_metadata = {
+            "id": system.id,
+            "name": system.name,
+            "description": system.description,
+            "version": system.version,
+            "models": system.models,  # Add models for ModelAwareDict
+        }
 
         # Set the resolved inputs in the sub-flow context
         for key, value in resolved_inputs.items():

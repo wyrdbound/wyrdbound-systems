@@ -4,10 +4,14 @@ import logging
 from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING, Any, Optional
 
+from ..utils.logging import get_logger
+
 if TYPE_CHECKING:
     from ..models.context_data import ExecutionContext
 
 logger = logging.getLogger(__name__)
+# Get the global engine logger for debug messages
+engine_logger = get_logger("grimoire_engine")
 
 
 class PathResolutionError(Exception):
@@ -94,12 +98,18 @@ class OutputsPathHandler(PathResolverHandler):
         # Remove 'outputs.' prefix and set in outputs dict
         output_path = path[8:]  # len("outputs.") = 8
 
+        engine_logger.debug(f"PathResolver: Setting output path={output_path}")
+
         # Use the derived field manager if available for observable updates
         if (
             hasattr(context, "_derived_field_manager")
             and context._derived_field_manager
         ):
-            context._derived_field_manager.set_field_value(output_path, value)
+            try:
+                context._derived_field_manager.set_field_value(output_path, value)
+            except Exception as e:
+                engine_logger.debug(f"PathResolver: Derived field manager failed: {e}")
+                raise e
         else:
             self._set_nested_value(context.outputs, output_path, value)
 
@@ -130,16 +140,33 @@ class OutputsPathHandler(PathResolverHandler):
         current = obj
 
         # Navigate to parent of target
-        for part in parts[:-1]:
+        for _i, part in enumerate(parts[:-1]):
             if part not in current:
                 current[part] = {}
-            elif not isinstance(current[part], dict):
-                raise ValueError(f"Cannot set nested value: '{part}' is not a dict")
+            elif not (
+                isinstance(current[part], dict) or hasattr(current[part], "__getitem__")
+            ):
+                engine_logger.warning(
+                    f"PathResolver: Cannot set nested value: '{part}' is not a dict-like object"
+                )
+                raise ValueError(
+                    f"Cannot set nested value: '{part}' is not a dict-like object"
+                )
             current = current[part]
 
         # Set the final value
         final_key = parts[-1]
-        current[final_key] = value
+
+        if hasattr(current, "__setitem__"):
+            current[final_key] = value
+        elif isinstance(current, dict):
+            current[final_key] = value
+        else:
+            # For ModelAwareDict and similar objects, try to set the underlying data
+            if hasattr(current, "_data"):
+                current._data[final_key] = value
+            else:
+                setattr(current, final_key, value)
 
 
 class VariablesPathHandler(PathResolverHandler):
@@ -352,16 +379,21 @@ class PathResolver:
         self, context: "ExecutionContext", path: str, default: Any = None
     ) -> Any:
         """Get a value at the specified path."""
+        engine_logger.debug(f"PathResolver: get_value called with path: {path}")
         try:
-            return self.handler_chain.handle_get(context, path)
+            result = self.handler_chain.handle_get(context, path)
+            return result
         except PathResolutionError:
+            engine_logger.debug(f"PathResolver: returning default for path: {path}")
             return default
 
     def set_value(self, context: "ExecutionContext", path: str, value: Any) -> None:
         """Set a value at the specified path."""
+        engine_logger.debug(f"PathResolver: set_value called with path: {path}")
         try:
             self.handler_chain.handle_set(context, path, value)
         except PathResolutionError as e:
+            engine_logger.error(f"PathResolver: Failed to set path: {path} - {e}")
             raise ValueError(str(e)) from e
 
     def has_value(self, context: "ExecutionContext", path: str) -> bool:

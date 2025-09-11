@@ -1,12 +1,11 @@
 # GRIMOIRE Runner
 
-An interactive system testing and development tool for GRIMOIRE tabletop RPG systems. This tool allows designers to execute flows, browse compendiums, test dice mechanics, and debug GRIMOIRE system definitions.
+An interactive system testing and development tool for GRIMOIRE tabletop RPG systems. This tool allows designers to execute flows, browse compendiums, test dice mechanics, and validate GRIMOIRE system definitions.
 
 ## Features
 
 - **Flow Execution**: Run complete flows like character creation with step-by-step execution
 - **Dice Integration**: Seamless integration with wyrdbound-dice for all rolling mechanics
-- **Interactive Debugging**: Set breakpoints, step through flows, and inspect variables
 - **Compendium Browser**: Explore and search system content with filtering
 - **LLM Integration**: Use AI for content generation and rule interpretation
 - **Validation**: Enhanced validation beyond basic schema checking
@@ -31,9 +30,6 @@ grimoire-runner browse systems/knave_1e/ --compendium equipment
 
 # Start interactive mode
 grimoire-runner interactive systems/knave_1e/
-
-# Debug with breakpoints
-grimoire-runner debug systems/knave_1e/ --flow character_creation --breakpoint choose_weapon
 ```
 
 ## Architecture
@@ -43,7 +39,7 @@ The runner is built with a modular architecture:
 - **Core Engine**: Orchestrates system loading and flow execution
 - **Step Executors**: Specialized handlers for different step types (dice, choices, tables, LLM)
 - **Integrations**: Clean abstractions around wyrdbound-dice, wyrdbound-rng, and LangChain
-- **UI Layer**: CLI, interactive REPL, debugger, and compendium browser
+- **UI Layer**: CLI, interactive REPL, and compendium browser
 
 ## Development
 
@@ -84,20 +80,6 @@ context = engine.create_execution_context()
 result = engine.execute_flow("character_creation", context)
 
 print(f"Created character: {result.outputs['knave']['name']}")
-```
-
-### Interactive Debugging
-
-```python
-# Enable debug mode with breakpoints
-engine.set_breakpoint("character_creation", "choose_weapon")
-
-# Step through flow
-for step_result in engine.step_through_flow("character_creation", context):
-    print(f"Completed step: {step_result.step_id}")
-    if step_result.requires_input:
-        user_choice = input(f"Choose: {step_result.prompt}")
-        context.set_variable("user_input", user_choice)
 ```
 
 ## License

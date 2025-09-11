@@ -8,4 +8,5 @@ __all__ = [
     "LLMExecutor",
     "FlowExecutor",
     "PlayerInputExecutor",
+    "NameGenerationExecutor",
 ]

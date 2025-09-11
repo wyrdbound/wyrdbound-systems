@@ -1,7 +1,6 @@
 """Rich-based TUI for step-by-step flow execution with accessibility in mind."""
 
 import logging
-import time
 from pathlib import Path
 
 from rich.console import Console
@@ -104,7 +103,6 @@ class RichTUI:
         system_path: Path = None,
         flow_id: str = None,
         input_values: dict = None,
-        debug: bool = False,
         interactive: bool = True,
         indent_level: int = 0,  # Add indentation for nested flows
         parent_tui: "RichTUI" = None,  # Reference to parent TUI for nested flows
@@ -127,7 +125,6 @@ class RichTUI:
             self.console = Console() if parent_tui is None else parent_tui.console
             self.engine = GrimoireEngine()
 
-        self.debug = debug
         self.interactive = interactive
         self.indent_level = indent_level
         self.parent_tui = parent_tui
@@ -194,22 +191,15 @@ class RichTUI:
             )
 
         # Create execution context
-        self.context = self.engine.create_execution_context()
-
-        # Set system metadata in context for templating
-        self.context.system_metadata = {
-            "id": self.system.id,
-            "name": self.system.name,
-            "description": self.system.description,
-            "version": self.system.version,
-            "currency": getattr(self.system, "currency", {}),
-            "credits": getattr(self.system, "credits", {}),
-        }
+        self.context = self.engine.create_execution_context(system=self.system)
 
         # Initialize flow variables
         if self.flow_obj.variables:
             for variable in self.flow_obj.variables:
                 self.context.set_variable(variable.id, variable.default)
+
+        # Initialize complete model instances for declared outputs
+        self.context.initialize_output_models(self.flow_obj.outputs, self.system)
 
         # Initialize input values if provided
         if self.input_values:
@@ -220,6 +210,57 @@ class RichTUI:
                     f"  [cyan]{input_name}[/cyan] = [yellow]{input_value}[/yellow]"
                 )
 
+        # Initialize complete model instances for declared inputs (after setting input values)
+        self.context.initialize_input_models(self.flow_obj.inputs, self.system)
+
+        # Initialize reactive system for input models by copying them to outputs
+        if self.input_values:
+            for input_name, input_value in self.input_values.items():
+                # Initialize reactive system for input models by copying them to outputs
+                for input_def in self.flow_obj.inputs:
+                    if (
+                        input_def.id == input_name
+                        and input_def.type in self.system.models
+                    ):
+                        model = self.system.models[input_def.type]
+                        logger.debug(
+                            f"Setting up reactive output for input {input_name} of type {input_def.type}"
+                        )
+
+                        # Check if we already have a complete output model instance
+                        existing_output = self.context.get_output(input_name)
+                        if (
+                            existing_output
+                            and isinstance(existing_output, dict)
+                            and isinstance(input_value, dict)
+                        ):
+                            # Merge input data with existing complete model
+                            existing_output.update(input_value)
+                            merged_value = existing_output
+                        else:
+                            # No existing complete model, use input value
+                            merged_value = input_value
+
+                        # Set the merged value as output
+                        self.context.set_output(input_name, merged_value)
+
+                        # Initialize reactive system on the output copy
+                        def model_resolver(model_type):
+                            return self.system.models.get(model_type)
+
+                        self.context.initialize_model_observables(
+                            model, input_name, model_resolver
+                        )
+                        # Trigger computation of derived fields
+                        self.context.compute_derived_fields()
+                        # Now copy the computed results back to inputs
+                        computed_output = self.context.get_output(input_name)
+                        logger.debug(
+                            f"Copying computed results back to input {input_name}"
+                        )
+                        self.context.set_input(input_name, computed_output)
+                        break
+
         # Initialize observable derived fields from output models
         for output_def in self.flow_obj.outputs:
             if output_def.type in self.system.models:
@@ -227,7 +268,14 @@ class RichTUI:
                 logger.debug(
                     f"Rich TUI: Initializing model observables for {output_def.type} ({output_def.id})"
                 )
-                self.context.initialize_model_observables(model, output_def.id)
+
+                # Create a generic model resolver function
+                def model_resolver(model_type):
+                    return self.system.models.get(model_type)
+
+                self.context.initialize_model_observables(
+                    model, output_def.id, model_resolver
+                )
 
         # Show flow info
         self._show_flow_info()
@@ -251,7 +299,7 @@ class RichTUI:
         """Execute the flow step by step."""
         current_step_id = self.flow_obj.steps[0].id if self.flow_obj.steps else None
         step_num = 0
-        total_steps = len(self.flow_obj.steps)
+        len(self.flow_obj.steps)
 
         # Simple progress tracking without Rich Progress widget to avoid line conflicts
         self.console.print("[bold cyan]Starting flow execution...[/bold cyan]")
@@ -267,36 +315,12 @@ class RichTUI:
 
             step_num += 1
 
-            # Show step header with progress info
-            progress_text = f"[bold cyan]Step {step_num}/{total_steps}[/bold cyan]"
-            step_description = getattr(step, "description", None) or ""
-            description_text = (
-                f"\n[dim]Description: {step_description}[/dim]"
-                if step_description
-                else ""
+            # Show compact step header
+            step_name = step.name or step.id
+            step_type = step.type.name if hasattr(step.type, "name") else str(step.type)
+            self.console.print(
+                f"[bold cyan]Step {step_num}:[/bold cyan] [bold]{step_name}[/bold] [dim]({step_type})[/dim]"
             )
-
-            panel_content = (
-                f"{progress_text}: [bold]{step.name or step.id}[/bold]\n"
-                f"[dim]Type: {step.type}[/dim]" + description_text
-            )
-
-            if self.indent_level == 0:
-                # Top level - use full panel
-                self.console.print(
-                    Panel(
-                        panel_content,
-                        border_style="blue",
-                        title="Current Step",
-                    )
-                )
-            else:
-                # Nested level - use indented panel
-                self.console.print(
-                    self._create_indented_panel(
-                        panel_content, title="Current Step", border_style="blue"
-                    )
-                )
 
             # Update context
             self.context.current_step = current_step_id
@@ -324,17 +348,9 @@ class RichTUI:
                 )
                 break
 
-            # Small delay for readability
-            time.sleep(0.5)
-
         # Final completion message
         self.console.print()
-        self.console.print(
-            Panel(
-                "[bold green]✅ Flow execution completed![/bold green]",
-                border_style="green",
-            )
-        )
+        self.console.print("[bold green]✅ Flow execution completed![/bold green]")
         self._show_results_summary()
 
     def execute_flow(self, flow_obj, context, system) -> bool:
@@ -357,23 +373,12 @@ class RichTUI:
 
             step_num += 1
 
-            # Show step header - detailed for sub-flows
-            step_description = getattr(step, "description", None) or ""
-            step_info = (
-                f"Step {step_num}/{len(self.flow_obj.steps)}: {step.name or step.id}"
+            # Show compact sub-flow step header with proper indentation
+            step_name = step.name or step.id
+            step_type = step.type.name if hasattr(step.type, "name") else str(step.type)
+            self._print_indented(
+                f"[cyan]Step {step_num}:[/cyan] [bold]{step_name}[/bold] [dim]({step_type})[/dim]"
             )
-            step_type_info = f"Type: {step.type}"
-
-            if step_description:
-                panel_content = f"[bold]{step_info}[/bold]\n[dim]{step_type_info}[/dim]\n[dim]Description: {step_description}[/dim]"
-            else:
-                panel_content = f"[bold]{step_info}[/bold]\n[dim]{step_type_info}[/dim]"
-
-            # Use indented panel for nested flows
-            panel = self._create_indented_panel(
-                panel_content, title="Sub-Flow Step", border_style="cyan"
-            )
-            self.console.print(panel)
 
             # Update context
             self.context.current_step = current_step_id
@@ -407,13 +412,13 @@ class RichTUI:
 
     def _execute_single_step(self, step, step_num: int) -> tuple[bool, str | None]:
         """Execute a single step."""
-        # Show generic start message for step type
-        start_message = get_step_start_message(step.type, step.prompt)
-        self._print_indented(f"[cyan]{start_message}[/cyan]")
-
         # Special handling for flow_call steps to show sub-flow execution
         if step.type == StepType.FLOW_CALL:
             return self._execute_flow_call_step(step, step_num)
+
+        # Show generic start message for step type (more compact)
+        start_message = get_step_start_message(step.type, step.prompt)
+        self._print_indented(f"{start_message}")
 
         # Execute the step through the engine
         step_result = self.engine._execute_step(step, self.context, self.system)
@@ -479,16 +484,29 @@ class RichTUI:
                                 "choice_label", selected_choice.label
                             )
 
+                            # Create choice result data
+                            choice_data = {
+                                "choice_id": selected_choice_id,
+                                "choice_label": selected_choice.label,
+                            }
+
+                            # Add result for single selections (from compendium/table choices)
+                            result = self.context.get_variable("result")
+                            if result is not None:
+                                choice_data["result"] = result
+
+                            # Add results if available (for multi-selection)
+                            results = self.context.get_variable("results")
+                            if results is not None:
+                                choice_data["results"] = results
+
                             choice_result = type(
                                 "StepResult",
                                 (),
                                 {
                                     "step_id": step.id,
                                     "success": True,
-                                    "data": {
-                                        "choice_id": selected_choice_id,
-                                        "choice_label": selected_choice.label,
-                                    },
+                                    "data": choice_data,
                                     "next_step_id": selected_choice.next_step,
                                 },
                             )()
@@ -637,22 +655,11 @@ class RichTUI:
         if step_result.success:
             # Check if step has a custom result message
             if step.result_message:
-                # Resolve any templates in the custom message
-                try:
-                    from ..services.template_service import TemplateService
-
-                    template_service = TemplateService()
-                    resolved_message = (
-                        template_service.resolve_template_with_execution_context(
-                            step.result_message, self.context, self.system
-                        )
-                    )
-                    success_message = get_step_success_message(
-                        step.type, resolved_message
-                    )
-                except Exception as e:
-                    logger.debug(f"Failed to resolve result_message template: {e}")
-                    success_message = get_step_success_message(step.type)
+                # Use resolved message if available, otherwise fall back to original
+                resolved_message = step_result.data.get(
+                    "resolved_message", step.result_message
+                )
+                success_message = get_step_success_message(step.type, resolved_message)
             else:
                 success_message = get_step_success_message(step.type)
 
@@ -694,7 +701,7 @@ class RichTUI:
                         )
                         resolved_inputs[key] = resolved_value
                         self._print_indented(
-                            f"[dim]  📥 Input {key}: {resolved_value}[/dim]"
+                            f"[dim]📥 Input {key}: {resolved_value}[/dim]"
                         )
                     except Exception as e:
                         raise ValueError(
@@ -705,6 +712,15 @@ class RichTUI:
             from ..models.context_data import ExecutionContext
 
             sub_context = ExecutionContext()
+
+            # Populate system metadata for template resolution
+            sub_context.system_metadata = {
+                "id": self.system.id,
+                "name": self.system.name,
+                "description": self.system.description,
+                "version": self.system.version,
+                "models": self.system.models,  # Add models for ModelAwareDict
+            }
 
             # Set the resolved inputs in the sub-flow context
             for key, value in resolved_inputs.items():
@@ -719,7 +735,14 @@ class RichTUI:
             for output_def in target_flow.outputs:
                 if output_def.type in self.system.models:
                     model = self.system.models[output_def.type]
-                    sub_context.initialize_model_observables(model, output_def.id)
+
+                    # Create a generic model resolver function
+                    def model_resolver(model_type):
+                        return self.system.models.get(model_type)
+
+                    sub_context.initialize_model_observables(
+                        model, output_def.id, model_resolver
+                    )
 
             # Create nested TUI for sub-flow execution
             nested_tui = RichTUI(
@@ -727,10 +750,6 @@ class RichTUI:
                 console=self.console,
                 indent_level=self.indent_level + 1,
                 parent_tui=self,
-            )
-
-            self._print_indented(
-                f"[blue]  📋 Sub-flow has {len(target_flow.steps)} steps[/blue]"
             )
 
             # Execute the sub-flow using the nested TUI - this will show all steps
@@ -743,7 +762,7 @@ class RichTUI:
                 # Store the result in the main context for template resolution
                 self.context.outputs["result"] = sub_flow_outputs
 
-                self.console.print(
+                self._print_indented(
                     f"[green]🔗 Sub-flow '{sub_flow_name}' completed successfully[/green]"
                 )
                 if sub_flow_outputs:
@@ -835,7 +854,9 @@ class RichTUI:
         has_descriptions = any(getattr(choice, "description", "") for choice in choices)
 
         # Display choices in a table for better accessibility
-        choices_table = Table(title="Available Choices", show_header=True)
+        choices_table = Table(
+            title="Available Choices", show_header=True, title_justify="left"
+        )
         choices_table.add_column("Option", style="cyan", justify="right")
         choices_table.add_column("Choice", style="green")
 
@@ -1008,7 +1029,7 @@ class RichTUI:
                 self.console.print(f"  {i}. {choice_label}")
 
             # Store the multiple selections in context (like the original console interface)
-            self.context.set_variable("selected_items", selected_ids)
+            self.context.set_variable("results", selected_ids)
             self.context.set_variable("user_choices", selected_ids)  # Alternative name
 
             # Return the first selection ID and label (for compatibility)
@@ -1021,7 +1042,7 @@ class RichTUI:
             self.console.print(f"[red]Error during selection: {e}[/red]")
             self.console.print("[yellow]Continuing with default behavior...[/yellow]")
             # Fall back to empty selection
-            self.context.set_variable("selected_items", [])
+            self.context.set_variable("results", [])
             self.context.set_variable("user_choices", [])
             return None
 
@@ -1054,31 +1075,35 @@ class RichTUI:
             return None
 
     def _show_results_summary(self) -> None:
-        """Show a summary of the execution results."""
+        """Show a compact summary of the execution results."""
         if not self.step_results:
             return
 
-        summary_table = Table(title="Execution Summary", show_header=True)
-        summary_table.add_column("Step", style="cyan")
-        summary_table.add_column("Status", style="green")
-        summary_table.add_column("Details", style="dim")
+        success_count = sum(1 for result in self.step_results if result.success)
+        total_count = len(self.step_results)
 
-        for i, result in enumerate(self.step_results, 1):
-            status = "✅ Success" if result.success else "❌ Failed"
-            details = result.error if not result.success else ""
-            summary_table.add_row(str(i), status, details)
+        if success_count == total_count:
+            self.console.print(
+                f"[green]✅ All {total_count} steps completed successfully[/green]"
+            )
+        else:
+            failed_count = total_count - success_count
+            self.console.print(
+                f"[yellow]⚠️  {success_count}/{total_count} steps successful, {failed_count} failed[/yellow]"
+            )
 
-        self.console.print()
-        self.console.print(summary_table)
+            # Show which steps failed
+            for i, result in enumerate(self.step_results, 1):
+                if not result.success:
+                    self.console.print(f"  [red]Step {i}: {result.error}[/red]")
 
 
 def run_rich_tui_executor(
     system_path: Path,
     flow_id: str,
     input_values: dict = None,
-    debug: bool = False,
     interactive: bool = True,
 ) -> None:
     """Run the Rich TUI executor."""
-    tui = RichTUI(system_path, flow_id, input_values, debug=debug)
+    tui = RichTUI(system_path, flow_id, input_values)
     tui.run()

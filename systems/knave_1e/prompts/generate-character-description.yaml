@@ -1,4 +1,4 @@
-id: character_description
+id: generate_character_description
 kind: prompt
 name: "Character Description Generator"
 description: "Generates descriptive text for newly created Knave characters"

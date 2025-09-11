@@ -37,6 +37,8 @@ steps:
         - type: "set_value"
           data:
             path: "variables.ability_scores.{{ item }}"
-            value: "{{ result }}"
-      display_as: "{{ item }}: {{ result }}"
+            value: "{{ result.total }}"
+        - type: "log_message"
+          data:
+            message: "{{ item }}: {{ result.total }}"
     output: "ability_scores"

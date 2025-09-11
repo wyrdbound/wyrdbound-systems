@@ -9,12 +9,21 @@ if TYPE_CHECKING:
     from ..models.context_data import ExecutionContext
     from ..models.flow import StepDefinition, StepResult
     from ..models.system import System
+    from .action_executor import ActionExecutor
 
 logger = logging.getLogger(__name__)
 
 
 class PlayerInputExecutor(BaseStepExecutor):
     """Executor for player input steps."""
+
+    def __init__(self, action_executor: "ActionExecutor" = None):
+        if action_executor is None:
+            # Fallback to direct creation for backward compatibility
+            from .action_executor import ActionExecutor
+
+            action_executor = ActionExecutor()
+        self.action_executor = action_executor
 
     def execute(
         self, step: "StepDefinition", context: "ExecutionContext", system: "System"
@@ -60,10 +69,12 @@ class PlayerInputExecutor(BaseStepExecutor):
             # Store the input result in the context
             context.set_variable("result", user_input)
 
-            # Execute step actions if present
+            # Execute step actions if present using the centralized ActionExecutor
             if step.actions:
-                for action in step.actions:
-                    self._execute_action(action, context, user_input)
+                step_data = {"result": user_input, "user_input": user_input}
+                self.action_executor.execute_actions(
+                    step.actions, context, step_data, system
+                )
 
             logger.debug(f"User input processed: '{user_input}'")
 
@@ -80,54 +91,6 @@ class PlayerInputExecutor(BaseStepExecutor):
                 success=False,
                 error=f"Input processing failed: {e}",
             )
-
-    def _execute_action(self, action, context: "ExecutionContext", result: str) -> None:
-        """Execute an action associated with player input."""
-        # Handle both old format (key as action type) and new format (type field)
-        if "type" in action and "data" in action:
-            action_type = action["type"]
-            action_data = action["data"]
-        else:
-            # Fallback to old format
-            action_type = list(action.keys())[0]
-            action_data = action[action_type]
-
-        if action_type == "set_value":
-            path = action_data["path"]
-            value = action_data["value"]
-
-            # Resolve templates in the value
-            # Note: {{ result }} should resolve to the user's input
-            resolved_value = context.resolve_template(str(value))
-
-            # Get current flow namespace for proper isolation
-            current_namespace = context.get_current_flow_namespace()
-
-            if current_namespace:
-                # Use namespaced path to avoid collision
-                if path.startswith("outputs."):
-                    namespaced_path = f"{current_namespace}.outputs.{path[8:]}"
-                elif path.startswith("variables."):
-                    namespaced_path = f"{current_namespace}.variables.{path[10:]}"
-                else:
-                    # Default to outputs
-                    namespaced_path = f"{current_namespace}.outputs.{path}"
-
-                context.set_namespaced_value(namespaced_path, resolved_value)
-                logger.debug(
-                    f"Set namespaced value: {namespaced_path} = {resolved_value}"
-                )
-            else:
-                # Fallback to original behavior for backward compatibility
-                if path.startswith("outputs."):
-                    context.set_output(path[8:], resolved_value)
-                elif path.startswith("variables."):
-                    context.set_variable(path[10:], resolved_value)
-                else:
-                    context.set_output(path, resolved_value)
-
-        else:
-            logger.warning(f"Unknown action type in player input step: {action_type}")
 
     def can_execute(self, step: "StepDefinition") -> bool:
         """Check if this executor can handle the step."""
