@@ -1,5 +1,5 @@
-id: "add_items_to_character"
-type: "flow"
+id: add_items_to_character
+kind: flow
 name: "Add Items to Character"
 description: "Add multiple items to a character's inventory"
 version: "1.0"

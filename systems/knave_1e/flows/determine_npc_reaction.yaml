@@ -1,5 +1,5 @@
 id: determine_npc_reaction
-type: flow
+kind: flow
 name: "Determine NPC Reaction"
 description: >-
   Determines the NPC's reaction based on the context provided.

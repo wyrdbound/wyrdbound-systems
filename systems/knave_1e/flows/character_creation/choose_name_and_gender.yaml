@@ -1,5 +1,5 @@
 id: choose_name_and_gender
-type: flow
+kind: flow
 name: "Choose Character Name and Gender"
 description: "Name and gender selection for character creation process for {{ system.name }}"
 version: "1.0"
@@ -8,6 +8,7 @@ outputs:
   - type: str
     id: character_name
   - type: str
+    enum: ["Female", "Male", "Non-binary"]
     id: character_gender
 
 steps:
@@ -47,7 +48,7 @@ steps:
               path: "outputs.character_gender"
               value: Non-binary
     actions:
-      - display_value: "outputs.character_gender"
+      - display_message: "Character is {{ outputs.character_gender}}"
     next_step: choose_name_method
 
   - id: roll_gender
@@ -60,8 +61,8 @@ steps:
           - set_value:
               path: "outputs.character_gender"
               value: "{{ result.entry }}"
-          - log_message: "Rolled {{ result.roll_result.detail }}"
-          - log_message: "Character is {{ result.entry }}"
+          - display_message: "Rolled {{ result.roll_result.detail }}"
+          - display_message: "Character is {{ result.entry }}"
           - display_value: "outputs.character_gender"
 
     next_step: choose_name_method
@@ -115,3 +116,5 @@ steps:
     actions:
       - display_value: "outputs.character_name"
       - display_value: "outputs.character_gender"
+      - validate_value: "outputs.character_name"
+      - validate_value: "outputs.character_gender"

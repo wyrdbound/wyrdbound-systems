@@ -1,5 +1,5 @@
 id: choose_starting_weapon
-type: flow
+kind: flow
 name: "Choose Starting Weapon for Character Creation"
 description: "Starting weapon for character creation process for {{ system.name }}"
 version: "1.0"

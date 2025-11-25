@@ -1,5 +1,5 @@
 id: roll_opposed_save
-type: flow
+kind: flow
 name: "Roll Opposed Save"
 description: "Roll a saving throw vs an opponent's defense DC"
 version: "1.0"
