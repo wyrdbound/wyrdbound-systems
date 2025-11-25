@@ -8,7 +8,7 @@ outputs:
   - type: str
     id: character_name
   - type: str
-    enum: ["Male", "Male", "Non-binary"]
+    enum: ["Female", "Male", "Non-binary"]
     id: character_gender
 
 steps:
