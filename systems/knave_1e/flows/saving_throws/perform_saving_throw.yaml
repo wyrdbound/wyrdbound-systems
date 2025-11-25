@@ -1,5 +1,5 @@
 id: perform_saving_throw
-type: flow
+kind: flow
 name: "Perform Saving Throw"
 description: >-
   Determines the saving throw required from a given context and performs it.

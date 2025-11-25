@@ -1,5 +1,5 @@
 id: roll_saving_throw
-type: flow
+kind: flow
 name: "Roll Saving Throw"
 description: "Roll a saving throw versus a fixed DC (usually 15)"
 version: "1.0"

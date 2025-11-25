@@ -1,5 +1,5 @@
 id: roll_starting_gear
-type: "flow"
+kind: flow
 name: "Determine Starting Equipment"
 description: "Determine the starting equipment for a Character"
 version: "1.0"

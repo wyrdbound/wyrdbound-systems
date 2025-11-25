@@ -1,5 +1,5 @@
 id: character_creation
-type: flow
+kind: flow
 name: "Character Creation"
 description: "Character creation process for {{ system.name }}"
 version: "1.0"

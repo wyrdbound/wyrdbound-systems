@@ -2,11 +2,9 @@
 """
 Minimal CLI tool for GRIMOIRE engine development and testing.
 
-This is a development tool to test engine changes without the complexity
-of the full Rich TUI interface. It provides simple command-line interaction
-with event logging and user input prompting using blinker signals.
-
-Phase 1, Step 4: Enhanced to use blinker signal-based event system.
+This is a development tool to test engine changes and GRIMOIRE systems.
+It provides simple command-line interaction with event logging and user
+input prompting using event signals.
 """
 
 import argparse
@@ -76,15 +74,6 @@ class StepDisplayFormatter:
             "generated_name",  # Name generation results
         }
 
-        # Step-type specific handling for "result" field
-        self.step_specific_result_handling = {
-            "dice_roll": False,  # Use log_message templates instead
-            "player_input": True,  # Show result field
-            "llm_generation": True,  # Show result field
-            "name_generation": True,  # Show result field
-            "player_choice": False,  # Raw result objects, use display_value actions instead
-        }
-
     def display_step_data(self, step, step_data):
         """Unified method to display step data, filtering internal fields appropriately."""
         if not step_data:
@@ -102,13 +91,8 @@ class StepDisplayFormatter:
             filtered_data = step_data
 
         for key, value in filtered_data.items():
-            # Handle "result" field based on step type
+            # Skip displaying "result" field based on step type
             if key == "result":
-                should_show_result = self.step_specific_result_handling.get(
-                    step.type, True
-                )
-                if should_show_result:
-                    self._format_user_field(step, key, value)
                 continue
 
             # Always show other user-facing fields
@@ -132,13 +116,13 @@ class StepDisplayFormatter:
         if step.type == "dice_roll" and key == "result":
             # For dice rolls, show a clean result without internal object details
             if hasattr(value, "detail") and hasattr(value, "total"):
-                print(f"   🎲 Roll result: {value.detail}")
+                print(f"🎲 Roll result: {value.detail}")
             else:
-                print(f"   🎲 Roll result: {value}")
+                print(f"🎲 Roll result: {value}")
         elif step.type == "player_input" and key == "result":
-            print(f"   💬 Input received: {value}")
+            print(f"💬 Input received: {value}")
         elif step.type == "llm_generation" and key == "result":
-            print(f"   🤖 Generated: {value}")
+            print(f"🤖 Generated: {value}")
         else:
             # Default formatting for other user fields
             print(f"   {key}: {value}")

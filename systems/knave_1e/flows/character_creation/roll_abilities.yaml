@@ -1,5 +1,5 @@
 id: roll_abilities
-type: flow
+kind: flow
 name: "Roll Abilities for a Character"
 description: "Rolling abilities during Character Creation for {{ system.name }}"
 version: "1.0"
@@ -19,6 +19,7 @@ steps:
     type: dice_sequence
     prompt: "Roll 3d6 for each ability. The lowest die becomes your bonus."
     sequence:
+      #items: "{{ keys(outputs.abilities) }}"
       items:
         [
           "strength",
@@ -33,7 +34,7 @@ steps:
         - set_value:
             path: "outputs.abilities.{{ item }}.bonus"
             value: "{{ result.total }}"
-        - log_message:
+        - display_message:
             message: "{{ item[0:3]|upper }}: bonus +{{ result.total }}, defense {{ result.total + 10 }} ({{ result.detail }})"
 
   - id: ability_swap_choice

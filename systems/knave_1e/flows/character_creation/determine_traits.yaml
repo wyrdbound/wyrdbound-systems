@@ -1,5 +1,5 @@
 id: determine_traits
-type: flow
+kind: flow
 name: "Determine Character Traits"
 description: "Determine the physical and personality traits for character creation process for {{ system.name }}"
 version: "1.0"
